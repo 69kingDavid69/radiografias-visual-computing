@@ -6,7 +6,7 @@
 
 Proyecto de Visual Computing — Universidad Nacional de Colombia, Sede Medellín (2026-2).
 Equipo: tres desarrolladores y una persona a cargo de investigación y datos
-(roles en [ROADMAP.md](ROADMAP.md)).
+(roles en [ROADMAP.md](ROADMAP.md): David, Juan Gómez, Emanuel Aristizábal y Nicolás).
 
 ---
 
