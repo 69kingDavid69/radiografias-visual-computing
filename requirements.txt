@@ -1,6 +1,6 @@
 numpy
-matplotlib
-opencv-python
-scikit-image
 pydicom
+matplotlib
+pyvista
+scikit-image
 jupyter
