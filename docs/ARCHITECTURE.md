@@ -145,12 +145,22 @@ Resumen; el detalle por persona está en [ROADMAP.md](ROADMAP.md).
 1. **Decisión abierta — interfaz final.** Opciones: (a) dos ventanas separadas
    como hoy; (b) una ventana Qt con pyvistaqt; (c) una app web con `trame`.
    Recomendación: (b) en la fase 3.
-2. **Decisión abierta — dataset.** Debe ser CBCT **dental**, público y
-   anonimizado. Candidatos a revisar: ToothFairy / ToothFairy2 (piden registro),
-   CTooth. Responsable: investigación.
+2. **Decisión — dataset (propuesta de investigación, 15/10).** Debe ser CBCT
+   **dental**, público y anonimizado. Ver
+   [investigacion/datasets.md](investigacion/datasets.md):
+   - desarrollo y demo: **muestra CBCT de 3D Slicer** (GIPL, 24 MB, sin registro,
+     ya probada con nuestro código);
+   - resultados del informe: **ToothFairy3** (NIfTI, en HU, 0.3 mm, 77 etiquetas;
+     pide cuenta);
+   - opcional: el dataset DICOM de ScienceDB (3 equipos).
+
+   Se descartaron CTooth, PhysioNet y STS-Tooth. Implica un lector con SimpleITK en
+   `carga.py`.
 3. **Riesgo — el CBCT no está en Hounsfield.** A diferencia del CT médico, los
    valores de gris del CBCT varían entre equipos, así que un umbral fijo no sirve
    para todos. *Mitigación:* presets por estudio o relativos al histograma.
+   Confirmado con la muestra de 3D Slicer (valores de 0 a 3874); ver
+   [investigacion/densidades.md](investigacion/densidades.md).
 4. **Riesgo — rendimiento.** Un volumen de 512³ tiene unos 134 millones de
    vóxeles, y `contour()` se vuelve lento al arrastrar la barra. *Mitigación:*
    `reduccion=2` por defecto, recalcular al soltar la barra y cachear el volumen.
