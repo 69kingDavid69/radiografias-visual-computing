@@ -1,15 +1,16 @@
 # Pruebas con usuarios
 
-Responsable: Nicolás (Fase 3). Objetivo: comprobar si una persona que **no construyó
-la app** puede explorar un CBCT en 2D y 3D y aislar estructuras por densidad. Este
-es el resultado que responde la parte de "interfaz gráfica" de la pregunta de
-investigación.
+> **Para qué sirve en el proyecto.** La pregunta de investigación habla de una
+> *interfaz gráfica*. Este protocolo comprueba si una persona que **no construyó la
+> aplicación** puede explorar un CBCT en 2D y 3D y aislar estructuras por densidad.
+> Sus resultados van a la sección "Resultados" del [informe](informe.md), y los
+> problemas encontrados se vuelven issues para el visor 2D y la vista 3D. Se aplica
+> en la Fase 3 del [ROADMAP](../ROADMAP.md), cuando exista la ventana unificada.
 
 ## Participantes
 
-- **3 personas** que no hayan construido la app, idealmente de odontología o
-  medicina (por ejemplo, estudiantes de la Facultad de Odontología de la U. de
-  Antioquia o de Medicina de la UNAL), más uno de ingeniería como control.
+- **3 personas** que no hayan construido la aplicación: idealmente dos estudiantes
+  de odontología o medicina y una de otra carrera, para comparar.
 - Registrar solo: código (P1, P2, P3), carrera y semestre, y si han visto
   tomografías antes. **No guardar nombres** en el repositorio.
 
@@ -89,7 +90,8 @@ por encima del promedio.
 
 1. Resumir por tarea: tasa de éxito, tiempo promedio y principales confusiones.
 2. **Crear un issue en GitHub por cada problema**, con la etiqueta `usabilidad`, y
-   asignarlo a Juan (interfaz y 2D) o a Emanuel (3D y presets).
+   asignarlo según el módulo: interfaz y visor 2D (Juan) o vista 3D y presets
+   (Emanuel).
 3. Llevar la tabla y el puntaje SUS promedio a la sección de resultados del
    [informe](informe.md).
 

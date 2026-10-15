@@ -1,8 +1,15 @@
 # Marco teórico
 
-Responsable: Nicolás. Es la base de las secciones "Marco teórico" y "Método" del
-[informe](informe.md). Las referencias numeradas están al final y hay un
-[glosario](#glosario) con los términos técnicos.
+> **Para qué sirve en el proyecto.** Explica la teoría detrás de cada módulo:
+> - por qué `carga.py` ordena y reescala los cortes (§2);
+> - qué hace `contour()` en `render_3d.py` (§7) y cómo se ilumina, suaviza y
+>   optimiza la malla (§8–§11);
+> - por qué los presets de `densidades.py` dependen del equipo (§4–§5);
+> - qué hace la ventana/nivel del visor 2D (§6).
+>
+> Es la base de las secciones "Marco teórico" y "Método" del [informe](informe.md).
+> Las referencias numeradas están al final, y hay un [glosario](#glosario) con los
+> términos técnicos.
 
 ## Resumen en palabras simples
 
@@ -229,7 +236,8 @@ mínimo = centro − ancho / 2,   máximo = centro + ancho / 2
 
 Lo que está por debajo se ve negro y lo que está por encima, blanco. Una ventana
 estrecha y alta sirve para distinguir **esmalte de dentina**; una ancha, para ver
-todo el maxilar. Es lo que implementó Juan en `aplicar_ventana()`.
+todo el maxilar. Es lo que hace `aplicar_ventana()` en `src/visor_cortes.py` (rama
+`feat/visor-contraste`).
 
 ## 7. Marching cubes: de un volumen a una superficie 3D
 

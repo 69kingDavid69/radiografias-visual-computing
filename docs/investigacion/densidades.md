@@ -1,8 +1,11 @@
 # Rangos de densidad por estructura
 
-Responsables: Nicolás (literatura y datos) y Emanuel (lo que se ve en el render).
-Alimenta `RANGOS_DENSIDAD` en `src/densidades.py`, que hoy está vacío. Revisado el
-15/10/2026.
+> **Para qué sirve en el proyecto.** Define los valores de `RANGOS_DENSIDAD` en
+> `src/densidades.py` (hoy vacío), que son los presets de la barra de umbral de
+> `src/render_3d.py`: los que aíslan hueso, dientes y esmalte. También es la base de
+> las secciones "Método" y "Resultados" del [informe](informe.md). Según el
+> [ROADMAP](../ROADMAP.md), los rangos se definen entre investigación (literatura y
+> mediciones) y render 3D (lo que se ve). Última revisión: 15/10/2026.
 
 ## 1. Qué es un "rango de densidad" y cómo lo usa el programa
 
@@ -168,8 +171,8 @@ Script: `scripts/histograma_densidades.py`. Para cada uno de 3–5 estudios:
    - Las etiquetas de diente cubren el diente entero (esmalte + dentina); la pulpa
      viene aparte. Para el esmalte, usar la parte alta de la distribución del
      diente (por encima del percentil 75) y confirmarlo en el visor 2D.
-4. **Mirar el resultado.** Emanuel aplica cada rango en el render y guarda una
-   captura en `results/preset_<nombre>.png`.
+4. **Mirar el resultado.** Se aplica cada rango en el render y se guarda una captura
+   en `results/preset_<nombre>.png`.
 
 ```bash
 python scripts/histograma_densidades.py data/raw/ToothFairy3/imagesTr/P001_0000.nii.gz \
@@ -189,7 +192,7 @@ Los nombres de las carpetas dependen de cómo venga la descarga.
 | dientes | | Reshetnikov [1] | | `results/preset_dientes.png` |
 | esmalte | | Reshetnikov [1] | | `results/preset_esmalte.png` |
 
-## 6. Limitaciones (van en el informe)
+## 6. Limitaciones
 
 1. **CBCT no calibrado.** Los rangos en HU valen para datos normalizados como
    ToothFairy3. Con otros equipos hay que usar presets relativos a cada estudio

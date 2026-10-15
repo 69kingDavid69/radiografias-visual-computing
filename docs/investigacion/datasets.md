@@ -1,8 +1,10 @@
 # Datos del proyecto: qué tomografías usa el programa
 
-Responsable: Nicolás (investigación y datos). Revisado el 15/10/2026. Cierra la
-**decisión abierta #2** de [ARCHITECTURE.md](../ARCHITECTURE.md) y la Fase 0 de
-[planes/investigacion-nicolas.md](../planes/investigacion-nicolas.md).
+> **Para qué sirve en el proyecto.** Define los estudios CBCT que carga
+> `src/carga.py`, en qué formato vienen y cómo leerlos. Resuelve la **decisión #2**
+> de [ARCHITECTURE.md](../ARCHITECTURE.md) (Fase 0 del [ROADMAP](../ROADMAP.md)) y es
+> la base de la sección "Datos" del [informe](informe.md). Última revisión:
+> 15/10/2026.
 
 ## 1. Decisión: los datasets que se usan
 
@@ -105,9 +107,9 @@ espaciado = tuple(reversed(img.GetSpacing()))                     # (dz, dy, dx)
 ```
 
 `GetArrayFromImage` ya devuelve el orden `(z, y, x)` que usa el proyecto, y
-`GetSpacing()` da el vóxel en orden `(x, y, z)`; por eso se invierte. Hay que agregar
-`SimpleITK` a `requirements.txt`. El código de `carga.py` es de David; esto es la
-recomendación de investigación.
+`GetSpacing()` da el vóxel en orden `(x, y, z)`; por eso se invierte. Para
+integrarlo hay que agregar `SimpleITK` a `requirements.txt` y una función de lectura
+en `carga.py` (módulo de datos y pipeline).
 
 Para revisar los datos antes de usarlos están los scripts:
 
@@ -118,9 +120,10 @@ python scripts/histograma_densidades.py data/raw/PreDentalSurgery.gipl.gz
 
 ## 6. Pasos pendientes
 
-- [x] Revisar datasets y elegir (este documento) — Nicolás.
-- [x] Probar la muestra de Slicer con el código del proyecto — Nicolás.
+- [x] Revisar datasets y elegir (este documento).
+- [x] Probar la muestra de Slicer con el código del proyecto.
 - [ ] Crear la cuenta en [ditto.ing.unimore.it](https://ditto.ing.unimore.it/) y descargar ToothFairy3 — Nicolás.
+- [ ] Lector con SimpleITK en `carga.py` — David.
 - [ ] Elegir 3–5 estudios de ToothFairy3 y compartirlos por Drive **solo con el
       equipo**, nunca por GitHub (`data/raw` está en `.gitignore`).
 - [ ] Correr `histograma_densidades.py` con `--etiquetas` sobre esos estudios y

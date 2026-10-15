@@ -1,17 +1,21 @@
-# Preguntas clave de la propuesta — respuestas para la exposición
+# Preguntas técnicas de la propuesta
 
-Responsable: Nicolás. Son las cinco preguntas de la propuesta que el profesor
-Paluszny puede hacer en la exposición del **26 de octubre**. Cada una tiene:
+> **Para qué sirve en el proyecto.** La propuesta plantea cinco preguntas técnicas.
+> Este documento las responde con base en la literatura, en el código de
+> PyVista/VTK y en mediciones hechas con un CBCT dental real (la muestra de 3D
+> Slicer, ver [datasets.md](datasets.md)). Orienta las decisiones de
+> `src/render_3d.py` (algoritmo de extracción, iluminación, suavizado, plano de
+> corte) y es la referencia del equipo para la exposición del **26 de octubre**. La
+> teoría de fondo está en [marco-teorico.md](marco-teorico.md).
 
-- una **respuesta corta** (≈ 30 s, para decir en voz alta);
-- la **explicación** por si piden más detalle;
+Cada pregunta tiene:
+
+- una **respuesta corta**, que resume la idea en unas líneas;
+- la **explicación** detallada;
 - **cómo se hace en el proyecto** (PyVista/VTK);
 - qué **mostrar en la demo**.
 
-Lo de PyVista se verificó en el código fuente de PyVista 0.49 y se **probó** con un
-CBCT dental real (la muestra de 3D Slicer, ver [datasets.md](datasets.md)). Los
-números medidos están en cada pregunta.
-Teoría de fondo: [marco-teorico.md](marco-teorico.md).
+Las funciones de PyVista citadas se verificaron en su código fuente (versión 0.49.1).
 
 ---
 
@@ -37,7 +41,7 @@ dibuja e ilumina."
 | 6 | **Normales** por vértice (gradiente de la densidad) para iluminar | `compute_normals` / `smooth_shading` |
 | 7 | La GPU rasteriza los triángulos con el modelo de iluminación | VTK/OpenGL |
 
-**Matices que suman puntos:**
+**Detalles técnicos:**
 
 - La interpolación lineal hace que la superficie quede **entre** vóxeles, no en sus
   bordes. Por eso la malla es más suave que "pintar cubitos" (vóxeles opacos).
@@ -131,7 +135,7 @@ Y lo medimos: tiempo de extracción, número de triángulos y FPS."
   es decir, ≤ 33 ms por cuadro. FPS ≈ 1 / tiempo de render.
 - **Por qué el submuestreo rinde tanto:** con `reduccion=2` hay 1/8 de vóxeles (la
   extracción es ~8× más rápida), pero la superficie crece con el **área**, así que
-  queda ~1/4 de triángulos (el dibujo es ~4× más liviano). Un buen dato para decir.
+  queda ~1/4 de triángulos (el dibujo es ~4× más liviano).
 
 | Optimización | Qué reduce | En PyVista | Costo |
 |---|---|---|---|
@@ -140,7 +144,7 @@ Y lo medimos: tiempo de extracción, número de triángulos y FPS."
 | **Flying edges** | Tiempo de extracción (algoritmo multihilo de Schroeder et al., 2015) | `contour(..., method='flying_edges')` | Ninguno |
 | **Decimación** (cuádricas, Garland y Heckbert, 1997) | Triángulos a dibujar | `superficie.decimate(0.8)` (quita el 80 %) | Cálculo extra al extraer; leve pérdida de forma |
 | Recortar la región de interés | Vóxeles | Cortar el arreglo a la zona de los dientes | Hay que elegir la caja |
-| Caché del volumen | Tiempo de carga | `data/processed/*.npz` (plan de David) | Disco |
+| Caché del volumen | Tiempo de carga | `data/processed/*.npz` (Fase 1 del roadmap) | Disco |
 
 **Medido** con la muestra CBCT de 3D Slicer (330×360×360 vóxeles), umbral 1000,
 en un portátil con Ryzen 7 5800H, el 15/10/2026
@@ -187,7 +191,7 @@ Hay que cuidar no suavizar de más, porque se borran detalles anatómicos reales
 
 | Nivel | Técnica | En el proyecto | Efecto |
 |---|---|---|---|
-| Volumen (antes de `contour`) | Filtro gaussiano o de mediana | `scipy.ndimage.gaussian_filter` / `skimage.filters` (plan de David, `filtros.py`) | Quita ruido y "pedacitos sueltos" |
+| Volumen (antes de `contour`) | Filtro gaussiano o de mediana | `scipy.ndimage.gaussian_filter` / `skimage.filters` (Fase 2 del roadmap, `src/filtros.py`) | Quita ruido y "pedacitos sueltos" |
 | Malla | **Laplaciano**: cada vértice va al promedio de sus vecinos | `superficie.smooth(n_iter=…)` | Suaviza pero **encoge** el modelo |
 | Malla | **Taubin / windowed sinc**: filtro pasa-bajos | `superficie.smooth_taubin(n_iter=20, pass_band=0.1)` | Suaviza **sin encoger**; un `pass_band` más bajo suaviza más |
 | Dibujo | Sombreado Phong | `smooth_shading=True` | Se ve continuo sin cambiar la geometría |
@@ -201,8 +205,6 @@ el ruido.
 - el Laplaciano con 300 iteraciones **redujo el volumen encerrado un 10.4 %**
   (5340 → 4785 mm³), y se nota en las raíces más delgadas;
 - Taubin (20 iteraciones, `pass_band=0.05`) solo un **1.3 %** (→ 5271 mm³).
-
-Es un dato concreto para decir en la exposición.
 
 ![Sombreado plano vs. Phong y suavizado Laplaciano vs. Taubin](../../results/investigacion/sombreado_y_suavizado.png)
 

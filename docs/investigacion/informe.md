@@ -1,9 +1,14 @@
 # Informe — Explorador de cortes tomográficos y renderizado 3D por densidad
 
-**Borrador v0.1 (15/10/2026).** Responsable de integrarlo: Nicolás. Las secciones de
-investigación están redactadas. Lo que falta está marcado así:
-
-> ✏️ **Pendiente — Nombre:** qué hay que escribir.
+> **Para qué sirve en el proyecto.** Es el documento de entrega al profesor (Fase 4
+> del [ROADMAP](../ROADMAP.md)). Reúne la investigación de esta carpeta y las
+> secciones técnicas de cada módulo. **Borrador v0.1 (15/10/2026):** introducción,
+> marco teórico, datos, rangos de densidad, resultados preliminares, limitaciones y
+> conclusión ya están redactados. Cada sección pendiente está marcada así:
+>
+> ✏️ **Pendiente — integrante:** qué hay que escribir.
+>
+> La integración final la hace el rol de investigación (Nicolás).
 
 Visual Computing · Universidad Nacional de Colombia, Sede Medellín · 2026-2.
 Equipo: David, Juan Gómez, Emanuel Aristizábal y Nicolás. Profesor: Paluszny.
