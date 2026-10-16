@@ -28,9 +28,10 @@ class VisorCortes:
     tanto en modo interactivo independiente como dentro de una interfaz de usuario embebida.
     """
 
-    def __init__(self, figura: Figure):
+    def __init__(self, figura: Figure, aspect: str | float = "auto"):
         """Inicializa el visor sobre la figura de Matplotlib dada."""
         self.figura = figura
+        self.aspect: str | float = aspect
 
         # Datos del volumen y geometría
         self.volumen: np.ndarray | None = None
@@ -76,12 +77,15 @@ class VisorCortes:
         self.slider_centro = None
         self.slider_ancho = None
 
-    def mostrar(self, estudio: Any):
+    def mostrar(self, estudio: Any, aspect: str | float | None = None):
         """Carga y despliega los planos ortogonales del estudio en la figura.
 
         Acepta una instancia de `Estudio` (con atributos `volumen` y `espaciado`),
         o una tupla/lista `(volumen, espaciado)`.
         """
+        if aspect is not None:
+            self.aspect = aspect
+
         if hasattr(estudio, "volumen") and hasattr(estudio, "espaciado"):
             self.volumen = np.asarray(estudio.volumen, dtype=np.float32)
             self.espaciado = tuple(estudio.espaciado)
@@ -97,8 +101,26 @@ class VisorCortes:
                 "o una tupla/lista (volumen, espaciado)."
             )
 
-        self.dz, self.dy, self.dx = map(float, self.espaciado)
+        dz_raw, dy_raw, dx_raw = self.espaciado
+        self.dz = float(dz_raw)
+        self.dy = float(dy_raw)
+        self.dx = float(dx_raw)
         self.nz, self.ny, self.nx = self.volumen.shape
+
+        # Validación y corrección de espaciado real:
+        # Asegura valores positivos finitos y detecta si dz corresponde al tamaño total Z acumulado
+        # en lugar del espaciado individual entre cortes.
+        if not np.isfinite(self.dz) or self.dz <= 0:
+            self.dz = float(self.dx if self.dx > 0 else 1.0)
+        elif self.nz > 1 and self.dz > (self.nz * self.dx * 0.5):
+            espaciado_real = self.dz / (self.nz - 1)
+            if 0.01 <= espaciado_real <= 20.0:
+                self.dz = espaciado_real
+
+        if not np.isfinite(self.dy) or self.dy <= 0:
+            self.dy = 1.0
+        if not np.isfinite(self.dx) or self.dx <= 0:
+            self.dx = 1.0
 
         # Posiciones iniciales al centro del volumen
         self.idx_z = self.nz // 2
@@ -130,41 +152,67 @@ class VisorCortes:
         vmin = self.centro - (self.ancho / 2.0)
         vmax = self.centro + (self.ancho / 2.0)
 
-        # Vista Axial: volumen[z, :, :], aspecto dy / dx
-        aspect_axial = self.dy / self.dx
+        # Configuración de aspecto ('auto' para ocupar todo el recuadro disponible o relación calculada)
+        if self.aspect == "auto":
+            aspect_axial = "auto"
+            aspect_coronal = "auto"
+            aspect_sagital = "auto"
+        elif isinstance(self.aspect, (int, float)):
+            aspect_axial = "auto"
+            aspect_coronal = float(self.aspect)
+            aspect_sagital = float(self.aspect)
+        else:
+            aspect_coronal = (self.dz / self.dx) if (self.dx > 0 and 0.05 <= self.dz / self.dx <= 20.0) else "auto"
+            aspect_sagital = (self.dz / self.dy) if (self.dy > 0 and 0.05 <= self.dz / self.dy <= 20.0) else "auto"
+            aspect_axial = (self.dy / self.dx) if (self.dx > 0 and 0.05 <= self.dy / self.dx <= 20.0) else "auto"
+
+        # Vista Axial: volumen[z, :, :], extensión [0, nx, ny, 0]
+        extent_axial = (0, self.nx, self.ny, 0)
         self.im_axial = self.ax_axial.imshow(
             corte_axial,
             cmap="gray",
             vmin=vmin,
             vmax=vmax,
-            aspect=aspect_axial
+            aspect=aspect_axial,
+            extent=extent_axial
         )
+        self.im_axial.set_extent(extent_axial)
+        self.ax_axial.set_xlim(0, self.nx)
+        self.ax_axial.set_ylim(self.ny, 0)
         self.ax_axial.axis("off")
         self._actualizar_titulo_axial()
 
-        # Vista Coronal: volumen[:, y, :], aspecto dz / dx
-        aspect_coronal = self.dz / self.dx
+        # Vista Coronal: volumen[:, y, :], extensión [0, nx, 0, nz]
+        extent_coronal = (0, self.nx, 0, self.nz)
         self.im_coronal = self.ax_coronal.imshow(
             corte_coronal,
             cmap="gray",
             vmin=vmin,
             vmax=vmax,
             aspect=aspect_coronal,
-            origin="lower"
+            origin="lower",
+            extent=extent_coronal
         )
+        self.im_coronal.set_extent(extent_coronal)
+        self.ax_coronal.set_xlim(0, self.nx)
+        self.ax_coronal.set_ylim(0, self.nz)
         self.ax_coronal.axis("off")
         self._actualizar_titulo_coronal()
 
-        # Vista Sagital: volumen[:, :, x], aspecto dz / dx
-        aspect_sagital = self.dz / self.dx
+        # Vista Sagital: volumen[:, :, x], extensión [0, ny, 0, nz]
+        extent_sagital = (0, self.ny, 0, self.nz)
         self.im_sagital = self.ax_sagital.imshow(
             corte_sagital,
             cmap="gray",
             vmin=vmin,
             vmax=vmax,
             aspect=aspect_sagital,
-            origin="lower"
+            origin="lower",
+            extent=extent_sagital
         )
+        self.im_sagital.set_extent(extent_sagital)
+        self.ax_sagital.set_xlim(0, self.ny)
+        self.ax_sagital.set_ylim(0, self.nz)
         self.ax_sagital.axis("off")
         self._actualizar_titulo_sagital()
 
@@ -322,7 +370,7 @@ class VisorCortes:
 
     def _actualizar_titulo_axial(self):
         if self.ax_axial is not None:
-            pos_mm = self.idx_z * self.dz
+            pos_mm = float(self.idx_z) * float(self.dz)
             self.ax_axial.set_title(
                 f"Axial (Z: {self.idx_z}/{self.nz - 1}, {pos_mm:.1f} mm)",
                 fontsize=10,
@@ -331,7 +379,7 @@ class VisorCortes:
 
     def _actualizar_titulo_coronal(self):
         if self.ax_coronal is not None:
-            pos_mm = self.idx_y * self.dy
+            pos_mm = float(self.idx_y) * float(self.dy)
             self.ax_coronal.set_title(
                 f"Coronal (Y: {self.idx_y}/{self.ny - 1}, {pos_mm:.1f} mm)",
                 fontsize=10,
@@ -340,7 +388,7 @@ class VisorCortes:
 
     def _actualizar_titulo_sagital(self):
         if self.ax_sagital is not None:
-            pos_mm = self.idx_x * self.dx
+            pos_mm = float(self.idx_x) * float(self.dx)
             self.ax_sagital.set_title(
                 f"Sagital (X: {self.idx_x}/{self.nx - 1}, {pos_mm:.1f} mm)",
                 fontsize=10,
@@ -363,10 +411,14 @@ class VisorCortes:
             self.ir_a_corte("axial", int(round(event.ydata)))
 
 
-def explorar_cortes(volumen: np.ndarray, espaciado: Tuple[float, float, float]) -> VisorCortes:
+def explorar_cortes(
+    volumen: np.ndarray,
+    espaciado: Tuple[float, float, float],
+    aspect: str | float = "auto"
+) -> VisorCortes:
     """Muestra el visor ortogonal interactivo (Axial, Coronal, Sagital) con sliders de navegación y contraste."""
     fig = plt.figure(figsize=(14, 7.5))
-    visor = VisorCortes(fig)
+    visor = VisorCortes(fig, aspect=aspect)
     visor.mostrar((volumen, espaciado))
     plt.show()
     return visor
