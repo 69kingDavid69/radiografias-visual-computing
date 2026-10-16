@@ -36,10 +36,13 @@ def cargar_serie_dicom(carpeta):
     else:
         # Los archivos no vienen en orden: se ordenan por la altura (z) de cada corte.
         cortes.sort(key=lambda ds: float(ds.ImagePositionPatient[2]))
+        primero = cortes[0]
         volumen = np.stack([ds.pixel_array for ds in cortes]).astype(np.float32)
         if len(cortes) > 1:
             dz = abs(float(cortes[1].ImagePositionPatient[2])
-                     - float(primero.ImagePositionPatient[2]))
+                     - float(cortes[0].ImagePositionPatient[2]))
+            if dz == 0.0:
+                dz = float(getattr(primero, "SliceThickness", dx))
         else:
             dz = float(getattr(primero, "SliceThickness", 1.0))
 
