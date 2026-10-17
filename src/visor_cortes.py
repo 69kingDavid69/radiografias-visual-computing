@@ -9,6 +9,8 @@ from matplotlib.widgets import Slider
 COLOR_AXIAL = "#e74c3c"    # Rojo para corte Axial (Z)
 COLOR_CORONAL = "#2ecc71"  # Verde para corte Coronal (Y)
 COLOR_SAGITAL = "#3498db"  # Azul para corte Sagital (X)
+COLOR_CENTRO = "#9b59b6"   # Púrpura para Centro (Window Level)
+COLOR_ANCHO = "#e67e22"    # Naranja para Ancho (Window Width)
 
 
 def aplicar_ventana(corte: np.ndarray, centro: float, ancho: float) -> np.ndarray:
@@ -239,9 +241,9 @@ class VisorCortes:
         max_y = max(self.ny - 1, 1) if self.ny <= 1 else self.ny - 1
         max_x = max(self.nx - 1, 1) if self.nx <= 1 else self.nx - 1
 
-        self.slider_z = Slider(ax_s_z, "Corte Z", 0, max_z, valinit=self.idx_z, valstep=1)
-        self.slider_y = Slider(ax_s_y, "Corte Y", 0, max_y, valinit=self.idx_y, valstep=1)
-        self.slider_x = Slider(ax_s_x, "Corte X", 0, max_x, valinit=self.idx_x, valstep=1)
+        self.slider_z = Slider(ax_s_z, "Corte Z", 0, max_z, valinit=self.idx_z, valstep=1, color=COLOR_AXIAL)
+        self.slider_y = Slider(ax_s_y, "Corte Y", 0, max_y, valinit=self.idx_y, valstep=1, color=COLOR_CORONAL)
+        self.slider_x = Slider(ax_s_x, "Corte X", 0, max_x, valinit=self.idx_x, valstep=1, color=COLOR_SAGITAL)
 
         # Columna derecha: Centro y Ancho de ventana
         ax_s_c = self.figura.add_axes([0.58, 0.14, 0.35, 0.025])
@@ -251,8 +253,8 @@ class VisorCortes:
         val_max_centro = maximo if maximo > minimo else maximo + 1.0
         val_max_ancho = max(rango, 10.0)
 
-        self.slider_centro = Slider(ax_s_c, "Centro", val_min_centro, val_max_centro, valinit=self.centro)
-        self.slider_ancho = Slider(ax_s_a, "Ancho", 1.0, val_max_ancho, valinit=self.ancho)
+        self.slider_centro = Slider(ax_s_c, "Centro", val_min_centro, val_max_centro, valinit=self.centro, color=COLOR_CENTRO)
+        self.slider_ancho = Slider(ax_s_a, "Ancho", 1.0, val_max_ancho, valinit=self.ancho, color=COLOR_ANCHO)
 
         # Conectar eventos de los sliders
         self.slider_z.on_changed(lambda val: self.ir_a_corte("axial", int(val)))
