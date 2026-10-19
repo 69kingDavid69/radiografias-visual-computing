@@ -1,7 +1,6 @@
 """Herramienta 2: reconstrucción 3D por umbral de densidad."""
 import numpy as np
 import pyvista as pv
-import time
 
 
 def a_pyvista(volumen, espaciado, reduccion=1):
@@ -24,20 +23,7 @@ def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2):
     Todo lo que tenga densidad menor al umbral se vuelve invisible; se dibuja
     la superficie (isosuperficie) donde el volumen cruza ese valor.
     """
-    
-    # Iniciamos el cronómetro justo antes de procesar
-    
-    inicio = time.perf_counter()
-    
-    # Se procesa la malla 3D con los datos reducidos
-    
     malla = a_pyvista(volumen, espaciado, reduccion)
-
-    # Detenemos el cronómetro y mostramos el resultado
-    
-    fin = time.perf_counter()
-    tiempo_total = fin - inicio
-    print(f"[RENDER 3D] Malla procesada con reducción = {reduccion} en {tiempo_total:.4f} segundos.")
     
     minimo, maximo = float(np.min(volumen)), float(np.max(volumen))
     
