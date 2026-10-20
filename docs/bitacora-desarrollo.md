@@ -236,12 +236,44 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Suavizado de dientes, esmalte y metal; segundo estudio con otra escala
+
+**Medición en el estudio Pre** (`reduccion=2`, vóxel efectivo de 1 mm). Figura en [results/suavizado_dientes.png](../results/suavizado_dientes.png).
+
+| Preset | sigma 0 | 0.25 mm | 0.5 mm | 1.0 mm |
+|---|---|---|---|---|
+| dientes: triángulos / pedazos | 95 832 / 503 | 96 688 / 516 | 70 432 / **177** | 34 792 / 54 |
+| esmalte: triángulos / pedazos | 25 528 / 213 | 25 876 / 219 | 11 260 / 140 | 4 100 / 22 |
+| metal: triángulos / pedazos | 2 548 / 44 | 2 560 / 44 | 1 588 / 26 | 124 / 2 |
+
+- **dientes:** con 0.5 mm, los pedazos sueltos bajan a un tercio y **las raíces se conservan**.
+- **esmalte:** con 0.5 mm las coronas quedan más limpias, pero la superficie pierde más de la mitad de los triángulos y se adelgaza.
+- **metal:** el suavizado **encoge** los brackets, y con 1.0 mm casi desaparecen. Para ver un implante conviene no suavizar.
+- **sigma 0.25 mm no hace nada.** Con `reduccion=2` el vóxel efectivo mide 1 mm, y un sigma de un cuarto de vóxel casi no mezcla vecinos. **El sigma útil depende del vóxel efectivo**, no solo del original.
+
+**Segundo estudio: `PostDentalSurgery.gipl.gz`.** Es la muestra oficial de 3D Slicer del mismo paciente después de la cirugía ortognática: 33.8 MB, SHA-256 `4cdc3dc3…7bbd` verificado.
+- **Está en otra escala, aunque también es GIPL y viene de la misma fuente.**
+
+  | Estudio | Aire (pico) | Tejido blando (pico) | Rango |
+  |---|---|---|---|
+  | Pre | 0 | ~410 | 0 a 3 874 |
+  | Post | ~−2 206 | ~−4 | −2 254 a 16 889 |
+
+- En ninguno el aire está en −1000, así que ninguno es Hounsfield.
+- Con los dos picos se estimó una conversión lineal, `Pre ≈ 0.186 · Post + 411`. Con ella, el umbral de hueso (700 en Pre → 1554 en Post) da un cráneo correcto en Post, y el umbral de metal (2000 → 8543) muestra pequeñas piezas de metal alrededor del maxilar, compatibles con la fijación de la cirugía.
+- **Consecuencia:** la regla "formato GIPL → escala `slicer`" (`densidades.ESCALA_POR_FORMATO`) **es incorrecta**. Le aplicaría a Post presets de otra escala, que es justo el error silencioso que se quería evitar. Hay que decidir cómo se asigna la escala a cada estudio (decisión abierta).
+
+**Búsqueda de más datos abiertos (19/10).** No apareció ningún CBCT dental en DICOM, pequeño y sin registro. El candidato más útil es **STS 3D Tooth** (Hugging Face, CC-BY-4.0, 371 volúmenes en NIfTI). Los demás piden cuenta o credenciales (ToothFairy, FDTooth y Multimodal en PhysioNet) o solo traen mallas STL (OpenJaw).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
 - [x] PR #4 fusionado en `main`.
 - [x] PR #6 (contenido del #5) fusionado en `main`; verificado: 26 tests, app y 5 presets con la muestra real.
 - [ ] Sigma de suavizado por preset (decisión de David).
+- [ ] Cómo se asigna la escala de densidad a cada estudio: la regla por formato falla con el estudio Post (decisión de David).
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.
