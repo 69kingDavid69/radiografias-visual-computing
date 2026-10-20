@@ -1,6 +1,8 @@
 numpy
 pydicom
+SimpleITK
 matplotlib
 pyvista
 scikit-image
 jupyter
+pytest

@@ -1,9 +1,86 @@
-"""Carga de un estudio tomográfico (serie DICOM) como un volumen 3D."""
+"""Carga de un estudio tomográfico como un volumen 3D.
+
+Formatos soportados:
+  - carpeta con una serie DICOM (cortes .dcm o un archivo multiframe);
+  - archivo de volumen: GIPL (muestra de 3D Slicer), NIfTI (ToothFairy3), MHA/MHD, NRRD.
+
+El resto del programa solo usa `cargar_estudio()` y la clase `Estudio`.
+"""
+import warnings
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
 import pydicom
+import SimpleITK as sitk
 from pydicom.errors import InvalidDicomError
+
+EXTENSIONES_VOLUMEN = (".gipl.gz", ".gipl", ".nii.gz", ".nii", ".mha", ".mhd", ".nrrd")
+CARPETA_CACHE = Path(__file__).resolve().parent.parent / "data" / "processed"
+
+
+@dataclass
+class Estudio:
+    id: str                      # nombre del archivo o carpeta, sin extensión
+    volumen: np.ndarray          # float32 (z, y, x) en unidades de densidad
+    espaciado: tuple             # (dz, dy, dx) en mm
+    metadatos: dict = field(default_factory=dict)   # formato, forma, rango… (sin datos del paciente)
+
+
+def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
+    """Carga un estudio desde una carpeta DICOM o un archivo de volumen.
+
+    La primera vez guarda el volumen en `data/processed/<id>.npz`; las siguientes
+    lo lee de ahí, salvo que el original sea más nuevo que la caché.
+    """
+    ruta = Path(ruta)
+    if not ruta.exists():
+        raise FileNotFoundError(f"No existe {ruta}")
+    id_estudio = _id_estudio(ruta)
+    cache = Path(carpeta_cache) / f"{id_estudio}.npz"
+
+    if usar_cache and cache.exists() and cache.stat().st_mtime >= ruta.stat().st_mtime:
+        with np.load(cache) as datos:
+            volumen = datos["volumen"]
+            espaciado = tuple(float(s) for s in datos["espaciado"])
+            formato = str(datos["formato"])
+    else:
+        if ruta.is_dir():
+            volumen, espaciado = cargar_serie_dicom(ruta)
+            formato = "DICOM"
+        elif ruta.name.lower().endswith(EXTENSIONES_VOLUMEN):
+            volumen, espaciado = cargar_volumen(ruta)
+            formato = _extension(ruta).lstrip(".").split(".")[0].upper()
+        else:
+            raise ValueError(f"Formato no soportado: {ruta.name} "
+                             f"(se aceptan carpetas DICOM y {', '.join(EXTENSIONES_VOLUMEN)})")
+        if usar_cache:
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(cache, volumen=volumen, espaciado=np.array(espaciado), formato=formato)
+
+    return Estudio(
+        id=id_estudio,
+        volumen=volumen,
+        espaciado=espaciado,
+        metadatos={
+            "formato": formato,
+            "forma": volumen.shape,
+            "rango": (float(volumen.min()), float(volumen.max())),
+            "origen": str(ruta),
+        },
+    )
+
+
+def cargar_volumen(ruta):
+    """Lee un archivo de volumen (GIPL, NIfTI, MHA, NRRD) con SimpleITK.
+
+    Devuelve (volumen, espaciado) con volumen (z, y, x) y espaciado (dz, dy, dx).
+    """
+    imagen = sitk.ReadImage(str(ruta))
+    # GetArrayFromImage ya entrega (z, y, x); GetSpacing entrega (x, y, z).
+    volumen = sitk.GetArrayFromImage(imagen).astype(np.float32)
+    espaciado = tuple(float(s) for s in reversed(imagen.GetSpacing()))
+    return volumen, espaciado
 
 
 def cargar_serie_dicom(carpeta):
@@ -26,24 +103,58 @@ def cargar_serie_dicom(carpeta):
     if not cortes:
         raise FileNotFoundError(f"No hay cortes DICOM en {carpeta}")
 
-    primero = cortes[0]
-    dy, dx = map(float, primero.PixelSpacing)
-
-    if len(cortes) == 1 and primero.pixel_array.ndim == 3:
+    if len(cortes) == 1 and cortes[0].pixel_array.ndim == 3:
         # Algunos equipos CBCT exportan todo el estudio en un solo archivo multiframe.
+        primero = cortes[0]
         volumen = primero.pixel_array.astype(np.float32)
-        dz = float(getattr(primero, "SliceThickness", dx))
+        dy, dx, dz = _espaciado_multiframe(primero)
     else:
         # Los archivos no vienen en orden: se ordenan por la altura (z) de cada corte.
+        # `primero` se toma DESPUÉS de ordenar (bug encontrado por Juan en feat/visor-contraste).
         cortes.sort(key=lambda ds: float(ds.ImagePositionPatient[2]))
+        primero = cortes[0]
+        dy, dx = map(float, primero.PixelSpacing)
         volumen = np.stack([ds.pixel_array for ds in cortes]).astype(np.float32)
         if len(cortes) > 1:
-            dz = abs(float(cortes[1].ImagePositionPatient[2])
-                     - float(primero.ImagePositionPatient[2]))
+            dz = calcular_dz([float(ds.ImagePositionPatient[2]) for ds in cortes])
         else:
-            dz = float(getattr(primero, "SliceThickness", 1.0))
+            dz = float(getattr(primero, "SliceThickness", dx))
 
     # El valor guardado en el archivo no es la densidad: hay que reescalarlo.
     pendiente = float(getattr(primero, "RescaleSlope", 1))
     intercepto = float(getattr(primero, "RescaleIntercept", 0))
     return volumen * pendiente + intercepto, (dz, dy, dx)
+
+
+def calcular_dz(posiciones_z):
+    """Espaciado entre cortes (mm) a partir de la altura z de cada corte, ya ordenada.
+
+    Si los cortes no están igualmente separados (faltan cortes o hay repetidos),
+    emite `warnings.warn(...)` para que el usuario sepa que el 3D puede salir deformado.
+    """
+    # TODO(David): calcular dz y advertir si la separación no es uniforme.
+    raise NotImplementedError
+
+
+def _espaciado_multiframe(ds):
+    """(dy, dx, dz) de un DICOM multiframe; el espaciado puede venir en dos lugares."""
+    try:
+        medidas = ds.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
+        dy, dx = map(float, medidas.PixelSpacing)
+        dz = float(getattr(medidas, "SpacingBetweenSlices", None)
+                   or getattr(medidas, "SliceThickness"))
+        return dy, dx, dz
+    except (AttributeError, IndexError):
+        dy, dx = map(float, ds.PixelSpacing)
+        return dy, dx, float(getattr(ds, "SliceThickness", dx))
+
+
+def _extension(ruta):
+    nombre = ruta.name.lower()
+    return next((ext for ext in EXTENSIONES_VOLUMEN if nombre.endswith(ext)), ruta.suffix)
+
+
+def _id_estudio(ruta):
+    if ruta.is_dir():
+        return ruta.name
+    return ruta.name[: len(ruta.name) - len(_extension(ruta))]
