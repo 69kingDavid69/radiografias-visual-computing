@@ -201,11 +201,47 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Filtro gaussiano antes de marching cubes
+
+**Qué se hizo**
+- `src/filtros.py` con `suavizar(volumen, espaciado, sigma_mm)`. Usa `SmoothingRecursiveGaussian` de SimpleITK con el **sigma en milímetros**, y SimpleITK aplica el espaciado de cada eje.
+- `superficie_por_banda(..., suavizado_mm=0.0)`: el gaussiano se aplica sobre la densidad si el preset no tiene máximo, y sobre la máscara 0/1 si lo tiene.
+- **Primero se reduce y después se suaviza:** con `reduccion=2` es 8 veces menos trabajo, y el gaussiano además funciona como filtro anti-*aliasing*.
+
+**Medición** con la muestra de Slicer, `reduccion=2`. "Pedazos" = regiones conectadas de la superficie. La figura está en [results/suavizado.png](../results/suavizado.png).
+
+| Preset | sigma (mm) | Tiempo | Triángulos | Pedazos |
+|---|---|---|---|---|
+| hueso | 0 | 0.07 s | 323 336 | 1292 |
+| hueso | 0.5 | 0.13 s | 268 196 | 380 |
+| hueso | 1.0 | 0.11 s | 191 236 | 86 |
+| hueso | 1.5 | 0.11 s | 143 272 | 37 |
+| esmalte_sin_metal | 0 | 0.05 s | 26 152 | 308 |
+| esmalte_sin_metal | 0.5 | 0.08 s | 25 512 | 228 |
+| esmalte_sin_metal | 1.0 | 0.08 s | 1 732 | 28 |
+| esmalte_sin_metal | 1.5 | 0.08 s | 292 | 2 |
+
+**Lectura**
+- **Hueso:** sigma 0.5 elimina el 70 % de los pedazos sueltos sin perder detalle. Con 1.0 desaparecen además los **anillos** de la frente (artefacto típico del CBCT), pero empieza a abrirse el hueso fino de las órbitas y el tabique. Con 1.5 se pierde el maxilar.
+- **Esmalte sin metal:** con 1.0 o más **desaparece**. Suavizar una máscara y cortar en 0.5 equivale a una "votación" en un vecindario del tamaño de sigma: una estructura más delgada que unos 2 sigma pierde la votación y se borra. El esmalte es una capa delgada, de alrededor de 1 vóxel con `reduccion=2`.
+- **Conclusión:** el sigma depende del grosor de la estructura. Un valor global no sirve: debe ser **por preset**, y en los presets con máscara tiene que ser menor que el grosor de la estructura.
+
+**Verificación:** `tests/test_filtros.py` cubre:
+- sigma 0 no cambia nada;
+- la forma y el promedio se conservan y el ruido baja;
+- **el sigma se aplica en mm por eje:** con vóxeles de 1 × 0.5 × 0.25 mm, un impulso se ensancha 2 vóxeles en z y 8 en x. Si el espaciado se invirtiera, el test fallaría;
+- el filtro reduce los pedazos sueltos de un bloque con ruido.
+
+**30/30 tests en verde.**
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
 - [x] PR #4 fusionado en `main`.
-- [ ] PR #6 (contenido del #5) fusionado en `main`.
+- [x] PR #6 (contenido del #5) fusionado en `main`; verificado: 26 tests, app y 5 presets con la muestra real.
+- [ ] Sigma de suavizado por preset (decisión de David).
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.
