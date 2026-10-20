@@ -192,11 +192,20 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — PRs #4 y #5 fusionados; el #5 cayó en la rama equivocada
+
+- El #4 entró a `main` y el #5 se fusionó **en `feat/estudio`** (su base apilada), porque no se alcanzó a cambiar la base a `main` antes de fusionar.
+- **Cómo se detectó:** después de fusionar se verificó `main`. Faltaban `superficie_por_banda`, `tests/test_densidades.py` y `results/comparacion_presets.png`, y corrían 13 tests en lugar de 26.
+- **Corrección:** PR #6 `feat/estudio` → `main`, con el mismo contenido ya revisado en el #5 y sin conflictos.
+- **Lección para el equipo:** con PRs apilados, se cambia la base del de arriba *antes* de fusionarlo. Otra opción es abrir directamente contra `main` cuando el PR de abajo ya entró.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
-- [ ] PR #4 aprobado por Juan y fusionado.
-- [ ] PR #5 aprobado por Emanuel y Nicolás, con base cambiada a `main` y fusionado.
+- [x] PR #4 fusionado en `main`.
+- [ ] PR #6 (contenido del #5) fusionado en `main`.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.
