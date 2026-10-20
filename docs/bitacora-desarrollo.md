@@ -131,11 +131,86 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Presets por banda de densidad: decisión B3
+
+**Problema:** el render dibuja **una** isosuperficie, `contour([umbral])`, que muestra todo lo que supera el umbral. Un preset de "esmalte" no puede excluir el metal de los brackets, que es más denso.
+
+**Opciones probadas** con la muestra de Slicer y el preset de esmalte 1250–2000, con `reduccion=2`. La figura está en [results/comparacion_presets.png](../results/comparacion_presets.png).
+
+| Opción | Técnica | Tiempo | Resultado |
+|---|---|---|---|
+| A | `contour([1250])` | 0.05 s | Esmalte y metal juntos |
+| B1 | `contour([1250, 2000])` | 0.06 s | **Igual que A:** la cáscara de 2000 queda encerrada dentro de la de 1250 |
+| B2 | `threshold((1250, 2000))` | 0.57 s | Quita el metal, pero se ve en bloques (vóxeles sin interpolar) y es 10 veces más lento |
+| **B3** | máscara 0/1 de la banda + `contour([0.5])` | 0.06 s | **Quita el metal** con una superficie suave; algo de ruido en los bordes |
+| C | `add_volume` (render volumétrico) | 0.24 s | Otro paradigma; hay que ajustar a mano la curva de opacidad |
+
+**Decisión: B3.** Es la única opción que *aísla* una banda de densidad, que es lo que plantea la pregunta de investigación, y cuesta lo mismo que lo actual.
+- Se implementó como `render_3d.superficie_por_banda(volumen, espaciado, minimo, maximo, reduccion)`.
+- Con `maximo` en `None` o `INF` usa el `contour` sobre la densidad real, que da una superficie más suave porque interpola. La máscara se usa solo cuando hay que cortar por arriba.
+- El ruido de los bordes de B3 queda para el filtro de volumen (fase 2, `filtros.py`).
+
+**Hallazgo de cámara:** la vista frontal de la muestra es `view_xz()` (sin `negative`). Se identificó renderizando las seis vistas de los ejes.
+
+**Verificación:** `tests/test_render_3d.py` usa un volumen con un "diente" de densidad 1500 y un "bracket" de 3000. La banda 1250–2000 excluye el bracket, sin máximo lo incluye (con `None` y con `INF`), una banda vacía no falla y `reduccion=2` conserva la posición en mm. **18/18 tests en verde.**
+
+---
+
+## 2026-10-19 (noche) — Presets por escala de densidad
+
+**Problema:** las unidades de densidad dependen del equipo. En la muestra de Slicer, 2000 deja **solo metal**; en Hounsfield, 2000 debería dejar el esmalte. Un único juego de presets aislaría la estructura equivocada en uno de los dos datasets.
+
+**Decisión de David:** un diccionario de presets **por escala**, `RANGOS_DENSIDAD = {"slicer": {...}, "hounsfield": {...}}`. La escala se deduce del formato del estudio:
+
+| Formato | Escala | Por qué |
+|---|---|---|
+| GIPL | `slicer` | En el proyecto, el único GIPL es la muestra de Slicer |
+| NII | `hounsfield` | ToothFairy3 está normalizado a HU |
+| DICOM | *sin presets* | Según el equipo puede venir en HU o en grises propios: hay que indicarlo con `estudio.metadatos["escala"]` |
+
+- `densidades.escala_de(estudio)` usa primero `metadatos["escala"]` (si se indica a mano) y si no, el formato.
+- `densidades.presets_para(estudio)` devuelve `{}` si no se conoce la escala. Así la app muestra solo la barra libre en vez de presets con números de otro equipo.
+
+**Esmalte con y sin metal (corrección).** Claude propuso cerrar el esmalte de `slicer` en `(1250, 2000)` para quitar los brackets. David lo cuestionó y se descartó por cuatro razones:
+1. Clínicamente, el metal importa: **si el paciente tiene un implante metálico, la idea es poder verlo en relación con la encía y el hueso** (David).
+2. Donde estaba el metal la superficie queda con huecos.
+3. Cortar en 2000 quita el metal, pero no sus artefactos (rayas, endurecimiento del haz).
+4. 2000 se midió como "por encima solo hay metal", no como frontera validada entre esmalte y metal.
+
+**Resultado:** el preset `"esmalte": (1250, INF)` conserva el valor de Nicolás, y se agrega `"esmalte_sin_metal": (1250, 2000)` como alternativa explícita, para comparar los dos en la demo. Los valores en Hounsfield quedan como los propuso Nicolás, **pendientes de validar** con las etiquetas de ToothFairy3.
+
+**Verificación:** `tests/test_densidades.py` cubre GIPL → slicer, NII → hounsfield, DICOM → sin presets, escala explícita por encima del formato, mínimo < máximo en todos los rangos, que `esmalte` conserva un bracket de 3000 y que `esmalte_sin_metal` lo excluye. Con la muestra real: `GIPL → slicer → [hueso, dientes, esmalte, esmalte_sin_metal, metal]`.
+
+---
+
+## 2026-10-19 (noche) — Flujo de PRs apilados
+
+- **PR #4** (`feat/estudio` → `main`): carga universal, `calcular_dz`, app Qt conectada y bitácora. Revisor: **Juan**, porque cambia su `app_qt.py`.
+- **PR #5** (`feat/presets-banda` → `feat/estudio`): B3 y presets por escala. Revisores: **Emanuel** (render) y **Nicolás** (rangos).
+- El #5 está **apilado** sobre el #4: su base es `feat/estudio`, así que solo muestra sus propios commits y se revisa por separado. Cuando el #4 entre a `main`, el #5 se cambia a base `main`.
+- Regla del equipo: nadie fusiona su propio PR sin la aprobación de otro integrante.
+
+---
+
+## 2026-10-19 (noche) — PRs #4 y #5 fusionados; el #5 cayó en la rama equivocada
+
+- El #4 entró a `main` y el #5 se fusionó **en `feat/estudio`** (su base apilada), porque no se alcanzó a cambiar la base a `main` antes de fusionar.
+- **Cómo se detectó:** después de fusionar se verificó `main`. Faltaban `superficie_por_banda`, `tests/test_densidades.py` y `results/comparacion_presets.png`, y corrían 13 tests en lugar de 26.
+- **Corrección:** PR #6 `feat/estudio` → `main`, con el mismo contenido ya revisado en el #5 y sin conflictos.
+- **Lección para el equipo:** con PRs apilados, se cambia la base del de arriba *antes* de fusionarlo. Otra opción es abrir directamente contra `main` cuando el PR de abajo ya entró.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
-- [ ] PR #4 (`feat/estudio`) revisado y fusionado.
+- [x] PR #4 fusionado en `main`.
+- [ ] PR #6 (contenido del #5) fusionado en `main`.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
-- [ ] `RANGOS_DENSIDAD` con los umbrales de la muestra de Slicer y de ToothFairy3.
+- [x] Técnica de presets decidida (B3) e implementada.
+- [x] `RANGOS_DENSIDAD` por escala (slicer y hounsfield) y `presets_para(estudio)`.
+- [ ] Validar los presets en Hounsfield con las etiquetas de ToothFairy3 (Nicolás + Emanuel).
+- [ ] Vista de implante: `metal` opaco + `hueso` o tejido blando semitransparente, para ver el metal en relación con la encía (idea de David; usa la opacidad por estructura de la fase 2, Emanuel).
+- [ ] Conectar los presets a la vista 3D (teclas o botones) y fijar la vista frontal `view_xz()` (Emanuel).
 - [ ] Exposición del 26/10.
