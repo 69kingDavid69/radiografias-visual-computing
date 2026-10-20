@@ -112,10 +112,30 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — PR #3 fusionado y prueba del camino 3D con datos reales
+
+**Estado de GitHub:** el PR #3 (trabajo de Juan) lo fusionó David. El PR #4 (`feat/estudio`) está abierto y espera la revisión de un compañero.
+
+**Medición** con la muestra de Slicer: `cargar_estudio` → `a_pyvista` → `contour`, en el portátil de David.
+
+| `reduccion` | Umbral | Tiempo de `contour` | Triángulos |
+|---|---|---|---|
+| 1 (completa) | 700 (hueso y dientes) | 0.34 s | 1 404 078 |
+| 1 (completa) | 1000 (hueso denso y dientes) | 0.24 s | 423 332 |
+| 2 | 700 | 0.04 s | 323 336 |
+| 2 | 1000 | 0.03 s | 95 832 |
+
+- La carga del `.gipl.gz` toma 0.22 s.
+- **Conclusión:** en este volumen el cuello de botella no es calcular la malla (incluso a resolución completa está por debajo de la meta de 0.5 s), sino **dibujar** 1.4 millones de triángulos al rotar. La `reduccion` por defecto se debe elegir midiendo los FPS al rotar, no el tiempo de `contour`.
+- **Detalle para la demo:** la cámara por defecto deja el cráneo de lado. Hay que fijar una vista frontal inicial en `render_3d.py`.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
-- [ ] PR #3 revisado por Juan y fusionado; PR de `feat/estudio`.
+- [x] PR #3 fusionado.
+- [ ] PR #4 (`feat/estudio`) revisado y fusionado.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
-- [ ] Benchmark sobre la muestra real y `reduccion` por defecto.
+- [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [ ] `RANGOS_DENSIDAD` con los umbrales de la muestra de Slicer y de ToothFairy3.
 - [ ] Exposición del 26/10.
