@@ -156,6 +156,27 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Presets por escala de densidad
+
+**Problema:** las unidades de densidad dependen del equipo. En la muestra de Slicer, 2000 deja **solo metal**; en Hounsfield, 2000 debería dejar el esmalte. Un único juego de presets aislaría la estructura equivocada en uno de los dos datasets.
+
+**Decisión (David):** un diccionario de presets **por escala**, `RANGOS_DENSIDAD = {"slicer": {...}, "hounsfield": {...}}`. La escala se deduce del formato del estudio:
+
+| Formato | Escala | Por qué |
+|---|---|---|
+| GIPL | `slicer` | En el proyecto, el único GIPL es la muestra de Slicer |
+| NII | `hounsfield` | ToothFairy3 está normalizado a HU |
+| DICOM | *sin presets* | Según el equipo puede venir en HU o en grises propios: hay que indicarlo con `estudio.metadatos["escala"]` |
+
+- `densidades.escala_de(estudio)` usa primero `metadatos["escala"]` (si se indica a mano) y si no, el formato.
+- `densidades.presets_para(estudio)` devuelve `{}` si no se conoce la escala. Así la app muestra solo la barra libre en vez de presets con números de otro equipo.
+
+**Cambio frente a la propuesta de investigación:** en la escala `slicer`, el esmalte pasó de `(1250, INF)` a `(1250, 2000)`, para dejar fuera el metal de los brackets. Ahora es posible gracias a `superficie_por_banda` (opción B3). Los valores en Hounsfield quedan como los propuso Nicolás, **pendientes de validar** con las etiquetas de ToothFairy3.
+
+**Verificación:** `tests/test_densidades.py` cubre GIPL → slicer, NII → hounsfield, DICOM → sin presets, escala explícita por encima del formato, mínimo < máximo en todos los rangos, y que el esmalte de `slicer` excluye un bracket de 3000. Con la muestra real: `GIPL → slicer → [hueso, dientes, esmalte, metal]`. **25/25 tests en verde.**
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -163,6 +184,7 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.
-- [ ] `RANGOS_DENSIDAD` con los valores de la muestra de Slicer y de ToothFairy3 (David).
+- [x] `RANGOS_DENSIDAD` por escala (slicer y hounsfield) y `presets_para(estudio)`.
+- [ ] Validar los presets en Hounsfield con las etiquetas de ToothFairy3 (Nicolás + Emanuel).
 - [ ] Conectar los presets a la vista 3D (teclas o botones) y fijar la vista frontal `view_xz()` (Emanuel).
 - [ ] Exposición del 26/10.
