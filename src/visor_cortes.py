@@ -30,10 +30,20 @@ class VisorCortes:
     tanto en modo interactivo independiente como dentro de una interfaz de usuario embebida.
     """
 
-    def __init__(self, figura: Figure, aspect: str | float = "auto"):
+    def __init__(
+        self,
+        figura: Figure,
+        aspect: str | float = "anatomico",
+        crear_sliders: bool = False,
+    ):
         """Inicializa el visor sobre la figura de Matplotlib dada."""
         self.figura = figura
         self.aspect: str | float = aspect
+        self.crear_sliders: bool = crear_sliders
+
+        # Callbacks opcionales para sincronización con interfaces externas (PySide6)
+        self.on_cambio_corte = None
+        self.on_cambio_contraste = None
 
         # Datos del volumen y geometría
         self.volumen: np.ndarray | None = None
@@ -110,8 +120,6 @@ class VisorCortes:
         self.nz, self.ny, self.nx = self.volumen.shape
 
         # Validación y corrección de espaciado real:
-        # Asegura valores positivos finitos y detecta si dz corresponde al tamaño total Z acumulado
-        # en lugar del espaciado individual entre cortes.
         if not np.isfinite(self.dz) or self.dz <= 0:
             self.dz = float(self.dx if self.dx > 0 else 1.0)
         elif self.nz > 1 and self.dz > (self.nz * self.dx * 0.5):
@@ -139,7 +147,8 @@ class VisorCortes:
 
         # Preparar la figura
         self.figura.clear()
-        self.figura.subplots_adjust(left=0.06, right=0.96, top=0.90, bottom=0.28, wspace=0.25)
+        if self.crear_sliders:
+            self.figura.subplots_adjust(left=0.06, right=0.96, top=0.90, bottom=0.28, wspace=0.25)
 
         # 1. Configurar subplots para las tres vistas ortogonales
         self.ax_axial = self.figura.add_subplot(1, 3, 1)
@@ -154,7 +163,7 @@ class VisorCortes:
         vmin = self.centro - (self.ancho / 2.0)
         vmax = self.centro + (self.ancho / 2.0)
 
-        # Configuración de aspecto ('auto' para ocupar todo el recuadro disponible o relación calculada)
+        # Configuración de aspecto ('auto' o relación anatómica calculada)
         if self.aspect == "auto":
             aspect_axial = "auto"
             aspect_coronal = "auto"
@@ -163,10 +172,10 @@ class VisorCortes:
             aspect_axial = "auto"
             aspect_coronal = float(self.aspect)
             aspect_sagital = float(self.aspect)
-        else:
-            aspect_coronal = (self.dz / self.dx) if (self.dx > 0 and 0.05 <= self.dz / self.dx <= 20.0) else "auto"
-            aspect_sagital = (self.dz / self.dy) if (self.dy > 0 and 0.05 <= self.dz / self.dy <= 20.0) else "auto"
-            aspect_axial = (self.dy / self.dx) if (self.dx > 0 and 0.05 <= self.dy / self.dx <= 20.0) else "auto"
+        else:  # "anatomico", "equal", o valor por defecto
+            aspect_axial = (self.dy / self.dx) if (self.dx > 0 and 0.05 <= self.dy / self.dx <= 20.0) else 1.0
+            aspect_coronal = (self.dz / self.dx) if (self.dx > 0 and 0.05 <= self.dz / self.dx <= 20.0) else 1.0
+            aspect_sagital = (self.dz / self.dy) if (self.dy > 0 and 0.05 <= self.dz / self.dy <= 20.0) else 1.0
 
         # Vista Axial: volumen[z, :, :], extensión [0, nx, ny, 0]
         extent_axial = (0, self.nx, self.ny, 0)
@@ -181,6 +190,7 @@ class VisorCortes:
         self.im_axial.set_extent(extent_axial)
         self.ax_axial.set_xlim(0, self.nx)
         self.ax_axial.set_ylim(self.ny, 0)
+        self.ax_axial.set_aspect(aspect_axial)
         self.ax_axial.axis("off")
         self._actualizar_titulo_axial()
 
@@ -198,6 +208,7 @@ class VisorCortes:
         self.im_coronal.set_extent(extent_coronal)
         self.ax_coronal.set_xlim(0, self.nx)
         self.ax_coronal.set_ylim(0, self.nz)
+        self.ax_coronal.set_aspect(aspect_coronal)
         self.ax_coronal.axis("off")
         self._actualizar_titulo_coronal()
 
@@ -215,6 +226,7 @@ class VisorCortes:
         self.im_sagital.set_extent(extent_sagital)
         self.ax_sagital.set_xlim(0, self.ny)
         self.ax_sagital.set_ylim(0, self.nz)
+        self.ax_sagital.set_aspect(aspect_sagital)
         self.ax_sagital.axis("off")
         self._actualizar_titulo_sagital()
 
@@ -232,42 +244,89 @@ class VisorCortes:
         self.linea_sag_y = self.ax_sagital.axvline(self.idx_y, color=COLOR_CORONAL, linestyle="--", linewidth=1.2, alpha=0.85)
 
         # 4. Deslizadores de navegación y contraste
-        # Columna izquierda: Selección de cortes ortogonales
-        ax_s_z = self.figura.add_axes([0.10, 0.18, 0.35, 0.025])
-        ax_s_y = self.figura.add_axes([0.10, 0.11, 0.35, 0.025])
-        ax_s_x = self.figura.add_axes([0.10, 0.04, 0.35, 0.025])
+        if self.crear_sliders:
+            # Columna izquierda: Selección de cortes ortogonales
+            ax_s_z = self.figura.add_axes([0.10, 0.18, 0.35, 0.025])
+            ax_s_y = self.figura.add_axes([0.10, 0.11, 0.35, 0.025])
+            ax_s_x = self.figura.add_axes([0.10, 0.04, 0.35, 0.025])
 
-        max_z = max(self.nz - 1, 1) if self.nz <= 1 else self.nz - 1
-        max_y = max(self.ny - 1, 1) if self.ny <= 1 else self.ny - 1
-        max_x = max(self.nx - 1, 1) if self.nx <= 1 else self.nx - 1
+            max_z = max(self.nz - 1, 1) if self.nz <= 1 else self.nz - 1
+            max_y = max(self.ny - 1, 1) if self.ny <= 1 else self.ny - 1
+            max_x = max(self.nx - 1, 1) if self.nx <= 1 else self.nx - 1
 
-        self.slider_z = Slider(ax_s_z, "Corte Z", 0, max_z, valinit=self.idx_z, valstep=1, color=COLOR_AXIAL)
-        self.slider_y = Slider(ax_s_y, "Corte Y", 0, max_y, valinit=self.idx_y, valstep=1, color=COLOR_CORONAL)
-        self.slider_x = Slider(ax_s_x, "Corte X", 0, max_x, valinit=self.idx_x, valstep=1, color=COLOR_SAGITAL)
+            self.slider_z = Slider(ax_s_z, "Corte Z", 0, max_z, valinit=self.idx_z, valstep=1, color=COLOR_AXIAL)
+            self.slider_y = Slider(ax_s_y, "Corte Y", 0, max_y, valinit=self.idx_y, valstep=1, color=COLOR_CORONAL)
+            self.slider_x = Slider(ax_s_x, "Corte X", 0, max_x, valinit=self.idx_x, valstep=1, color=COLOR_SAGITAL)
 
-        # Columna derecha: Centro y Ancho de ventana
-        ax_s_c = self.figura.add_axes([0.58, 0.14, 0.35, 0.025])
-        ax_s_a = self.figura.add_axes([0.58, 0.07, 0.35, 0.025])
+            # Columna derecha: Centro y Ancho de ventana
+            ax_s_c = self.figura.add_axes([0.58, 0.14, 0.35, 0.025])
+            ax_s_a = self.figura.add_axes([0.58, 0.07, 0.35, 0.025])
 
-        val_min_centro = minimo if minimo < maximo else minimo - 1.0
-        val_max_centro = maximo if maximo > minimo else maximo + 1.0
-        val_max_ancho = max(rango, 10.0)
+            val_min_centro = minimo if minimo < maximo else minimo - 1.0
+            val_max_centro = maximo if maximo > minimo else maximo + 1.0
+            val_max_ancho = max(rango, 10.0)
 
-        self.slider_centro = Slider(ax_s_c, "Centro", val_min_centro, val_max_centro, valinit=self.centro, color=COLOR_CENTRO)
-        self.slider_ancho = Slider(ax_s_a, "Ancho", 1.0, val_max_ancho, valinit=self.ancho, color=COLOR_ANCHO)
+            self.slider_centro = Slider(ax_s_c, "Centro", val_min_centro, val_max_centro, valinit=self.centro, color=COLOR_CENTRO)
+            self.slider_ancho = Slider(ax_s_a, "Ancho", 1.0, val_max_ancho, valinit=self.ancho, color=COLOR_ANCHO)
 
-        # Conectar eventos de los sliders
-        self.slider_z.on_changed(lambda val: self.ir_a_corte("axial", int(val)))
-        self.slider_y.on_changed(lambda val: self.ir_a_corte("coronal", int(val)))
-        self.slider_x.on_changed(lambda val: self.ir_a_corte("sagital", int(val)))
+            # Conectar eventos de los sliders
+            self.slider_z.on_changed(lambda val: self.ir_a_corte("axial", int(val)))
+            self.slider_y.on_changed(lambda val: self.ir_a_corte("coronal", int(val)))
+            self.slider_x.on_changed(lambda val: self.ir_a_corte("sagital", int(val)))
 
-        self.slider_centro.on_changed(lambda _: self._actualizar_contraste())
-        self.slider_ancho.on_changed(lambda _: self._actualizar_contraste())
+            self.slider_centro.on_changed(lambda _: self._actualizar_contraste())
+            self.slider_ancho.on_changed(lambda _: self._actualizar_contraste())
+        else:
+            self.slider_z = None
+            self.slider_y = None
+            self.slider_x = None
+            self.slider_centro = None
+            self.slider_ancho = None
+            self.reajustar_tamano()
 
         # Navegación interactiva por clic en las vistas
         self.figura.canvas.mpl_connect("button_press_event", self._on_click)
 
         self.figura.canvas.draw_idle()
+
+    def reajustar_tamano(self):
+        """Reajusta la distribución de la figura manteniendo la relación de aspecto exacta de los cortes."""
+        try:
+            if self.crear_sliders:
+                self.figura.tight_layout(rect=[0, 0.22, 1, 0.98])
+            else:
+                self.figura.tight_layout()
+        except Exception:
+            pass
+        if self.figura.canvas:
+            self.figura.canvas.draw_idle()
+
+    def set_ventana(self, centro: float, ancho: float):
+        """Ajusta el centro y ancho de la ventana Hounsfield y redibuja."""
+        self.centro = float(centro)
+        self.ancho = max(float(ancho), 1.0)
+        if self.slider_centro is not None:
+            self.slider_centro.eventson = False
+            self.slider_centro.set_val(self.centro)
+            self.slider_centro.eventson = True
+        if self.slider_ancho is not None:
+            self.slider_ancho.eventson = False
+            self.slider_ancho.set_val(self.ancho)
+            self.slider_ancho.eventson = True
+        self._actualizar_contraste()
+        if self.on_cambio_contraste:
+            self.on_cambio_contraste(self.centro, self.ancho)
+
+    def reset_ventana(self) -> Tuple[float, float]:
+        """Restaura el contraste al rango completo original del volumen."""
+        if self.volumen is not None:
+            minimo = float(self.volumen.min())
+            maximo = float(self.volumen.max())
+            centro = (minimo + maximo) / 2.0
+            ancho = float(maximo - minimo) if maximo > minimo else 1.0
+            self.set_ventana(centro, ancho)
+            return centro, ancho
+        return self.centro, self.ancho
 
     def ir_a_corte(self, eje: str, indice: int):
         """Mueve la visualización al corte especificado en el eje indicado.
@@ -341,6 +400,9 @@ class VisorCortes:
         else:
             raise ValueError(f"Eje no reconocido: '{eje}'. Debe ser 'axial', 'coronal' o 'sagital'.")
 
+        if self.on_cambio_corte:
+            self.on_cambio_corte(eje_norm, indice)
+
         self.figura.canvas.draw_idle()
 
     def _actualizar_contraste(self):
@@ -348,8 +410,10 @@ class VisorCortes:
         if self.volumen is None:
             return
 
-        self.centro = float(self.slider_centro.val)
-        self.ancho = float(self.slider_ancho.val)
+        if self.slider_centro is not None:
+            self.centro = float(self.slider_centro.val)
+        if self.slider_ancho is not None:
+            self.ancho = float(self.slider_ancho.val)
         vmin = self.centro - (self.ancho / 2.0)
         vmax = self.centro + (self.ancho / 2.0)
 
@@ -416,11 +480,11 @@ class VisorCortes:
 def explorar_cortes(
     volumen: np.ndarray,
     espaciado: Tuple[float, float, float],
-    aspect: str | float = "auto"
+    aspect: str | float = "anatomico"
 ) -> VisorCortes:
     """Muestra el visor ortogonal interactivo (Axial, Coronal, Sagital) con sliders de navegación y contraste."""
     fig = plt.figure(figsize=(14, 7.5))
-    visor = VisorCortes(fig, aspect=aspect)
+    visor = VisorCortes(fig, aspect=aspect, crear_sliders=True)
     visor.mostrar((volumen, espaciado))
     plt.show()
     return visor

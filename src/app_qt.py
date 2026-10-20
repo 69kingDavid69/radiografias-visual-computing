@@ -2,11 +2,12 @@
 
 Permite alternar entre la navegación multicorte 2D ortogonal (Axial, Coronal, Sagital)
 y el entorno de reconstrucción 3D, integrando VisorCortes de Matplotlib en un entorno
-médico con tema oscuro y carga dinámica de estudios DICOM.
+médico con tema oscuro, QSplitter interactivo, sliders orgánicos y presets Hounsfield.
 """
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import sys
 from typing import Tuple
@@ -16,19 +17,32 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QIcon,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPalette,
+    QPen,
+    QPixmap,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
     QSizePolicy,
+    QSlider,
     QSplitter,
     QStatusBar,
     QToolBar,
@@ -61,7 +75,7 @@ QMainWindow, QWidget#CentralWidget {
 QToolBar {
     background-color: #252526;
     border-bottom: 1px solid #333333;
-    padding: 6px 12px;
+    padding: 6px 14px;
     spacing: 10px;
 }
 
@@ -71,7 +85,7 @@ QPushButton.btn-cargar {
     color: #38bdf8;
     border: 1px solid #0284c7;
     border-radius: 6px;
-    padding: 8px 16px;
+    padding: 7px 15px;
     font-size: 13px;
     font-weight: 600;
     text-align: center;
@@ -93,7 +107,7 @@ QPushButton.btn-vista {
     color: #d4d4d4;
     border: 1px solid #3c3c3c;
     border-radius: 6px;
-    padding: 8px 18px;
+    padding: 7px 16px;
     font-size: 13px;
     font-weight: 600;
     text-align: center;
@@ -122,23 +136,133 @@ QToolBar::separator {
     margin: 4px 8px;
 }
 
-/* Divisor Ajustable */
-QSplitter::handle {
-    background-color: #2d2d2d;
-    width: 3px;
-    height: 3px;
+/* ==========================================================================
+   DIVISOR AJUSTABLE (QSPLITTER)
+   ========================================================================== */
+QSplitter::handle:horizontal {
+    background-color: #2a2a2d;
+    border-left: 1px solid #1e1e1e;
+    border-right: 1px solid #1e1e1e;
+    width: 8px;
 }
 
-QSplitter::handle:hover {
+QSplitter::handle:horizontal:hover {
     background-color: #007acc;
 }
 
-/* Tarjeta del Panel 3D */
+QSplitter::handle:horizontal:pressed {
+    background-color: #38bdf8;
+}
+
+/* ==========================================================================
+   TARJETAS Y PANELES PREMIUM (#252526, border-radius: 10px)
+   ========================================================================== */
+QFrame#PanelControles {
+    background-color: #252526;
+    border: 1px solid #333333;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
 QFrame#Tarjeta3D {
     background-color: #252526;
     border: 1px solid #383838;
-    border-radius: 12px;
+    border-radius: 10px;
     padding: 30px;
+}
+
+/* Botones rápidos de Presets Hounsfield */
+QPushButton.btn-preset {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton.btn-preset:hover {
+    background-color: #2e3034;
+    color: #ffffff;
+    border: 1px solid #0284c7;
+}
+
+QPushButton.btn-preset:pressed {
+    background-color: #0e639c;
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   SLIDERS ORGÁNICOS TIPO PÍLDORA (MODERN HEALTHCARE UI)
+   ========================================================================== */
+QSlider:horizontal {
+    min-height: 24px;
+    max-height: 24px;
+}
+
+QSlider::groove:horizontal {
+    border: none;
+    height: 12px;
+    background-color: #1a1a1c;
+    border-radius: 6px;
+}
+
+QSlider::sub-page:horizontal {
+    border-radius: 6px;
+    height: 12px;
+}
+
+/* Canales cargados distintivos por plano y ventana */
+QSlider#SliderZ::sub-page:horizontal {
+    background-color: #e74c3c;
+    border-radius: 6px;
+}
+
+QSlider#SliderY::sub-page:horizontal {
+    background-color: #2ecc71;
+    border-radius: 6px;
+}
+
+QSlider#SliderX::sub-page:horizontal {
+    background-color: #3498db;
+    border-radius: 6px;
+}
+
+QSlider#SliderCentro::sub-page:horizontal {
+    background-color: #9b59b6;
+    border-radius: 6px;
+}
+
+QSlider#SliderAncho::sub-page:horizontal {
+    background-color: #e67e22;
+    border-radius: 6px;
+}
+
+QSlider::add-page:horizontal {
+    background-color: #333338;
+    border-radius: 6px;
+    height: 12px;
+}
+
+/* Píldora / Manija (Handle) */
+QSlider::handle:horizontal {
+    background-color: #ffffff;
+    border: 2px solid #1e1e1e;
+    width: 18px;
+    height: 18px;
+    margin: -3px 0;
+    border-radius: 9px;
+}
+
+QSlider::handle:horizontal:hover {
+    background-color: #38bdf8;
+    border: 2px solid #ffffff;
+}
+
+QSlider::handle:horizontal:pressed {
+    background-color: #0284c7;
+    border: 2px solid #e0f2fe;
 }
 
 /* Barra de Estado */
@@ -167,19 +291,87 @@ def configurar_estilo_matplotlib():
     })
 
 
-def generar_volumen_sintetico() -> Tuple[np.ndarray, Tuple[float, float, float]]:
-    """Genera un fantoma volumétrico sintético en caso de que no exista el estudio DICOM en disco.
+def crear_icono_medico() -> QIcon:
+    """Genera un QIcon médico profesional con cruz brillante y silueta dental simplificada."""
+    tamanos = [16, 24, 32, 48, 64, 128, 256]
+    icono = QIcon()
 
-    Crea una esfera con diferentes densidades emulando hueso y tejido blando para
-    permitir la interacción y verificación visual inmediata de la interfaz.
-    """
+    for tam in tamanos:
+        pix = QPixmap(tam, tam)
+        pix.fill(Qt.GlobalColor.transparent)
+
+        p = QPainter(pix)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        escala = tam / 128.0
+
+        # Fondo: Escudo redondeado con gradiente azul pizarra oscuro
+        rect_fondo = QRectF(4 * escala, 4 * escala, 120 * escala, 120 * escala)
+        grad_fondo = QLinearGradient(0, 0, tam, tam)
+        grad_fondo.setColorAt(0.0, QColor("#091322"))
+        grad_fondo.setColorAt(0.5, QColor("#0f172a"))
+        grad_fondo.setColorAt(1.0, QColor("#1e293b"))
+        p.setBrush(QBrush(grad_fondo))
+        p.setPen(QPen(QColor("#0284c7"), max(1.5, 2.5 * escala)))
+        p.drawRoundedRect(rect_fondo, 26 * escala, 26 * escala)
+
+        # Cruz médica radiante en cian (#38bdf8 / #00f2fe)
+        grad_cruz = QLinearGradient(0, 20 * escala, 0, 108 * escala)
+        grad_cruz.setColorAt(0.0, QColor("#38bdf8"))
+        grad_cruz.setColorAt(1.0, QColor("#0284c7"))
+        p.setBrush(QBrush(grad_cruz))
+        p.setPen(Qt.PenStyle.NoPen)
+
+        ancho_barra = 28 * escala
+        radio_cruz = 6 * escala
+        p.drawRoundedRect(
+            QRectF((128 - 28) / 2 * escala, 24 * escala, ancho_barra, 80 * escala),
+            radio_cruz,
+            radio_cruz,
+        )
+        p.drawRoundedRect(
+            QRectF(24 * escala, (128 - 28) / 2 * escala, 80 * escala, ancho_barra),
+            radio_cruz,
+            radio_cruz,
+        )
+
+        # Silueta dental estilizada en el núcleo de la cruz
+        if tam >= 32:
+            path_diente = QPainterPath()
+            cx = 64 * escala
+            cy = 64 * escala
+            w_d = 20 * escala
+            h_d = 22 * escala
+
+            path_diente.moveTo(cx - w_d * 0.45, cy - h_d * 0.4)
+            path_diente.quadTo(cx - w_d * 0.25, cy - h_d * 0.55, cx, cy - h_d * 0.35)
+            path_diente.quadTo(cx + w_d * 0.25, cy - h_d * 0.55, cx + w_d * 0.45, cy - h_d * 0.4)
+            path_diente.quadTo(cx + w_d * 0.5, cy + h_d * 0.1, cx + w_d * 0.3, cy + h_d * 0.45)
+            path_diente.quadTo(cx, cy + h_d * 0.2, cx - w_d * 0.3, cy + h_d * 0.45)
+            path_diente.quadTo(cx - w_d * 0.5, cy + h_d * 0.1, cx - w_d * 0.45, cy - h_d * 0.4)
+
+            p.setBrush(QBrush(QColor("#ffffff")))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.drawPath(path_diente)
+        else:
+            p.setBrush(QBrush(QColor("#ffffff")))
+            p.drawEllipse(QRectF(52 * escala, 52 * escala, 24 * escala, 24 * escala))
+
+        p.end()
+        icono.addPixmap(pix)
+
+    return icono
+
+
+def generar_volumen_sintetico() -> Tuple[np.ndarray, Tuple[float, float, float]]:
+    """Genera un fantoma volumétrico sintético en caso de que no exista el estudio DICOM en disco."""
     z, y, x = np.ogrid[-40:40:80j, -50:50:100j, -50:50:100j]
     r = np.sqrt(x**2 + y**2 + z**2)
 
-    volumen = np.zeros((80, 100, 100), dtype=np.float32) - 1000.0  # Densidad de aire
-    volumen[r <= 45] = 40.0   # Tejido blando
-    volumen[r <= 30] = 800.0  # Hueso cortical
-    volumen[r <= 15] = 1800.0 # Esmalte dental / estructura de alta densidad
+    volumen = np.zeros((80, 100, 100), dtype=np.float32) - 1000.0  # Aire
+    volumen[r <= 45] = 40.0    # Tejido blando
+    volumen[r <= 30] = 800.0   # Hueso cortical
+    volumen[r <= 15] = 1800.0  # Esmalte dental / alta densidad
 
     espaciado = (1.0, 0.5, 0.5)
     return volumen, espaciado
@@ -193,18 +385,23 @@ class MainWindow(QMainWindow):
         self.ruta_dicom = ruta_dicom
 
         self.setWindowTitle("Explorador Tomográfico CBCT — Visual Computing")
-        self.resize(1350, 850)
-        self.setMinimumSize(900, 600)
+        self.resize(1380, 880)
+        self.setMinimumSize(950, 620)
+
+        # Asignar ícono personalizado médico de la aplicación
+        self.icono_app = crear_icono_medico()
+        self.setWindowIcon(self.icono_app)
 
         # Configurar tema oscuro médico de Matplotlib
         configurar_estilo_matplotlib()
 
-        # Componentes principales
+        # Componentes del visor 2D y 3D
         self.canvas_2d: FigureCanvasQTAgg | None = None
         self.visor_cortes: VisorCortes | None = None
         self.widget_2d: QWidget | None = None
         self.panel_3d: QWidget | None = None
         self.splitter: QSplitter | None = None
+        self.panel_controles: QFrame | None = None
 
         # Botones de navegación y vistas
         self.btn_cargar: QPushButton | None = None
@@ -213,11 +410,25 @@ class MainWindow(QMainWindow):
         self.btn_dividido: QPushButton | None = None
         self.grupo_vistas: QButtonGroup | None = None
 
+        # Controles interactivos QSlider
+        self.slider_z: QSlider | None = None
+        self.slider_y: QSlider | None = None
+        self.slider_x: QSlider | None = None
+        self.slider_centro: QSlider | None = None
+        self.slider_ancho: QSlider | None = None
+
+        # Etiquetas de valores en tiempo real
+        self.lbl_val_z: QLabel | None = None
+        self.lbl_val_y: QLabel | None = None
+        self.lbl_val_x: QLabel | None = None
+        self.lbl_val_centro: QLabel | None = None
+        self.lbl_val_ancho: QLabel | None = None
+
         self._inicializar_ui()
         self._cargar_datos_y_visor()
 
     def _inicializar_ui(self):
-        """Construye la barra superior y los contenedores de las vistas."""
+        """Construye la barra superior, el splitter horizontal y los contenedores de vistas."""
         # 1. Barra superior de navegación (Top Toolbar)
         toolbar = QToolBar("Herramientas de Visualización", self)
         toolbar.setMovable(False)
@@ -261,7 +472,7 @@ class MainWindow(QMainWindow):
         self.btn_3d.clicked.connect(self.mostrar_modo_3d)
         self.btn_dividido.clicked.connect(self.mostrar_modo_dividido)
 
-        # 2. Contenedor Principal (QSplitter para flexibilidad)
+        # 2. Contenedor Principal con QSplitter horizontal
         central_widget = QWidget(self)
         central_widget.setObjectName("CentralWidget")
         layout_principal = QVBoxLayout(central_widget)
@@ -269,14 +480,29 @@ class MainWindow(QMainWindow):
         layout_principal.setSpacing(0)
         self.setCentralWidget(central_widget)
 
+        # QSplitter horizontal entre el contenedor 2D y el contenedor 3D
         self.splitter = QSplitter(Qt.Orientation.Horizontal, central_widget)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.setOpaqueResize(True)
+        self.splitter.setHandleWidth(8)
+        self.splitter.splitterMoved.connect(self._al_mover_divisor)
         layout_principal.addWidget(self.splitter)
 
         # Contenedor para el Visor 2D (Cortes)
         self.widget_2d = QWidget(self.splitter)
         layout_2d = QVBoxLayout(self.widget_2d)
-        layout_2d.setContentsMargins(4, 4, 4, 4)
-        layout_2d.setSpacing(0)
+        layout_2d.setContentsMargins(6, 6, 6, 6)
+        layout_2d.setSpacing(6)
+
+        # Canvas Matplotlib para los 3 cortes ortogonales
+        figura = Figure(facecolor="#1e1e1e")
+        self.canvas_2d = FigureCanvasQTAgg(figura)
+        self.canvas_2d.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        layout_2d.addWidget(self.canvas_2d, stretch=1)
+
+        # Tarjeta/Panel de controles 2D (Sliders orgánicos + Presets Hounsfield)
+        self.panel_controles = self._crear_panel_controles_2d(self.widget_2d)
+        layout_2d.addWidget(self.panel_controles, stretch=0)
 
         # Contenedor de reserva para el Panel 3D
         self.panel_3d = self._crear_panel_3d_placeholder(self.splitter)
@@ -293,8 +519,156 @@ class MainWindow(QMainWindow):
         self.btn_2d.setChecked(True)
         self.mostrar_modo_2d()
 
+    def _crear_panel_controles_2d(self, parent: QWidget) -> QFrame:
+        """Crea el panel/tarjeta con sliders orgánicos tipo píldora y presets Hounsfield."""
+        panel = QFrame(parent)
+        panel.setObjectName("PanelControles")
+
+        layout_panel = QVBoxLayout(panel)
+        layout_panel.setContentsMargins(12, 10, 12, 10)
+        layout_panel.setSpacing(8)
+
+        # Fila superior: Título del panel y Botones de Presets Hounsfield
+        fila_presets = QHBoxLayout()
+        fila_presets.setSpacing(10)
+
+        lbl_titulo_seccion = QLabel("<b>🎛️ NAVEGACIÓN MULTICORTE & VENTANA HU</b>")
+        lbl_titulo_seccion.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
+        fila_presets.addWidget(lbl_titulo_seccion)
+        fila_presets.addStretch()
+
+        # Botones de Presets Hounsfield
+        btn_preset_dientes = QPushButton("🦷 Dientes / Hueso")
+        btn_preset_dientes.setProperty("class", "btn-preset")
+        btn_preset_dientes.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_preset_dientes.setToolTip("Preset dental/óseo: Centro 1000 HU, Ancho 3000 HU")
+        btn_preset_dientes.clicked.connect(lambda: self.aplicar_preset_ventana(1000, 3000))
+        fila_presets.addWidget(btn_preset_dientes)
+
+        btn_preset_blando = QPushButton("🧠 Tejido Blando")
+        btn_preset_blando.setProperty("class", "btn-preset")
+        btn_preset_blando.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_preset_blando.setToolTip("Preset tejido blando: Centro 40 HU, Ancho 400 HU")
+        btn_preset_blando.clicked.connect(lambda: self.aplicar_preset_ventana(40, 400))
+        fila_presets.addWidget(btn_preset_blando)
+
+        btn_preset_reset = QPushButton("🔄 Reset Ventana")
+        btn_preset_reset.setProperty("class", "btn-preset")
+        btn_preset_reset.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_preset_reset.setToolTip("Restaurar ventana al rango dinámico completo del estudio")
+        btn_preset_reset.clicked.connect(self.reset_ventana)
+        fila_presets.addWidget(btn_preset_reset)
+
+        layout_panel.addLayout(fila_presets)
+
+        # Disposición en 2 columnas: Columna izquierda (Cortes Z, Y, X) y Columna derecha (Centro, Ancho)
+        fila_sliders = QHBoxLayout()
+        fila_sliders.setSpacing(24)
+
+        # --- Columna 1: Navegación de Cortes Ortogonales (Z, Y, X) ---
+        col_cortes = QVBoxLayout()
+        col_cortes.setSpacing(4)
+
+        # Slider Corte Z (Axial - Rojo #e74c3c)
+        fila_z_lbl = QHBoxLayout()
+        lbl_z = QLabel("<span style='color: #e74c3c; font-size: 14px;'>●</span> <b>Corte Axial (Z):</b>")
+        lbl_z.setStyleSheet("font-size: 12px; color: #ffffff;")
+        self.lbl_val_z = QLabel("0 / 0 (0.0 mm)")
+        self.lbl_val_z.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 11px;")
+        fila_z_lbl.addWidget(lbl_z)
+        fila_z_lbl.addStretch()
+        fila_z_lbl.addWidget(self.lbl_val_z)
+        col_cortes.addLayout(fila_z_lbl)
+
+        self.slider_z = QSlider(Qt.Orientation.Horizontal)
+        self.slider_z.setObjectName("SliderZ")
+        self.slider_z.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_z.valueChanged.connect(self._al_mover_slider_z)
+        col_cortes.addWidget(self.slider_z)
+
+        # Slider Corte Y (Coronal - Verde #2ecc71)
+        fila_y_lbl = QHBoxLayout()
+        lbl_y = QLabel("<span style='color: #2ecc71; font-size: 14px;'>●</span> <b>Corte Coronal (Y):</b>")
+        lbl_y.setStyleSheet("font-size: 12px; color: #ffffff;")
+        self.lbl_val_y = QLabel("0 / 0 (0.0 mm)")
+        self.lbl_val_y.setStyleSheet("color: #2ecc71; font-weight: bold; font-size: 11px;")
+        fila_y_lbl.addWidget(lbl_y)
+        fila_y_lbl.addStretch()
+        fila_y_lbl.addWidget(self.lbl_val_y)
+        col_cortes.addLayout(fila_y_lbl)
+
+        self.slider_y = QSlider(Qt.Orientation.Horizontal)
+        self.slider_y.setObjectName("SliderY")
+        self.slider_y.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_y.valueChanged.connect(self._al_mover_slider_y)
+        col_cortes.addWidget(self.slider_y)
+
+        # Slider Corte X (Sagital - Azul #3498db)
+        fila_x_lbl = QHBoxLayout()
+        lbl_x = QLabel("<span style='color: #3498db; font-size: 14px;'>●</span> <b>Corte Sagital (X):</b>")
+        lbl_x.setStyleSheet("font-size: 12px; color: #ffffff;")
+        self.lbl_val_x = QLabel("0 / 0 (0.0 mm)")
+        self.lbl_val_x.setStyleSheet("color: #3498db; font-weight: bold; font-size: 11px;")
+        fila_x_lbl.addWidget(lbl_x)
+        fila_x_lbl.addStretch()
+        fila_x_lbl.addWidget(self.lbl_val_x)
+        col_cortes.addLayout(fila_x_lbl)
+
+        self.slider_x = QSlider(Qt.Orientation.Horizontal)
+        self.slider_x.setObjectName("SliderX")
+        self.slider_x.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_x.valueChanged.connect(self._al_mover_slider_x)
+        col_cortes.addWidget(self.slider_x)
+
+        fila_sliders.addLayout(col_cortes, stretch=1)
+
+        # --- Columna 2: Ventana y Nivel Hounsfield (Centro, Ancho) ---
+        col_ventana = QVBoxLayout()
+        col_ventana.setSpacing(4)
+
+        # Slider Centro (Level - Púrpura #9b59b6)
+        fila_c_lbl = QHBoxLayout()
+        lbl_c = QLabel("<span style='color: #9b59b6; font-size: 14px;'>●</span> <b>Centro (Window Level):</b>")
+        lbl_c.setStyleSheet("font-size: 12px; color: #ffffff;")
+        self.lbl_val_centro = QLabel("0 HU")
+        self.lbl_val_centro.setStyleSheet("color: #9b59b6; font-weight: bold; font-size: 11px;")
+        fila_c_lbl.addWidget(lbl_c)
+        fila_c_lbl.addStretch()
+        fila_c_lbl.addWidget(self.lbl_val_centro)
+        col_ventana.addLayout(fila_c_lbl)
+
+        self.slider_centro = QSlider(Qt.Orientation.Horizontal)
+        self.slider_centro.setObjectName("SliderCentro")
+        self.slider_centro.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_centro.valueChanged.connect(self._al_mover_slider_centro)
+        col_ventana.addWidget(self.slider_centro)
+
+        # Slider Ancho (Width - Naranja #e67e22)
+        fila_a_lbl = QHBoxLayout()
+        lbl_a = QLabel("<span style='color: #e67e22; font-size: 14px;'>●</span> <b>Ancho (Window Width):</b>")
+        lbl_a.setStyleSheet("font-size: 12px; color: #ffffff;")
+        self.lbl_val_ancho = QLabel("0 HU")
+        self.lbl_val_ancho.setStyleSheet("color: #e67e22; font-weight: bold; font-size: 11px;")
+        fila_a_lbl.addWidget(lbl_a)
+        fila_a_lbl.addStretch()
+        fila_a_lbl.addWidget(self.lbl_val_ancho)
+        col_ventana.addLayout(fila_a_lbl)
+
+        self.slider_ancho = QSlider(Qt.Orientation.Horizontal)
+        self.slider_ancho.setObjectName("SliderAncho")
+        self.slider_ancho.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_ancho.valueChanged.connect(self._al_mover_slider_ancho)
+        col_ventana.addWidget(self.slider_ancho)
+
+        # Espacio inferior para balancear visualmente
+        col_ventana.addSpacing(14)
+        fila_sliders.addLayout(col_ventana, stretch=1)
+
+        layout_panel.addLayout(fila_sliders)
+        return panel
+
     def _crear_panel_3d_placeholder(self, parent: QWidget) -> QWidget:
-        """Crea el panel de reserva elegante para la reconstrucción 3D de Emanuel."""
+        """Crea el panel de reserva elegante para la reconstrucción 3D."""
         panel = QWidget(parent)
         layout_centro = QVBoxLayout(panel)
         layout_centro.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -309,18 +683,15 @@ class MainWindow(QMainWindow):
         layout_tarjeta.setSpacing(14)
         layout_tarjeta.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Icono / Emblema 3D estilizado
         lbl_icono = QLabel("⬡")
         lbl_icono.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_icono.setStyleSheet("font-size: 58px; color: #38bdf8; line-height: 1;")
 
-        # Título especificado
         lbl_titulo = QLabel("Panel 3D - Renderizado de Volúmenes (Emanuel)")
         lbl_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_titulo.setStyleSheet("font-size: 18px; font-weight: bold; color: #ffffff;")
         lbl_titulo.setWordWrap(True)
 
-        # Subtítulo y estado
         lbl_subtitulo = QLabel(
             "Módulo de reconstrucción tridimensional por isosuperficies y marcha de cubos (Marching Cubes)."
         )
@@ -328,7 +699,6 @@ class MainWindow(QMainWindow):
         lbl_subtitulo.setStyleSheet("font-size: 13px; color: #a0a0a0; margin-bottom: 6px;")
         lbl_subtitulo.setWordWrap(True)
 
-        # Badges tecnológicos
         layout_badges = QHBoxLayout()
         layout_badges.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout_badges.setSpacing(8)
@@ -376,11 +746,10 @@ class MainWindow(QMainWindow):
             volumen, espaciado = cargar_serie_dicom(ruta_carpeta)
             self.ruta_dicom = ruta_carpeta
 
-            # Actualizar el visor con el nuevo volumen y espaciado
+            # Actualizar VisorCortes manteniendo relación de aspecto exacta
             self.visor_cortes.mostrar((volumen, espaciado))
-            self._estilizar_sliders_matplotlib()
-            if self.canvas_2d:
-                self.canvas_2d.draw_idle()
+            self._sincronizar_sliders_con_datos()
+            self.visor_cortes.reajustar_tamano()
 
             msg_estado = (
                 f"Estudio cargado: {ruta_carpeta} | "
@@ -399,14 +768,13 @@ class MainWindow(QMainWindow):
 
     def _cargar_datos_y_visor(self):
         """Carga el estudio tomográfico inicial e inicializa el VisorCortes de Matplotlib."""
-        figura = Figure(facecolor="#1e1e1e")
-        self.canvas_2d = FigureCanvasQTAgg(figura)
-        self.canvas_2d.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.widget_2d.layout().addWidget(self.canvas_2d)
+        figura = self.canvas_2d.figure
+        self.visor_cortes = VisorCortes(figura, aspect="anatomico", crear_sliders=False)
 
-        self.visor_cortes = VisorCortes(figura, aspect="auto")
+        # Sincronización bidireccional desde clics en el visor de Matplotlib hacia los QSliders
+        self.visor_cortes.on_cambio_corte = self._al_cambiar_corte_desde_visor
+        self.visor_cortes.on_cambio_contraste = self._al_cambiar_contraste_desde_visor
 
-        # Intentar cargar la serie DICOM de la ruta especificada
         try:
             if not os.path.exists(self.ruta_dicom):
                 raise FileNotFoundError(f"Ruta no encontrada: {self.ruta_dicom}")
@@ -420,7 +788,6 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage(msg_estado)
 
         except Exception as e:
-            # Fallback elegante si aún no se han descargado o colocado los archivos DICOM
             volumen, espaciado = generar_volumen_sintetico()
             msg_alerta = (
                 f"Aviso: No se pudo cargar '{self.ruta_dicom}' ({e}). "
@@ -428,68 +795,221 @@ class MainWindow(QMainWindow):
             )
             self.statusBar.showMessage(msg_alerta)
 
-        # Mostrar los cortes ortogonales en el visor
         self.visor_cortes.mostrar((volumen, espaciado))
+        self._sincronizar_sliders_con_datos()
+        self.visor_cortes.reajustar_tamano()
 
-        # Ajuste de estilo oscuro a los sliders generados por VisorCortes
-        self._estilizar_sliders_matplotlib()
-        self.canvas_2d.draw_idle()
-
-    def _estilizar_sliders_matplotlib(self):
-        """Aplica estilo oscuro y restaura los colores distintivos de cada slider."""
-        if not self.visor_cortes:
+    def _sincronizar_sliders_con_datos(self):
+        """Ajusta los rangos y valores de los QSliders según las dimensiones y densidad del volumen."""
+        if not self.visor_cortes or self.visor_cortes.volumen is None:
             return
 
-        config_sliders = [
-            (self.visor_cortes.slider_z, COLOR_AXIAL),       # Axial (Z) - Rojo (#e74c3c)
-            (self.visor_cortes.slider_y, COLOR_CORONAL),     # Coronal (Y) - Verde (#2ecc71)
-            (self.visor_cortes.slider_x, COLOR_SAGITAL),     # Sagital (X) - Azul (#3498db)
-            (self.visor_cortes.slider_centro, COLOR_CENTRO), # Window Level - Púrpura (#9b59b6)
-            (self.visor_cortes.slider_ancho, COLOR_ANCHO),   # Window Width - Naranja (#e67e22)
-        ]
+        nz, ny, nx = self.visor_cortes.nz, self.visor_cortes.ny, self.visor_cortes.nx
+        vol = self.visor_cortes.volumen
+        min_hu = int(np.floor(vol.min()))
+        max_hu = int(np.ceil(vol.max()))
+        rango_hu = max_hu - min_hu if max_hu > min_hu else 100
 
-        for s, color_barra in config_sliders:
-            if s is None:
-                continue
-            s.ax.set_facecolor("#252526")
-            s.label.set_color("#ffffff")
-            s.label.set_fontsize(9)
-            s.valtext.set_color("#e0e0e0")
-            s.valtext.set_fontsize(9)
-            if hasattr(s, "poly") and s.poly is not None:
-                s.poly.set_facecolor(color_barra)
+        # Rango de cortes anatómicos
+        self.slider_z.blockSignals(True)
+        self.slider_z.setRange(0, max(nz - 1, 0))
+        self.slider_z.setValue(self.visor_cortes.idx_z)
+        self.slider_z.blockSignals(False)
+        self._actualizar_etiqueta_z(self.visor_cortes.idx_z)
+
+        self.slider_y.blockSignals(True)
+        self.slider_y.setRange(0, max(ny - 1, 0))
+        self.slider_y.setValue(self.visor_cortes.idx_y)
+        self.slider_y.blockSignals(False)
+        self._actualizar_etiqueta_y(self.visor_cortes.idx_y)
+
+        self.slider_x.blockSignals(True)
+        self.slider_x.setRange(0, max(nx - 1, 0))
+        self.slider_x.setValue(self.visor_cortes.idx_x)
+        self.slider_x.blockSignals(False)
+        self._actualizar_etiqueta_x(self.visor_cortes.idx_x)
+
+        # Rango de ventana y nivel (con margen para permitir presets médicos)
+        min_slider_c = min(min_hu - 200, -1024)
+        max_slider_c = max(max_hu + 500, 3071)
+        max_slider_a = max(int(rango_hu * 1.5), 4000)
+
+        self.slider_centro.blockSignals(True)
+        self.slider_centro.setRange(min_slider_c, max_slider_c)
+        self.slider_centro.setValue(int(round(self.visor_cortes.centro)))
+        self.slider_centro.blockSignals(False)
+        self._actualizar_etiqueta_centro(int(round(self.visor_cortes.centro)))
+
+        self.slider_ancho.blockSignals(True)
+        self.slider_ancho.setRange(1, max_slider_a)
+        self.slider_ancho.setValue(int(round(self.visor_cortes.ancho)))
+        self.slider_ancho.blockSignals(False)
+        self._actualizar_etiqueta_ancho(int(round(self.visor_cortes.ancho)))
 
     # ==========================================================================
-    # MANEJO DE VISTAS (MODO 2D, MODO 3D, MODO DIVIDIDO)
+    # EVENTOS DE SLIDERS Y SINCRONIZACIÓN
     # ==========================================================================
+
+    def _al_mover_slider_z(self, val: int):
+        if self.visor_cortes:
+            self.visor_cortes.ir_a_corte("axial", val)
+        self._actualizar_etiqueta_z(val)
+
+    def _al_mover_slider_y(self, val: int):
+        if self.visor_cortes:
+            self.visor_cortes.ir_a_corte("coronal", val)
+        self._actualizar_etiqueta_y(val)
+
+    def _al_mover_slider_x(self, val: int):
+        if self.visor_cortes:
+            self.visor_cortes.ir_a_corte("sagital", val)
+        self._actualizar_etiqueta_x(val)
+
+    def _al_mover_slider_centro(self, val: int):
+        if self.visor_cortes and self.slider_ancho:
+            self.visor_cortes.set_ventana(val, self.slider_ancho.value())
+        self._actualizar_etiqueta_centro(val)
+
+    def _al_mover_slider_ancho(self, val: int):
+        if self.visor_cortes and self.slider_centro:
+            self.visor_cortes.set_ventana(self.slider_centro.value(), val)
+        self._actualizar_etiqueta_ancho(val)
+
+    def _actualizar_etiqueta_z(self, idx: int):
+        if self.visor_cortes:
+            pos_mm = idx * self.visor_cortes.dz
+            self.lbl_val_z.setText(f"{idx} / {self.visor_cortes.nz - 1} ({pos_mm:.1f} mm)")
+
+    def _actualizar_etiqueta_y(self, idx: int):
+        if self.visor_cortes:
+            pos_mm = idx * self.visor_cortes.dy
+            self.lbl_val_y.setText(f"{idx} / {self.visor_cortes.ny - 1} ({pos_mm:.1f} mm)")
+
+    def _actualizar_etiqueta_x(self, idx: int):
+        if self.visor_cortes:
+            pos_mm = idx * self.visor_cortes.dx
+            self.lbl_val_x.setText(f"{idx} / {self.visor_cortes.nx - 1} ({pos_mm:.1f} mm)")
+
+    def _actualizar_etiqueta_centro(self, val: int):
+        self.lbl_val_centro.setText(f"{val} HU")
+
+    def _actualizar_etiqueta_ancho(self, val: int):
+        self.lbl_val_ancho.setText(f"{val} HU")
+
+    def _al_cambiar_corte_desde_visor(self, eje: str, indice: int):
+        """Callback invocado cuando el usuario hace clic dentro de Matplotlib."""
+        if eje in ("axial", "z") and self.slider_z:
+            self.slider_z.blockSignals(True)
+            self.slider_z.setValue(indice)
+            self.slider_z.blockSignals(False)
+            self._actualizar_etiqueta_z(indice)
+        elif eje in ("coronal", "y") and self.slider_y:
+            self.slider_y.blockSignals(True)
+            self.slider_y.setValue(indice)
+            self.slider_y.blockSignals(False)
+            self._actualizar_etiqueta_y(indice)
+        elif eje in ("sagital", "sagittal", "x") and self.slider_x:
+            self.slider_x.blockSignals(True)
+            self.slider_x.setValue(indice)
+            self.slider_x.blockSignals(False)
+            self._actualizar_etiqueta_x(indice)
+
+    def _al_cambiar_contraste_desde_visor(self, centro: float, ancho: float):
+        """Callback invocado cuando se actualiza la ventana externamente."""
+        c_int = int(round(centro))
+        a_int = int(round(ancho))
+        if self.slider_centro:
+            self.slider_centro.blockSignals(True)
+            self.slider_centro.setValue(c_int)
+            self.slider_centro.blockSignals(False)
+            self._actualizar_etiqueta_centro(c_int)
+        if self.slider_ancho:
+            self.slider_ancho.blockSignals(True)
+            self.slider_ancho.setValue(a_int)
+            self.slider_ancho.blockSignals(False)
+            self._actualizar_etiqueta_ancho(a_int)
+
+    # ==========================================================================
+    # PRESETS HOUNSFIELD
+    # ==========================================================================
+
+    def aplicar_preset_ventana(self, centro: int, ancho: int):
+        """Aplica un preset Hounsfield estándar ajustando sliders y redibujando."""
+        if self.slider_centro:
+            if centro < self.slider_centro.minimum():
+                self.slider_centro.setMinimum(centro - 200)
+            if centro > self.slider_centro.maximum():
+                self.slider_centro.setMaximum(centro + 200)
+            self.slider_centro.setValue(centro)
+
+        if self.slider_ancho:
+            if ancho > self.slider_ancho.maximum():
+                self.slider_ancho.setMaximum(ancho + 500)
+            self.slider_ancho.setValue(ancho)
+
+        if self.visor_cortes:
+            self.visor_cortes.set_ventana(centro, ancho)
+
+        self._actualizar_etiqueta_centro(centro)
+        self._actualizar_etiqueta_ancho(ancho)
+        self.statusBar.showMessage(f"Preset aplicado: Centro {centro} HU, Ancho {ancho} HU")
+
+    def reset_ventana(self):
+        """Restablece los sliders y el contraste al rango completo del estudio."""
+        if not self.visor_cortes:
+            return
+        centro, ancho = self.visor_cortes.reset_ventana()
+        c_int = int(round(centro))
+        a_int = int(round(ancho))
+        if self.slider_centro:
+            self.slider_centro.setValue(c_int)
+        if self.slider_ancho:
+            self.slider_ancho.setValue(a_int)
+        self._actualizar_etiqueta_centro(c_int)
+        self._actualizar_etiqueta_ancho(a_int)
+        self.statusBar.showMessage(f"Ventana reiniciada: Centro {c_int} HU, Ancho {a_int} HU")
+
+    # ==========================================================================
+    # MANEJO DE VISTAS Y DIVISOR (QSPLITTER)
+    # ==========================================================================
+
+    def _al_mover_divisor(self, pos: int, index: int):
+        """Reajusta la figura anatómica al arrastrar libremente la barra del splitter."""
+        if self.visor_cortes:
+            self.visor_cortes.reajustar_tamano()
+
+    def resizeEvent(self, event):
+        """Reajusta la distribución geométrica exacta al redimensionar la ventana."""
+        super().resizeEvent(event)
+        if self.visor_cortes:
+            self.visor_cortes.reajustar_tamano()
 
     def mostrar_modo_2d(self):
         """Modo 2D: Expande el VisorCortes a pantalla completa."""
         self.widget_2d.setVisible(True)
         self.panel_3d.setVisible(False)
         self.btn_2d.setChecked(True)
-        if self.canvas_2d:
-            self.canvas_2d.draw_idle()
+        if self.visor_cortes:
+            self.visor_cortes.reajustar_tamano()
 
     def mostrar_modo_3d(self):
-        """Modo 3D: Muestra el contenedor de reserva del Panel 3D."""
+        """Modo 3D: Muestra el contenedor de reconstrucción 3D."""
         self.widget_2d.setVisible(False)
         self.panel_3d.setVisible(True)
         self.btn_3d.setChecked(True)
 
     def mostrar_modo_dividido(self):
-        """Modo Dividido: Muestra el VisorCortes a la izquierda y el Panel 3D a la derecha."""
+        """Modo Dividido: Distribuye el ancho libremente con el QSplitter."""
         self.widget_2d.setVisible(True)
         self.panel_3d.setVisible(True)
         self.btn_dividido.setChecked(True)
 
-        # Repartir el ancho del splitter equitativamente (50% / 50%)
-        ancho_total = max(self.width(), 800)
+        ancho_total = max(self.splitter.width(), self.width(), 900)
         mitad = ancho_total // 2
         self.splitter.setSizes([mitad, mitad])
 
-        if self.canvas_2d:
-            self.canvas_2d.draw_idle()
+        if self.visor_cortes:
+            self.visor_cortes.reajustar_tamano()
 
 
 # ==============================================================================
@@ -497,6 +1017,13 @@ class MainWindow(QMainWindow):
 # ==============================================================================
 
 def main():
+    # Asignar AppUserModelID en Windows para icono en la barra de tareas
+    try:
+        myappid = "visualcomputing.cbct.medicalviewer.1.0"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         description="Interfaz Gráfica Profesional PySide6 para Tomografías CBCT"
     )
@@ -510,6 +1037,10 @@ def main():
 
     app = QApplication(sys.argv)
     app.setStyleSheet(ESTILO_TEMA_OSCURO)
+
+    # Asignar ícono personalizado médico a nivel de aplicación
+    icono_app = crear_icono_medico()
+    app.setWindowIcon(icono_app)
 
     ventana = MainWindow(ruta_dicom=args.carpeta)
     ventana.show()
