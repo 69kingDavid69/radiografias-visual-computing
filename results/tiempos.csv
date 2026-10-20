@@ -1,0 +1,4 @@
+reduccion,dimensiones,voxeles,tiempo_malla_s,tiempo_contour_s,tiempo_total_s,triangulos,puntos
+1,32x64x64,131072,0.0096,0.0604,0.07,5704,2944
+2,16x32x32,16384,0.0007,0.0009,0.0016,1320,704
+4,8x16x16,2048,0.0002,0.0006,0.0008,280,160

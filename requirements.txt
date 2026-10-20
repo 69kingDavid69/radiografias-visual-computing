@@ -3,6 +3,7 @@ pydicom
 SimpleITK
 matplotlib
 pyvista
+PySide6
 scikit-image
 jupyter
 pytest
