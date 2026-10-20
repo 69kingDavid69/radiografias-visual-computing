@@ -36,7 +36,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.carga import cargar_serie_dicom
+from pathlib import Path
+
+from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
 from src.visor_cortes import (
     COLOR_ANCHO,
     COLOR_AXIAL,
@@ -188,7 +190,7 @@ def generar_volumen_sintetico() -> Tuple[np.ndarray, Tuple[float, float, float]]
 class MainWindow(QMainWindow):
     """Ventana principal que gestiona las vistas 2D y 3D del estudio tomográfico."""
 
-    def __init__(self, ruta_dicom: str = "data/raw/K01", parent: QWidget | None = None):
+    def __init__(self, ruta_dicom: str = "data/raw/PreDentalSurgery.gipl.gz", parent: QWidget | None = None):
         super().__init__(parent)
         self.ruta_dicom = ruta_dicom
 
@@ -228,7 +230,7 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(lbl_logo)
 
         # Botón para Cargar Otra Tomografía DICOM
-        self.btn_cargar = QPushButton("📁 Cargar Estudio DICOM")
+        self.btn_cargar = QPushButton("📁 Cargar Estudio")
         self.btn_cargar.setProperty("class", "btn-cargar")
         self.btn_cargar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cargar.clicked.connect(self._abrir_dialogo_cargar_dicom)
@@ -355,25 +357,32 @@ class MainWindow(QMainWindow):
         return panel
 
     def _abrir_dialogo_cargar_dicom(self):
-        """Abre un diálogo interactivo para seleccionar la carpeta de un estudio tomográfico."""
-        dir_inicial = self.ruta_dicom if os.path.exists(self.ruta_dicom) else "data/raw"
-        if not os.path.exists(dir_inicial):
+        """Abre un diálogo para elegir un archivo de volumen o un corte DICOM.
+
+        Si se elige un .dcm se carga la carpeta completa de esa serie.
+        """
+        dir_inicial = os.path.dirname(self.ruta_dicom) or "data/raw"
+        if not os.path.isdir(dir_inicial):
             dir_inicial = os.getcwd()
 
-        carpeta = QFileDialog.getExistingDirectory(
+        patrones = " ".join(f"*{ext}" for ext in EXTENSIONES_VOLUMEN)
+        ruta, _ = QFileDialog.getOpenFileName(
             self,
-            "Seleccionar Carpeta con Estudio DICOM",
+            "Seleccionar estudio (volumen o un corte de la serie DICOM)",
             dir_inicial,
-            QFileDialog.Option.ShowDirsOnly,
+            f"Estudios ({patrones} *.dcm);;Volúmenes ({patrones});;Serie DICOM (*.dcm);;Todos (*)",
         )
 
-        if carpeta:
-            self.cargar_nuevo_estudio(carpeta)
+        if ruta:
+            if ruta.lower().endswith(".dcm"):
+                ruta = str(Path(ruta).parent)
+            self.cargar_nuevo_estudio(ruta)
 
     def cargar_nuevo_estudio(self, ruta_carpeta: str):
-        """Carga un nuevo estudio DICOM desde la ruta especificada y actualiza el visor."""
+        """Carga un estudio (carpeta DICOM o archivo de volumen) y actualiza el visor."""
         try:
-            volumen, espaciado = cargar_serie_dicom(ruta_carpeta)
+            estudio = cargar_estudio(ruta_carpeta)
+            volumen, espaciado = estudio.volumen, estudio.espaciado
             self.ruta_dicom = ruta_carpeta
 
             # Actualizar el visor con el nuevo volumen y espaciado
@@ -392,8 +401,8 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(
                 self,
-                "Error al cargar estudio DICOM",
-                f"No se pudo cargar la serie DICOM desde:\n{ruta_carpeta}\n\nDetalle: {e}",
+                "Error al cargar estudio",
+                f"No se pudo cargar el estudio desde:\n{ruta_carpeta}\n\nDetalle: {e}",
             )
             self.statusBar.showMessage(f"Error al cargar estudio: {e}")
 
@@ -411,7 +420,8 @@ class MainWindow(QMainWindow):
             if not os.path.exists(self.ruta_dicom):
                 raise FileNotFoundError(f"Ruta no encontrada: {self.ruta_dicom}")
 
-            volumen, espaciado = cargar_serie_dicom(self.ruta_dicom)
+            estudio = cargar_estudio(self.ruta_dicom)
+            volumen, espaciado = estudio.volumen, estudio.espaciado
             msg_estado = (
                 f"Estudio cargado: {self.ruta_dicom} | "
                 f"Volumen: {volumen.shape} (Z, Y, X) | "
@@ -503,8 +513,8 @@ def main():
     parser.add_argument(
         "carpeta",
         nargs="?",
-        default="data/raw/K01",
-        help="Ruta a la carpeta con cortes DICOM del estudio (por defecto: data/raw/K01)",
+        default="data/raw/PreDentalSurgery.gipl.gz",
+        help="Carpeta DICOM o archivo .gipl.gz / .nii.gz del estudio (por defecto: la muestra de Slicer)",
     )
     args = parser.parse_args()
 

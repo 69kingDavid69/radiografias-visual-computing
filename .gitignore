@@ -15,3 +15,4 @@ data/processed/*
 
 # macOS
 .DS_Store
+.pytest_cache/
