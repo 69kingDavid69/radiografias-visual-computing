@@ -135,8 +135,17 @@ def calcular_dz(posiciones_z):
     Si los cortes no están igualmente separados (faltan cortes o hay repetidos),
     emite `warnings.warn(...)` para que el usuario sepa que el 3D puede salir deformado.
     """
-    # TODO(David): calcular dz y advertir si la separación no es uniforme.
-    raise NotImplementedError
+    diferencias = np.diff(np.asarray(posiciones_z, dtype=float))
+    # La mediana no se mueve si falta un corte; el promedio sí.
+    dz = float(np.median(diferencias))
+    if dz <= 0:
+        raise ValueError("Los cortes están repetidos: no se puede calcular el espaciado en z")
+    # rtol absorbe el redondeo de los decimales del DICOM; un corte faltante o repetido
+    # se desvía un 100 % y no pasa.
+    if not np.allclose(diferencias, dz, rtol=0.01, atol=1e-3):
+        warnings.warn(f"Separación entre cortes no uniforme (dz ≈ {dz:.3f} mm): "
+                      "puede faltar o repetirse algún corte y el 3D saldría deformado.")
+    return dz
 
 
 def _espaciado_multiframe(ds):
