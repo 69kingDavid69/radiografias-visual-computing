@@ -2,5 +2,6 @@ numpy
 pydicom
 matplotlib
 pyvista
+PySide6
 scikit-image
 jupyter
