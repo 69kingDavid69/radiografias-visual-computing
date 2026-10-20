@@ -201,11 +201,115 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Filtro gaussiano antes de marching cubes
+
+**Qué se hizo**
+- `src/filtros.py` con `suavizar(volumen, espaciado, sigma_mm)`. Usa `SmoothingRecursiveGaussian` de SimpleITK con el **sigma en milímetros**, y SimpleITK aplica el espaciado de cada eje.
+- `superficie_por_banda(..., suavizado_mm=0.0)`: el gaussiano se aplica sobre la densidad si el preset no tiene máximo, y sobre la máscara 0/1 si lo tiene.
+- **Primero se reduce y después se suaviza:** con `reduccion=2` es 8 veces menos trabajo, y el gaussiano además funciona como filtro anti-*aliasing*.
+
+**Medición** con la muestra de Slicer, `reduccion=2`. "Pedazos" = regiones conectadas de la superficie. La figura está en [results/suavizado.png](../results/suavizado.png).
+
+| Preset | sigma (mm) | Tiempo | Triángulos | Pedazos |
+|---|---|---|---|---|
+| hueso | 0 | 0.07 s | 323 336 | 1292 |
+| hueso | 0.5 | 0.13 s | 268 196 | 380 |
+| hueso | 1.0 | 0.11 s | 191 236 | 86 |
+| hueso | 1.5 | 0.11 s | 143 272 | 37 |
+| esmalte_sin_metal | 0 | 0.05 s | 26 152 | 308 |
+| esmalte_sin_metal | 0.5 | 0.08 s | 25 512 | 228 |
+| esmalte_sin_metal | 1.0 | 0.08 s | 1 732 | 28 |
+| esmalte_sin_metal | 1.5 | 0.08 s | 292 | 2 |
+
+**Lectura**
+- **Hueso:** sigma 0.5 elimina el 70 % de los pedazos sueltos sin perder detalle. Con 1.0 desaparecen además los **anillos** de la frente (artefacto típico del CBCT), pero empieza a abrirse el hueso fino de las órbitas y el tabique. Con 1.5 se pierde el maxilar.
+- **Esmalte sin metal:** con 1.0 o más **desaparece**. Suavizar una máscara y cortar en 0.5 equivale a una "votación" en un vecindario del tamaño de sigma: una estructura más delgada que unos 2 sigma pierde la votación y se borra. El esmalte es una capa delgada, de alrededor de 1 vóxel con `reduccion=2`.
+- **Conclusión:** el sigma depende del grosor de la estructura. Un valor global no sirve: debe ser **por preset**, y en los presets con máscara tiene que ser menor que el grosor de la estructura.
+
+**Verificación:** `tests/test_filtros.py` cubre:
+- sigma 0 no cambia nada;
+- la forma y el promedio se conservan y el ruido baja;
+- **el sigma se aplica en mm por eje:** con vóxeles de 1 × 0.5 × 0.25 mm, un impulso se ensancha 2 vóxeles en z y 8 en x. Si el espaciado se invirtiera, el test fallaría;
+- el filtro reduce los pedazos sueltos de un bloque con ruido.
+
+**30/30 tests en verde.**
+
+---
+
+## 2026-10-19 (noche) — Suavizado de dientes, esmalte y metal; segundo estudio con otra escala
+
+**Medición en el estudio Pre** (`reduccion=2`, vóxel efectivo de 1 mm). Figura en [results/suavizado_dientes.png](../results/suavizado_dientes.png).
+
+| Preset | sigma 0 | 0.25 mm | 0.5 mm | 1.0 mm |
+|---|---|---|---|---|
+| dientes: triángulos / pedazos | 95 832 / 503 | 96 688 / 516 | 70 432 / **177** | 34 792 / 54 |
+| esmalte: triángulos / pedazos | 25 528 / 213 | 25 876 / 219 | 11 260 / 140 | 4 100 / 22 |
+| metal: triángulos / pedazos | 2 548 / 44 | 2 560 / 44 | 1 588 / 26 | 124 / 2 |
+
+- **dientes:** con 0.5 mm, los pedazos sueltos bajan a un tercio y **las raíces se conservan**.
+- **esmalte:** con 0.5 mm las coronas quedan más limpias, pero la superficie pierde más de la mitad de los triángulos y se adelgaza.
+- **metal:** el suavizado **encoge** los brackets, y con 1.0 mm casi desaparecen. Para ver un implante conviene no suavizar.
+- **sigma 0.25 mm no hace nada.** Con `reduccion=2` el vóxel efectivo mide 1 mm, y un sigma de un cuarto de vóxel casi no mezcla vecinos. **El sigma útil depende del vóxel efectivo**, no solo del original.
+
+**Segundo estudio: `PostDentalSurgery.gipl.gz`.** Es la muestra oficial de 3D Slicer del mismo paciente después de la cirugía ortognática: 33.8 MB, SHA-256 `4cdc3dc3…7bbd` verificado.
+- **Está en otra escala, aunque también es GIPL y viene de la misma fuente.**
+
+  | Estudio | Aire (pico) | Tejido blando (pico) | Rango |
+  |---|---|---|---|
+  | Pre | 0 | ~410 | 0 a 3 874 |
+  | Post | ~−2 206 | ~−4 | −2 254 a 16 889 |
+
+- En ninguno el aire está en −1000, así que ninguno es Hounsfield.
+- Con los dos picos se estimó una conversión lineal, `Pre ≈ 0.186 · Post + 411`. Con ella, el umbral de hueso (700 en Pre → 1554 en Post) da un cráneo correcto en Post, y el umbral de metal (2000 → 8543) muestra pequeñas piezas de metal alrededor del maxilar, compatibles con la fijación de la cirugía.
+- **Consecuencia:** la regla "formato GIPL → escala `slicer`" (`densidades.ESCALA_POR_FORMATO`) **es incorrecta**. Le aplicaría a Post presets de otra escala, que es justo el error silencioso que se quería evitar. Hay que decidir cómo se asigna la escala a cada estudio (decisión abierta).
+
+**Búsqueda de más datos abiertos (19/10).** No apareció ningún CBCT dental en DICOM, pequeño y sin registro. El candidato más útil es **STS 3D Tooth** (Hugging Face, CC-BY-4.0, 371 volúmenes en NIfTI). Los demás piden cuenta o credenciales (ToothFairy, FDTooth y Multimodal en PhysioNet) o solo traen mallas STL (OpenJaw).
+
+---
+
+## 2026-10-19 (noche) — Escala por estudio (opción 3) y sigma por preset
+
+**Decisiones de David**
+1. **Escala de densidad, opción 3:** primero la escala **declarada** en `data/estudios.json` y, si no hay, **normalización automática por picos del histograma**. Reemplaza la regla "formato → escala", que falló con el estudio Post.
+2. **Sigma por preset**, con los valores recomendados después de medir: hueso 0.5 mm, dientes 0.5 mm, esmalte 0, esmalte_sin_metal 0 y metal 0.
+
+**Cómo funciona la normalización (`src/escala.py`)**
+- En un CBCT de cabeza casi todos los vóxeles son **aire** o **tejido blando**, así que esos dos picos aparecen en cualquier equipo.
+- **Aire** = el pico más alto por debajo de la mediana. **Tejido blando** = el pico más alto a más de un cuarto del camino entre el aire y el percentil 99.9. El histograma se calcula sobre 1 de cada 8 vóxeles y se suaviza con una ventana de 5 bins.
+- Con los dos puntos se arma una recta que los lleva a la referencia (escala `slicer`: aire 0, blando 410). Es como calibrar un termómetro con dos puntos fijos.
+- Si los picos quedan casi pegados (menos del 10 % del rango), no se normaliza: el estudio queda **sin escala**, con una advertencia, y la app muestra solo la barra libre.
+- Si la escala está declarada, el volumen **no se toca**. Esa es la vía para los datasets calibrados en Hounsfield, como ToothFairy3: `{"<id>": {"escala": "hounsfield"}}`.
+- `cargar_estudio(..., normalizar=True)` aplica todo al final de la carga. Los tests de lectura usan `normalizar=False` para verificar los valores crudos del archivo.
+
+**Verificación con datos reales**
+
+| Estudio | Pico de aire | Pico de blando | a | b | Hueso | Dientes | Metal |
+|---|---|---|---|---|---|---|---|
+| Pre | 1 | 410 | 1.001 | −1 | 268 500 tri. / 381 ped. | 70 824 / 175 | 2 560 / 44 |
+| Post | −2240 | −14 | 0.184 | 413 | 241 054 / 306 | 33 796 / 141 | 1 552 / 49 |
+
+- En el Pre la normalización es casi la identidad (ya estaba en la referencia). En el Post coincide con la conversión estimada a mano (0.186 y 411), pero ahora se calcula sola. Toma unos 0.4 s, carga incluida.
+- **Con la misma tabla de presets**, el Post muestra en rojo las **placas y tornillos de fijación** de la cirugía alrededor del maxilar y la mandíbula, y el Pre muestra los brackets. Figura en [results/implante_pre_post.png](../results/implante_pre_post.png): hueso 20 % opaco y metal sin suavizar. Es la vista de implante que propuso David.
+
+**Tests:** `tests/test_escala.py` cubre:
+- los picos de un volumen sintético;
+- la normalización desde tres escalas: la de referencia, la tipo Post y **Hounsfield**. En Hounsfield, un hueso de 776 HU cae en 700, el umbral de "hueso", lo que sugiere que la escala de la muestra Pre es casi una versión lineal de HU;
+- que una escala declarada manda y deja el volumen intacto;
+- que un histograma sin forma queda sin escala;
+- que `cargar_estudio` normaliza por defecto.
+
+Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
 - [x] PR #4 fusionado en `main`.
-- [ ] PR #6 (contenido del #5) fusionado en `main`.
+- [x] PR #6 (contenido del #5) fusionado en `main`; verificado: 26 tests, app y 5 presets con la muestra real.
+- [x] Sigma de suavizado por preset.
+- [x] Escala por estudio: declarada en `data/estudios.json` o normalizada por picos del histograma.
+- [ ] Probar la normalización con las radiografías que suba David y con un volumen de STS 3D Tooth.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.

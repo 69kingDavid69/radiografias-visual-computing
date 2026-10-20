@@ -1,4 +1,8 @@
-"""Tests de src/carga.py. Correr con: .venv/bin/python -m pytest -q"""
+"""Tests de src/carga.py. Correr con: .venv/bin/python -m pytest -q
+
+Verifican los valores tal como vienen en el archivo, por eso usan normalizar=False;
+la normalización se prueba en test_escala.py.
+"""
 import random
 import shutil
 
@@ -25,7 +29,7 @@ def test_volumen_sitk_mantiene_orden_de_ejes(tmp_path, nombre):
     imagen.SetSpacing(ESPACIADO_XYZ)
     sitk.WriteImage(imagen, str(tmp_path / nombre))
 
-    estudio = cargar_estudio(tmp_path / nombre, carpeta_cache=tmp_path / "cache")
+    estudio = cargar_estudio(tmp_path / nombre, carpeta_cache=tmp_path / "cache", normalizar=False)
 
     assert isinstance(estudio, Estudio)
     assert estudio.id == "muestra"
@@ -38,7 +42,7 @@ def test_volumen_no_se_cachea(tmp_path):
     imagen = sitk.GetImageFromArray(_esfera())
     ruta = tmp_path / "muestra.nii.gz"
     sitk.WriteImage(imagen, str(ruta))
-    cargar_estudio(ruta, carpeta_cache=tmp_path / "cache")
+    cargar_estudio(ruta, carpeta_cache=tmp_path / "cache", normalizar=False)
     assert not (tmp_path / "cache").exists()
 
 
@@ -48,9 +52,9 @@ def test_cache_dicom_se_reutiliza(tmp_path):
     shutil.copy(get_testdata_file("CT_small.dcm"), carpeta)
     cache = tmp_path / "cache"
 
-    primero = cargar_estudio(carpeta, carpeta_cache=cache)
+    primero = cargar_estudio(carpeta, carpeta_cache=cache, normalizar=False)
     assert (cache / "serie.npz").exists()
-    segundo = cargar_estudio(carpeta, carpeta_cache=cache)
+    segundo = cargar_estudio(carpeta, carpeta_cache=cache, normalizar=False)
 
     np.testing.assert_array_equal(primero.volumen, segundo.volumen)
     assert segundo.espaciado == primero.espaciado
@@ -74,7 +78,7 @@ def _serie_dicom(carpeta, posiciones_z):
 
 def test_serie_dicom_se_ordena_por_z(tmp_path):
     _serie_dicom(tmp_path, [0.0, 2.5, 5.0, 7.5, 10.0])
-    estudio = cargar_estudio(tmp_path, usar_cache=False)
+    estudio = cargar_estudio(tmp_path, usar_cache=False, normalizar=False)
 
     assert estudio.volumen.shape[0] == 5
     columna = estudio.volumen[:, 0, 0]
@@ -84,21 +88,21 @@ def test_serie_dicom_se_ordena_por_z(tmp_path):
 
 def test_dicom_reescala_a_densidad(tmp_path):
     shutil.copy(get_testdata_file("CT_small.dcm"), tmp_path)
-    estudio = cargar_estudio(tmp_path, usar_cache=False)
+    estudio = cargar_estudio(tmp_path, usar_cache=False, normalizar=False)
     assert estudio.metadatos["formato"] == "DICOM"
     assert estudio.volumen.min() == pytest.approx(-896)   # ya en densidad, no el valor crudo
 
 
 def test_carpeta_vacia(tmp_path):
     with pytest.raises(FileNotFoundError):
-        cargar_estudio(tmp_path, usar_cache=False)
+        cargar_estudio(tmp_path, usar_cache=False, normalizar=False)
 
 
 def test_formato_no_soportado(tmp_path):
     ruta = tmp_path / "foto.png"
     ruta.write_bytes(b"no es un volumen")
     with pytest.raises(ValueError):
-        cargar_estudio(ruta, usar_cache=False)
+        cargar_estudio(ruta, usar_cache=False, normalizar=False)
 
 
 # --- calcular_dz (la parte de David) ---

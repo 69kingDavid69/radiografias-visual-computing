@@ -2,6 +2,8 @@
 import numpy as np
 import pyvista as pv
 
+from src.filtros import suavizar
+
 
 def a_pyvista(volumen, espaciado, reduccion=1):
     """Convierte el volumen (z, y, x) en una malla regular de PyVista.
@@ -17,7 +19,7 @@ def a_pyvista(volumen, espaciado, reduccion=1):
     return malla
 
 
-def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2):
+def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, suavizado_mm=0.0):
     """Superficie de la estructura cuya densidad está entre `minimo` y `maximo`.
 
     Sin `maximo` (None o infinito) es la isosuperficie de siempre: todo lo que supera `minimo`.
@@ -25,12 +27,20 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2):
     brackets). Una isosuperficie en `maximo` no sirve para eso, porque queda
     encerrada dentro de la de `minimo`; en cambio se marca con 1 cada vóxel de la
     banda y con 0 el resto, y marching cubes dibuja la frontera en 0.5.
+
+    `suavizado_mm` aplica un gaussiano (sigma en mm) antes de marching cubes: sobre la
+    densidad si no hay máximo, sobre la máscara si lo hay.
     """
+    # Primero se reduce y después se suaviza: es 8 veces menos trabajo con reduccion=2.
+    v = volumen[::reduccion, ::reduccion, ::reduccion]
+    esp = tuple(s * reduccion for s in espaciado)
     if maximo is None or np.isinf(maximo):
-        return a_pyvista(volumen, espaciado, reduccion).contour([minimo], scalars="densidad")
-    mascara = ((volumen >= minimo) & (volumen <= maximo)).astype(np.float32)
-    # a_pyvista nombra el campo "densidad"; aquí contiene la máscara (0 o 1).
-    return a_pyvista(mascara, espaciado, reduccion).contour([0.5], scalars="densidad")
+        campo, nivel = suavizar(v, esp, suavizado_mm), minimo
+    else:
+        mascara = ((v >= minimo) & (v <= maximo)).astype(np.float32)
+        campo, nivel = suavizar(mascara, esp, suavizado_mm), 0.5
+    # a_pyvista nombra el campo "densidad"; con máximo contiene la máscara (0 a 1).
+    return a_pyvista(campo, esp, 1).contour([nivel], scalars="densidad")
 
 
 def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2):
