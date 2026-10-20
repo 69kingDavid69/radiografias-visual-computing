@@ -6,6 +6,17 @@
 **Estoy en la ruta crítica:** sin dataset, el equipo no puede pasar de la fase 0.
 La fase 0 es la tarea más urgente del proyecto.
 
+> **Estado al 15/10/2026** (todo en [docs/investigacion/](../investigacion/README.md)):
+> - Fase 0 hecha: [datasets.md](../investigacion/datasets.md).
+> - Fase 0: datasets elegidos (muestra de Slicer para la demo, ToothFairy3 para el informe).
+> - Fase 1: marco teórico escrito; script de anonimización listo. Faltan la descarga
+>   de ToothFairy3 y compartir los estudios.
+> - Fase 2: método, script y primera prueba real con la muestra de Slicer. Falta
+>   validar con las etiquetas de ToothFairy3.
+> - Fase 3: guion de pruebas listo; falta hacerlas.
+> - Fase 4: borrador del informe con las secciones de investigación redactadas, y
+>   plan de la exposición del 26/10.
+
 ---
 
 ## Fase 0 — Dataset candidato (lo antes posible)

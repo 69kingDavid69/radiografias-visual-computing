@@ -1,0 +1,10 @@
+﻿reduccion,metodo,segundos,triangulos
+1,contour,0.408,423332
+1,marching_cubes,0.278,423332
+1,flying_edges,0.086,429428
+2,contour,0.053,95832
+2,marching_cubes,0.047,95832
+2,flying_edges,0.013,96640
+4,contour,0.007,19396
+4,marching_cubes,0.008,19396
+4,flying_edges,0.002,19544
