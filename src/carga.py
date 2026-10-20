@@ -30,8 +30,10 @@ class Estudio:
 def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
     """Carga un estudio desde una carpeta DICOM o un archivo de volumen.
 
-    La primera vez guarda el volumen en `data/processed/<id>.npz`; las siguientes
-    lo lee de ahí, salvo que el original sea más nuevo que la caché.
+    Las carpetas DICOM se guardan en caché (`data/processed/<id>.npz`), porque abrir
+    cientos de cortes es lento; se releen si el original es más nuevo que la caché.
+    Los archivos de volumen no se cachean: un .gipl.gz de 24 MB se lee en ~0.2 s y
+    su caché sin comprimir ocuparía ~170 MB.
     """
     ruta = Path(ruta)
     if not ruta.exists():
@@ -39,6 +41,7 @@ def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
     id_estudio = _id_estudio(ruta)
     cache = Path(carpeta_cache) / f"{id_estudio}.npz"
 
+    usar_cache = usar_cache and ruta.is_dir()
     if usar_cache and cache.exists() and cache.stat().st_mtime >= ruta.stat().st_mtime:
         with np.load(cache) as datos:
             volumen = datos["volumen"]

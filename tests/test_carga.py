@@ -34,20 +34,27 @@ def test_volumen_sitk_mantiene_orden_de_ejes(tmp_path, nombre):
     assert estudio.volumen[10, 15, 20] == pytest.approx(1000)
 
 
-def test_cache_se_reutiliza(tmp_path):
+def test_volumen_no_se_cachea(tmp_path):
     imagen = sitk.GetImageFromArray(_esfera())
-    imagen.SetSpacing(ESPACIADO_XYZ)
     ruta = tmp_path / "muestra.nii.gz"
     sitk.WriteImage(imagen, str(ruta))
+    cargar_estudio(ruta, carpeta_cache=tmp_path / "cache")
+    assert not (tmp_path / "cache").exists()
+
+
+def test_cache_dicom_se_reutiliza(tmp_path):
+    carpeta = tmp_path / "serie"
+    carpeta.mkdir()
+    shutil.copy(get_testdata_file("CT_small.dcm"), carpeta)
     cache = tmp_path / "cache"
 
-    primero = cargar_estudio(ruta, carpeta_cache=cache)
-    assert (cache / "muestra.npz").exists()
-    segundo = cargar_estudio(ruta, carpeta_cache=cache)
+    primero = cargar_estudio(carpeta, carpeta_cache=cache)
+    assert (cache / "serie.npz").exists()
+    segundo = cargar_estudio(carpeta, carpeta_cache=cache)
 
     np.testing.assert_array_equal(primero.volumen, segundo.volumen)
     assert segundo.espaciado == primero.espaciado
-    assert segundo.metadatos["formato"] == "NII"
+    assert segundo.metadatos["formato"] == "DICOM"
 
 
 def _serie_dicom(carpeta, posiciones_z):
