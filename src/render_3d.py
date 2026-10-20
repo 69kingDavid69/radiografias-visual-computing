@@ -24,10 +24,13 @@ def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2):
     la superficie (isosuperficie) donde el volumen cruza ese valor.
     """
     malla = a_pyvista(volumen, espaciado, reduccion)
+    
     minimo, maximo = float(np.min(volumen)), float(np.max(volumen))
+    
     if umbral_inicial is None:
         umbral_inicial = minimo + 0.6 * (maximo - minimo)
-
+    
+     
     pl = pv.Plotter()
     pl.add_text("Arrastra la barra para cambiar la densidad visible", font_size=10)
 
@@ -38,7 +41,7 @@ def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2):
             return
         pl.add_mesh(superficie, name="estructura", color="ivory",
                     smooth_shading=True, specular=0.4)
-
+    #con el event_type="end", la actualización solo se da al momento de soltar el click del mouse.
     pl.add_slider_widget(actualizar, rng=(minimo, maximo), value=umbral_inicial,
-                         title="Umbral de densidad", fmt="%.0f")
+                         title="Umbral de densidad", fmt="%.0f", interaction_event="end")
     pl.show()

@@ -16,6 +16,10 @@ Plan de construcción detallado de cada persona:
 [David](planes/dev1-david.md) · [Juan](planes/dev2-juan.md) ·
 [Emanuel](planes/dev3-emanuel.md) · [Nicolás](planes/investigacion-nicolas.md)
 
+**Exposición del 26 de octubre:** plan, guion de 10 minutos y respuestas a las
+preguntas de la propuesta en [investigacion/exposicion.md](investigacion/exposicion.md)
+y [investigacion/preguntas-clave.md](investigacion/preguntas-clave.md).
+
 Los rangos de `src/densidades.py` los proponen en conjunto **Nicolás**
 (lo que dice la literatura) y **Emanuel** (lo que se ve en el render).
 
@@ -34,7 +38,7 @@ Los rangos de `src/densidades.py` los proponen en conjunto **Nicolás**
 - [x] Esqueleto: carga DICOM → visor 2D → isosuperficie 3D con barra — David
 - [x] Prueba con volumen sintético (esfera) y DICOM de ejemplo de pydicom — David
 - [ ] Cada dev clona, crea el `.venv` y corre `--modo cortes` y `--modo 3d` — todos
-- [ ] Lista de 2–3 datasets CBCT dentales candidatos con licencia y forma de acceso — Nicolás
+- [x] Lista de 2–3 datasets CBCT dentales candidatos con licencia y forma de acceso — Nicolás ([datasets.md](investigacion/datasets.md))
 
 **Hito:** los tres devs ven un modelo 3D en su computador.
 
