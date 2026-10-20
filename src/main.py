@@ -20,7 +20,8 @@ def main():
     volumen, espaciado = estudio.volumen, estudio.espaciado
     minimo, maximo = estudio.metadatos["rango"]
     print(f"{estudio.id} ({estudio.metadatos['formato']}): volumen {volumen.shape} (z, y, x), "
-          f"vóxel {espaciado} mm, densidad de {minimo:.0f} a {maximo:.0f}")
+          f"vóxel {espaciado} mm, densidad de {minimo:.0f} a {maximo:.0f}, "
+          f"escala: {estudio.metadatos.get('escala') or 'desconocida (solo barra libre)'}")
 
     if args.modo == "cortes":
         explorar_cortes(volumen, espaciado)

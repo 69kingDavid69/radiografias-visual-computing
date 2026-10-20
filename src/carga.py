@@ -15,6 +15,8 @@ import pydicom
 import SimpleITK as sitk
 from pydicom.errors import InvalidDicomError
 
+from src.escala import REGISTRO, asignar_escala
+
 EXTENSIONES_VOLUMEN = (".gipl.gz", ".gipl", ".nii.gz", ".nii", ".mha", ".mhd", ".nrrd")
 CARPETA_CACHE = Path(__file__).resolve().parent.parent / "data" / "processed"
 
@@ -27,13 +29,17 @@ class Estudio:
     metadatos: dict = field(default_factory=dict)   # formato, forma, rango… (sin datos del paciente)
 
 
-def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
+def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE, normalizar=True,
+                   registro=REGISTRO):
     """Carga un estudio desde una carpeta DICOM o un archivo de volumen.
 
     Las carpetas DICOM se guardan en caché (`data/processed/<id>.npz`), porque abrir
     cientos de cortes es lento; se releen si el original es más nuevo que la caché.
     Los archivos de volumen no se cachean: un .gipl.gz de 24 MB se lee en ~0.2 s y
     su caché sin comprimir ocuparía ~170 MB.
+
+    Con `normalizar=True` se asigna la escala de densidad (ver `src/escala.py`): la
+    declarada en `data/estudios.json` o, si no hay, la normalizada por el histograma.
     """
     ruta = Path(ruta)
     if not ruta.exists():
@@ -61,7 +67,7 @@ def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
             cache.parent.mkdir(parents=True, exist_ok=True)
             np.savez(cache, volumen=volumen, espaciado=np.array(espaciado), formato=formato)
 
-    return Estudio(
+    estudio = Estudio(
         id=id_estudio,
         volumen=volumen,
         espaciado=espaciado,
@@ -72,6 +78,7 @@ def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE):
             "origen": str(ruta),
         },
     )
+    return asignar_escala(estudio, registro) if normalizar else estudio
 
 
 def cargar_volumen(ruta):

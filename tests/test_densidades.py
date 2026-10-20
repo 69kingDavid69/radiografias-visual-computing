@@ -3,30 +3,32 @@ import numpy as np
 import pytest
 
 from src.carga import Estudio
-from src.densidades import RANGOS_DENSIDAD, escala_de, presets_para
+from src.densidades import RANGOS_DENSIDAD, escala_de, presets_para, suavizado_para
 from src.render_3d import superficie_por_banda
 
 
-def _estudio(formato, **extra):
+def _estudio(escala):
     return Estudio(id="x", volumen=np.zeros((2, 2, 2), np.float32),
-                   espaciado=(1, 1, 1), metadatos={"formato": formato, **extra})
+                   espaciado=(1, 1, 1), metadatos={"escala": escala})
 
 
-def test_gipl_usa_presets_de_slicer():
-    assert presets_para(_estudio("GIPL")) is RANGOS_DENSIDAD["slicer"]
+@pytest.mark.parametrize("escala", list(RANGOS_DENSIDAD))
+def test_cada_escala_usa_sus_presets(escala):
+    assert presets_para(_estudio(escala)) is RANGOS_DENSIDAD[escala]
 
 
-def test_nifti_usa_presets_en_hounsfield():
-    assert presets_para(_estudio("NII")) is RANGOS_DENSIDAD["hounsfield"]
+def test_sin_escala_no_hay_presets():
+    assert escala_de(_estudio(None)) is None
+    assert presets_para(_estudio(None)) == {}
 
 
-def test_dicom_sin_escala_no_tiene_presets():
-    assert escala_de(_estudio("DICOM")) is None
-    assert presets_para(_estudio("DICOM")) == {}
-
-
-def test_escala_explicita_gana_al_formato():
-    assert presets_para(_estudio("DICOM", escala="hounsfield")) is RANGOS_DENSIDAD["hounsfield"]
+def test_sigmas_medidos():
+    # Valores decididos el 19/10 con la muestra Pre (bitácora): no cambiarlos sin medir.
+    assert suavizado_para("hueso") == 0.5
+    assert suavizado_para("dientes") == 0.5
+    for delgado in ("esmalte", "esmalte_sin_metal", "metal"):
+        assert suavizado_para(delgado) == 0.0, f"{delgado} es delgado: suavizarlo lo borra"
+    assert suavizado_para("preset_sin_medir") == 0.0
 
 
 @pytest.mark.parametrize("escala", list(RANGOS_DENSIDAD))

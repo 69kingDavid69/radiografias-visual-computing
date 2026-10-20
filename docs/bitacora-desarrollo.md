@@ -267,13 +267,49 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Escala por estudio (opción 3) y sigma por preset
+
+**Decisiones de David**
+1. **Escala de densidad, opción 3:** primero la escala **declarada** en `data/estudios.json` y, si no hay, **normalización automática por picos del histograma**. Reemplaza la regla "formato → escala", que falló con el estudio Post.
+2. **Sigma por preset**, con los valores recomendados después de medir: hueso 0.5 mm, dientes 0.5 mm, esmalte 0, esmalte_sin_metal 0 y metal 0.
+
+**Cómo funciona la normalización (`src/escala.py`)**
+- En un CBCT de cabeza casi todos los vóxeles son **aire** o **tejido blando**, así que esos dos picos aparecen en cualquier equipo.
+- **Aire** = el pico más alto por debajo de la mediana. **Tejido blando** = el pico más alto a más de un cuarto del camino entre el aire y el percentil 99.9. El histograma se calcula sobre 1 de cada 8 vóxeles y se suaviza con una ventana de 5 bins.
+- Con los dos puntos se arma una recta que los lleva a la referencia (escala `slicer`: aire 0, blando 410). Es como calibrar un termómetro con dos puntos fijos.
+- Si los picos quedan casi pegados (menos del 10 % del rango), no se normaliza: el estudio queda **sin escala**, con una advertencia, y la app muestra solo la barra libre.
+- Si la escala está declarada, el volumen **no se toca**. Esa es la vía para los datasets calibrados en Hounsfield, como ToothFairy3: `{"<id>": {"escala": "hounsfield"}}`.
+- `cargar_estudio(..., normalizar=True)` aplica todo al final de la carga. Los tests de lectura usan `normalizar=False` para verificar los valores crudos del archivo.
+
+**Verificación con datos reales**
+
+| Estudio | Pico de aire | Pico de blando | a | b | Hueso | Dientes | Metal |
+|---|---|---|---|---|---|---|---|
+| Pre | 1 | 410 | 1.001 | −1 | 268 500 tri. / 381 ped. | 70 824 / 175 | 2 560 / 44 |
+| Post | −2240 | −14 | 0.184 | 413 | 241 054 / 306 | 33 796 / 141 | 1 552 / 49 |
+
+- En el Pre la normalización es casi la identidad (ya estaba en la referencia). En el Post coincide con la conversión estimada a mano (0.186 y 411), pero ahora se calcula sola. Toma unos 0.4 s, carga incluida.
+- **Con la misma tabla de presets**, el Post muestra en rojo las **placas y tornillos de fijación** de la cirugía alrededor del maxilar y la mandíbula, y el Pre muestra los brackets. Figura en [results/implante_pre_post.png](../results/implante_pre_post.png): hueso 20 % opaco y metal sin suavizar. Es la vista de implante que propuso David.
+
+**Tests:** `tests/test_escala.py` cubre:
+- los picos de un volumen sintético;
+- la normalización desde tres escalas: la de referencia, la tipo Post y **Hounsfield**. En Hounsfield, un hueso de 776 HU cae en 700, el umbral de "hueso", lo que sugiere que la escala de la muestra Pre es casi una versión lineal de HU;
+- que una escala declarada manda y deja el volumen intacto;
+- que un histograma sin forma queda sin escala;
+- que `cargar_estudio` normaliza por defecto.
+
+Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
 - [x] PR #4 fusionado en `main`.
 - [x] PR #6 (contenido del #5) fusionado en `main`; verificado: 26 tests, app y 5 presets con la muestra real.
-- [ ] Sigma de suavizado por preset (decisión de David).
-- [ ] Cómo se asigna la escala de densidad a cada estudio: la regla por formato falla con el estudio Post (decisión de David).
+- [x] Sigma de suavizado por preset.
+- [x] Escala por estudio: declarada en `data/estudios.json` o normalizada por picos del histograma.
+- [ ] Probar la normalización con las radiografías que suba David y con un volumen de STS 3D Tooth.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.

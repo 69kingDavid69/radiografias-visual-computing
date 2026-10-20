@@ -5,8 +5,8 @@ Cada preset es "nombre": (mínimo, máximo) en las unidades del volumen cargado.
   - máximo = INF  → todo lo que supera el mínimo (isosuperficie de siempre);
   - máximo finito → solo la banda entre los dos valores (p. ej. esmalte sin el metal).
 
-Los valores dependen de la escala de densidad del equipo, por eso hay un juego de
-presets por escala. Fuentes: docs/investigacion/densidades.md (§2.1 y §2.2).
+Los valores dependen de la escala de densidad, por eso hay un juego de presets por
+escala. Los estudios sin escala declarada se normalizan a "slicer" (src/escala.py). Fuentes: docs/investigacion/densidades.md (§2.1 y §2.2).
 """
 INF = float("inf")
 
@@ -33,22 +33,30 @@ RANGOS_DENSIDAD = {
     },
 }
 
-# Qué escala tiene cada formato de archivo en los datasets del proyecto.
-# DICOM no está: según el equipo puede venir en Hounsfield o en grises propios,
-# así que para DICOM hay que indicar la escala a mano en estudio.metadatos["escala"].
-ESCALA_POR_FORMATO = {
-    "GIPL": "slicer",
-    "NII": "hounsfield",
+# Sigma del filtro gaussiano (mm) por estructura, medido con la muestra Pre (bitácora
+# 19/10). Va por estructura y no por escala: el sigma depende del grosor anatómico, y
+# una capa delgada como el esmalte se borra si sigma es grande. 0 = sin suavizar.
+SUAVIZADO_MM = {
+    "hueso": 0.5,              # 1292 → 380 pedazos sueltos sin perder detalle
+    "dientes": 0.5,            # 503 → 177 pedazos, las raíces se conservan
+    "esmalte": 0.0,            # con 0.5 la capa pierde la mitad de la superficie
+    "esmalte_sin_metal": 0.0,  # con 1.0 desaparece
+    "metal": 0.0,              # suavizar encoge brackets e implantes
 }
+
+
+def suavizado_para(nombre):
+    """Sigma en mm para un preset; los presets sin medir no se suavizan."""
+    return SUAVIZADO_MM.get(nombre, 0.0)
 
 
 def escala_de(estudio):
     """Escala de densidad del estudio ("slicer", "hounsfield"…) o None si no se sabe.
 
-    Gana lo que diga estudio.metadatos["escala"]; si no, se deduce del formato.
+    La asigna `escala.asignar_escala` al cargar: la declarada en data/estudios.json o
+    "slicer" si el estudio se normalizó por el histograma.
     """
-    return estudio.metadatos.get("escala") or ESCALA_POR_FORMATO.get(
-        estudio.metadatos.get("formato"))
+    return estudio.metadatos.get("escala")
 
 
 def presets_para(estudio):
