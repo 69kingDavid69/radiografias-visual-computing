@@ -17,6 +17,22 @@ def a_pyvista(volumen, espaciado, reduccion=1):
     return malla
 
 
+def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2):
+    """Superficie de la estructura cuya densidad está entre `minimo` y `maximo`.
+
+    Sin `maximo` (None o infinito) es la isosuperficie de siempre: todo lo que supera `minimo`.
+    Con `maximo` se aísla la banda (por ejemplo, el esmalte sin el metal de los
+    brackets). Una isosuperficie en `maximo` no sirve para eso, porque queda
+    encerrada dentro de la de `minimo`; en cambio se marca con 1 cada vóxel de la
+    banda y con 0 el resto, y marching cubes dibuja la frontera en 0.5.
+    """
+    if maximo is None or np.isinf(maximo):
+        return a_pyvista(volumen, espaciado, reduccion).contour([minimo], scalars="densidad")
+    mascara = ((volumen >= minimo) & (volumen <= maximo)).astype(np.float32)
+    # a_pyvista nombra el campo "densidad"; aquí contiene la máscara (0 o 1).
+    return a_pyvista(mascara, espaciado, reduccion).contour([0.5], scalars="densidad")
+
+
 def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2):
     """Abre una ventana 3D con una barra de sensibilidad (umbral).
 
