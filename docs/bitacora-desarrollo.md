@@ -183,10 +183,20 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 ---
 
+## 2026-10-19 (noche) — Flujo de PRs apilados
+
+- **PR #4** (`feat/estudio` → `main`): carga universal, `calcular_dz`, app Qt conectada y bitácora. Revisor: **Juan**, porque cambia su `app_qt.py`.
+- **PR #5** (`feat/presets-banda` → `feat/estudio`): B3 y presets por escala. Revisores: **Emanuel** (render) y **Nicolás** (rangos).
+- El #5 está **apilado** sobre el #4: su base es `feat/estudio`, así que solo muestra sus propios commits y se revisa por separado. Cuando el #4 entre a `main`, el #5 se cambia a base `main`.
+- Regla del equipo: nadie fusiona su propio PR sin la aprobación de otro integrante.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
-- [ ] PR #4 (`feat/estudio`) revisado y fusionado.
+- [ ] PR #4 aprobado por Juan y fusionado.
+- [ ] PR #5 aprobado por Emanuel y Nicolás, con base cambiada a `main` y fusionado.
 - [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
 - [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
 - [x] Técnica de presets decidida (B3) e implementada.
