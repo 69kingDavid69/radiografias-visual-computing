@@ -35,10 +35,20 @@ def test_rangos_bien_formados(escala):
         assert minimo < maximo, f"{escala}/{nombre}: el mínimo no es menor que el máximo"
 
 
-def test_esmalte_de_slicer_excluye_el_metal():
+def _corona_y_bracket():
     v = np.zeros((20, 20, 40), dtype=np.float32)
     v[5:15, 5:15, 3:13] = 1600     # corona (x de 1.5 a 6.5 mm)
-    v[5:15, 5:15, 25:35] = 3000    # bracket (x de 12.5 a 17.5 mm)
+    v[5:15, 5:15, 25:35] = 3000    # bracket o implante (x de 12.5 a 17.5 mm)
+    return v
+
+
+def test_esmalte_de_slicer_conserva_el_metal():
     minimo, maximo = RANGOS_DENSIDAD["slicer"]["esmalte"]
-    sup = superficie_por_banda(v, (0.5, 0.5, 0.5), minimo, maximo, reduccion=1)
+    sup = superficie_por_banda(_corona_y_bracket(), (0.5, 0.5, 0.5), minimo, maximo, reduccion=1)
+    assert sup.bounds[1] > 15, "el preset esmalte debe seguir mostrando brackets e implantes"
+
+
+def test_esmalte_sin_metal_de_slicer_excluye_el_metal():
+    minimo, maximo = RANGOS_DENSIDAD["slicer"]["esmalte_sin_metal"]
+    sup = superficie_por_banda(_corona_y_bracket(), (0.5, 0.5, 0.5), minimo, maximo, reduccion=1)
     assert sup.n_points > 0 and sup.bounds[1] < 10

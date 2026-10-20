@@ -16,8 +16,11 @@ RANGOS_DENSIDAD = {
     "slicer": {
         "hueso":   (700, INF),     # cráneo, maxilares y dientes
         "dientes": (1000, INF),    # hueso más denso + dientes con sus raíces
-        "esmalte": (1250, 2000),   # coronas, SIN el metal de los brackets (> 2000)
-        "metal":   (2000, INF),    # solo los brackets de ortodoncia
+        "esmalte": (1250, INF),    # coronas; también brackets, implantes y algo de cortical
+        # Misma banda sin el metal (> 2000). Deja huecos donde estaba el metal y no
+        # quita sus artefactos: sirve para comparar con "esmalte" en la demo.
+        "esmalte_sin_metal": (1250, 2000),
+        "metal":   (2000, INF),    # solo metal: brackets en esta muestra; implantes en otros estudios
     },
     # Datasets calibrados en Hounsfield (ToothFairy3). Propuesta de la literatura,
     # falta validarla con las etiquetas de ToothFairy3 (densidades.md §2.2 y §5).

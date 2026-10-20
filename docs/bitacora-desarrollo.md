@@ -160,7 +160,7 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 
 **Problema:** las unidades de densidad dependen del equipo. En la muestra de Slicer, 2000 deja **solo metal**; en Hounsfield, 2000 debería dejar el esmalte. Un único juego de presets aislaría la estructura equivocada en uno de los dos datasets.
 
-**Decisión (David):** un diccionario de presets **por escala**, `RANGOS_DENSIDAD = {"slicer": {...}, "hounsfield": {...}}`. La escala se deduce del formato del estudio:
+**Decisión de David:** un diccionario de presets **por escala**, `RANGOS_DENSIDAD = {"slicer": {...}, "hounsfield": {...}}`. La escala se deduce del formato del estudio:
 
 | Formato | Escala | Por qué |
 |---|---|---|
@@ -171,9 +171,15 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 - `densidades.escala_de(estudio)` usa primero `metadatos["escala"]` (si se indica a mano) y si no, el formato.
 - `densidades.presets_para(estudio)` devuelve `{}` si no se conoce la escala. Así la app muestra solo la barra libre en vez de presets con números de otro equipo.
 
-**Cambio frente a la propuesta de investigación:** en la escala `slicer`, el esmalte pasó de `(1250, INF)` a `(1250, 2000)`, para dejar fuera el metal de los brackets. Ahora es posible gracias a `superficie_por_banda` (opción B3). Los valores en Hounsfield quedan como los propuso Nicolás, **pendientes de validar** con las etiquetas de ToothFairy3.
+**Esmalte con y sin metal (corrección).** Claude propuso cerrar el esmalte de `slicer` en `(1250, 2000)` para quitar los brackets. David lo cuestionó y se descartó por cuatro razones:
+1. Clínicamente, el metal importa: **si el paciente tiene un implante metálico, la idea es poder verlo en relación con la encía y el hueso** (David).
+2. Donde estaba el metal la superficie queda con huecos.
+3. Cortar en 2000 quita el metal, pero no sus artefactos (rayas, endurecimiento del haz).
+4. 2000 se midió como "por encima solo hay metal", no como frontera validada entre esmalte y metal.
 
-**Verificación:** `tests/test_densidades.py` cubre GIPL → slicer, NII → hounsfield, DICOM → sin presets, escala explícita por encima del formato, mínimo < máximo en todos los rangos, y que el esmalte de `slicer` excluye un bracket de 3000. Con la muestra real: `GIPL → slicer → [hueso, dientes, esmalte, metal]`. **25/25 tests en verde.**
+**Resultado:** el preset `"esmalte": (1250, INF)` conserva el valor de Nicolás, y se agrega `"esmalte_sin_metal": (1250, 2000)` como alternativa explícita, para comparar los dos en la demo. Los valores en Hounsfield quedan como los propuso Nicolás, **pendientes de validar** con las etiquetas de ToothFairy3.
+
+**Verificación:** `tests/test_densidades.py` cubre GIPL → slicer, NII → hounsfield, DICOM → sin presets, escala explícita por encima del formato, mínimo < máximo en todos los rangos, que `esmalte` conserva un bracket de 3000 y que `esmalte_sin_metal` lo excluye. Con la muestra real: `GIPL → slicer → [hueso, dientes, esmalte, esmalte_sin_metal, metal]`.
 
 ---
 
@@ -186,5 +192,6 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 - [x] Técnica de presets decidida (B3) e implementada.
 - [x] `RANGOS_DENSIDAD` por escala (slicer y hounsfield) y `presets_para(estudio)`.
 - [ ] Validar los presets en Hounsfield con las etiquetas de ToothFairy3 (Nicolás + Emanuel).
+- [ ] Vista de implante: `metal` opaco + `hueso` o tejido blando semitransparente, para ver el metal en relación con la encía (idea de David; usa la opacidad por estructura de la fase 2, Emanuel).
 - [ ] Conectar los presets a la vista 3D (teclas o botones) y fijar la vista frontal `view_xz()` (Emanuel).
 - [ ] Exposición del 26/10.
