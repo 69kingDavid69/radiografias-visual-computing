@@ -50,7 +50,7 @@ profesor indica otro formato.
 | Tiempo | Quién | Qué se dice / muestra |
 |---|---|---|
 | 0:00–1:00 | **Nicolás** | Problema: la radiografía es 2D y superpone; el CBCT es un cubo de cortes. Pregunta de investigación. Datos usados. |
-| 1:00–1:45 | **David** | Pipeline en una diapositiva: DICOM → reescalado → volumen + espaciado → 2D y 3D. |
+| 1:00–1:45 | **David** | Pipeline en una diapositiva: archivo (GIPL, NIfTI o DICOM) → carga (densidad, orden de cortes, vóxel en mm) → **escala** (picos de aire y tejido blando → una recta) → `Estudio` → 2D (cortes) y 3D (preset, σ y marching cubes). Diapositiva y guion de 45 s: https://claude.ai/artifact/NVTS1dRJ2QBUYN95hnP1Kf (privada hasta que David la comparta). |
 | 1:45–3:00 | **Juan** | **Demo 2D:** recorrer cortes, tres vistas, contraste (ventana/nivel) para separar esmalte de dentina. |
 | 3:00–5:00 | **Emanuel** | **Demo 3D:** barra de umbral (hueso → dientes → esmalte), rotar, plano vs. Phong, **plano de corte** por un molar. |
 | 5:00–6:00 | **Nicolás** | Resultados y limitaciones con las figuras de `results/investigacion/`: el histograma muestra que el CBCT no está en HU (0–3874); umbrales 700 / 1000 / 1250 / 2000; el metal supera al esmalte; hay solapamiento hueso–esmalte. Respuesta a la pregunta. |
@@ -78,7 +78,7 @@ las cinco respuestas de [preguntas-clave.md](preguntas-clave.md).
 1. Título, equipo y pregunta de investigación.
 2. Radiografía 2D vs. CBCT 3D (un corte y un volumen).
 3. Datos: muestra de Slicer y ToothFairy3, vóxel de 0.3–0.5 mm, anonimización.
-4. Pipeline (diagrama de ARCHITECTURE.md simplificado).
+4. Pipeline: archivo → carga → escala → `Estudio` → 2D y 3D (hecha por David; ver el guion de arriba).
 5. Marching cubes en un dibujo: cubo de 8 esquinas → triángulos.
 6. Histograma de densidades con los umbrales de los presets.
 7. Resultados: superficie en 4 umbrales y tabla de tiempos.
