@@ -38,3 +38,60 @@ def test_reduccion_conserva_posicion_en_mm():
     completa = superficie_por_banda(_dos_bloques(), ESPACIADO, 1250, 2000, reduccion=1)
     reducida = superficie_por_banda(_dos_bloques(), ESPACIADO, 1250, 2000, reduccion=2)
     assert reducida.center == pytest.approx(completa.center, abs=1.0)
+
+
+# --- Render3D ---------------------------------------------------------------
+
+def _render_con(estudio_o_tupla):
+    import pyvista as pv
+    from src.render_3d import Render3D
+    r = Render3D(pv.Plotter(off_screen=True))
+    r.mostrar(estudio_o_tupla, reduccion=1)
+    return r
+
+
+def _estudio_slicer():
+    from src.carga import Estudio
+    return Estudio(id="x", volumen=_dos_bloques(), espaciado=ESPACIADO, metadatos={"escala": "slicer"})
+
+
+def _actor_bounds(r, nombre):
+    return r.pl.actors[nombre].GetBounds()
+
+
+def test_render3d_arranca_en_hueso_y_de_frente():
+    r = _render_con(_estudio_slicer())
+    assert r.preset_actual == "hueso"
+    assert r.umbral_actual == 700
+    assert r.pl.camera.up == pytest.approx((0, 0, 1))     # view_xz: z hacia arriba
+
+
+def test_render3d_preset_aisla_la_banda():
+    r = _render_con(_estudio_slicer())
+    r.aplicar_preset("esmalte_sin_metal")
+    assert _actor_bounds(r, "estructura")[1] < 10        # el bracket (x > 12.5 mm) quedó fuera
+    r.aplicar_preset("metal")
+    assert _actor_bounds(r, "estructura")[0] > 10        # solo el bracket
+
+
+def test_render3d_capas_y_vuelta_a_un_preset():
+    r = _render_con(_estudio_slicer())
+    r.aplicar_capas([("hueso", 0.2), ("metal", 1.0)])
+    assert {"capa_hueso", "capa_metal"} <= set(r.pl.actors)
+    assert r.pl.actors["capa_hueso"].GetProperty().GetOpacity() == pytest.approx(0.2)
+    r.aplicar_preset("dientes")
+    assert "capa_hueso" not in r.pl.actors and "capa_metal" not in r.pl.actors
+
+
+def test_render3d_preset_desconocido_explica_cuales_hay():
+    r = _render_con(_estudio_slicer())
+    with pytest.raises(KeyError, match="esmalte_sin_metal"):
+        r.aplicar_preset("no_existe")
+
+
+def test_render3d_sin_escala_usa_la_barra_libre():
+    r = _render_con((_dos_bloques(), ESPACIADO))
+    assert r.presets == {} and r.preset_actual is None
+    assert r.umbral_actual == pytest.approx(0.6 * 3000)
+    with pytest.raises(KeyError, match="desconocida"):
+        r.aplicar_preset("hueso")

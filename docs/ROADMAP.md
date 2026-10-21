@@ -69,6 +69,7 @@ Los rangos de `src/densidades.py` los proponen en conjunto **Nicolás**
 - [ ] Ventana con panel 2D y panel 3D lado a lado — Juan
 - [ ] Selector de carpeta de estudio desde la interfaz, sin línea de comandos — Juan + David
 - [ ] Integrar presets y barra de sensibilidad en la ventana — Emanuel
+- [ ] Aplicar el rediseño de la interfaz (propuesta del 21/10: tema oscuro clínico, panel lateral con escala, presets y contraste, diálogo de abrir estudio con diagnóstico de escala; detalle en [bitacora-desarrollo.md](bitacora-desarrollo.md)) — Juan
 - [ ] Probar la app con usuarios que no la construyeron (compañeros de salud, si hay) — Nicolás
 
 **Hito:** una persona sin terminal abre un estudio y explora 2D y 3D.

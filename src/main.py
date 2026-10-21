@@ -26,7 +26,7 @@ def main():
     if args.modo == "cortes":
         explorar_cortes(volumen, espaciado)
     else:
-        explorar_3d(volumen, espaciado, reduccion=args.reduccion)
+        explorar_3d(volumen, espaciado, reduccion=args.reduccion, estudio=estudio)
 
 
 if __name__ == "__main__":

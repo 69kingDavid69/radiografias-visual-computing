@@ -328,6 +328,70 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-21 — `Render3D.aplicar_preset` y vista de implante (rama para Emanuel)
+
+**Contexto:** el PR #8 dejó en `main` la clase `Render3D` de Emanuel con `aplicar_preset` vacío. A 5 días de la exposición, David pidió implementarlo en una rama para que Emanuel la revise.
+
+**Qué se hizo** (`feat/render3d-presets`)
+- `Render3D.mostrar(estudio)` guarda los presets de la escala del estudio (`presets_para`). **Arranca en el preset `hueso`** y con la cámara **frontal** (`view_xz()`). Si recibe una tupla sin escala, usa el umbral del 60 % de Emanuel.
+- `aplicar_preset(nombre)`: usa `superficie_por_banda` con el rango y el sigma de esa estructura (`suavizado_para`). El metal se dibuja en rojo. Si el preset no existe, el error dice cuáles hay.
+- `aplicar_capas(capas)`: varios presets a la vez, cada uno con su opacidad. Por defecto es la **vista de implante** de David (hueso al 20 % + metal sólido).
+- Los actores llevan nombre y se registran: al cambiar de preset se borra exactamente lo anterior.
+- `explorar_3d(..., estudio=)`: teclas **1–5** para los presets, **i** para la vista de implante y la barra libre como antes. `main.py --modo 3d` ya pasa el estudio.
+- No se tocó el panel 3D de la app Qt: sigue siendo un *placeholder* (fase 3, Juan + Emanuel). `Render3D` está listo para recibir un `QtInteractor`.
+
+**Verificación**
+- 5 tests nuevos con un *plotter* sin ventana:
+  - arranca en `hueso` y de frente;
+  - `esmalte_sin_metal` excluye el bracket y `metal` deja solo el bracket;
+  - las capas tienen su opacidad y desaparecen al volver a un preset;
+  - un preset desconocido da un error claro;
+  - sin escala se usa la barra libre.
+- **43/43 tests.**
+- Con el estudio Post ([results/presets_render3d_post.png](../results/presets_render3d_post.png)):
+
+  | Paso | Tiempo |
+  |---|---|
+  | mostrar | 0.34 s |
+  | hueso | 0.27 s |
+  | dientes | 0.19 s |
+  | esmalte | 0.06 s |
+  | esmalte_sin_metal | 0.08 s |
+  | metal | 0.06 s |
+  | implante | 0.33 s |
+
+**Hallazgo:** en el Post, `esmalte_sin_metal` conserva unas líneas a los lados del maxilar, en la posición de las placas de fijación. Son vóxeles del **borde** del metal que, por **efecto de volumen parcial** (un vóxel que tiene en parte metal y en parte tejido promedia su densidad), quedan entre 1250 y 2000. Confirma con datos la objeción 4 del 19/10: 2000 no es una frontera limpia entre esmalte y metal.
+
+---
+
+## 2026-10-21 — Propuesta de rediseño de la interfaz (fase 3)
+
+**Pedido de David:** una interfaz "más moderna y profesional". Se armó como **diseño** en un lienzo de Claude, sin código: https://claude.ai/artifact/ESXSCmEshA5GDUjZorpGVt. Es **privado** hasta que David lo comparta desde el menú *Share*. Las imágenes son reales: cortes y renders del estudio Post hechos con `Render3D`, solo hueso y metal, sin piel.
+
+**Pantallas**
+1. **Vista principal.** Barra superior con el estudio, su forma y vóxel, y el modo (Cortes 2D / Dividida / Modelo 3D). Panel lateral con:
+   - la escala detectada (picos, a y b);
+   - los presets con rango, sigma y tecla (1–5, I);
+   - las ventanas de contraste en "u. norm.".
+
+   Además, tres cortes con líneas guía del color de cada eje, el modelo 3D con leyenda en la vista de implante y una barra de estado con el preset activo.
+2. **Abrir estudio.** Zona para arrastrar archivos, estudios recientes con su insignia de escala y **diagnóstico de escala** (histograma con los picos y la conversión). Si un estudio no tiene picos, muestra una advertencia con la opción "Declarar como Hounsfield", que es el flujo de `escala.py` y `data/estudios.json`.
+
+**Decisiones de diseño**
+- **Fondo grafito oscuro (#0B0F14):** en imagen médica no deslumbra ni le resta contraste a la imagen. Un solo acento cian para lo interactivo, y coral **solo para el metal**, con el mismo significado que en el render.
+- **Inter** para la interfaz y **JetBrains Mono** para los números (umbrales, mm, sigma): se leen como datos y no cambian de ancho cuando varían.
+- **La escala del estudio siempre está visible.** Hoy la normalización ocurre sin que el usuario lo sepa.
+- Cada preset y cada eje tiene un color fijo, que se repite igual en listas, líneas guía y leyendas.
+- Accesibilidad: botones reales con `aria-pressed`, etiquetas en los sliders, foco visible y contraste de texto ≥ 4.5:1. Corrige el bajo contraste de los nombres de los sliders que se vio el 21/10 en tema claro.
+
+**Supuestos de la maqueta:** las imágenes son fijas (los sliders se mueven, pero la imagen no cambia), `[TU ESTUDIO]` es un lugar reservado y el histograma del diálogo es esquemático.
+
+**Decisión:** **no se implementa antes de la exposición del 26/10.** Se presenta como siguiente iteración y queda para la **fase 3**. Para implementarlo:
+- Juan lo traduce a PySide6: los colores a una hoja **QSS**, el panel lateral a un `QSplitter` o `QDockWidget`, y el panel 3D a `Render3D` con `pyvistaqt.QtInteractor`.
+- Los presets y las ventanas se leen de `densidades.py`, sin repetir valores en la interfaz.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -342,5 +406,7 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 - [x] `RANGOS_DENSIDAD` por escala (slicer y hounsfield) y `presets_para(estudio)`.
 - [ ] Validar los presets en Hounsfield con las etiquetas de ToothFairy3 (Nicolás + Emanuel).
 - [ ] Vista de implante: `metal` opaco + `hueso` o tejido blando semitransparente, para ver el metal en relación con la encía (idea de David; usa la opacidad por estructura de la fase 2, Emanuel).
-- [ ] Conectar los presets a la vista 3D (teclas o botones) y fijar la vista frontal `view_xz()` (Emanuel).
+- [x] Presets en la vista 3D (teclas 1–5 e `i`) y vista frontal: `Render3D.aplicar_preset` / `aplicar_capas` (rama para Emanuel).
+- [ ] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel).
+- [ ] Implementar el rediseño de la interfaz (propuesta del 21/10) después de la exposición (Juan).
 - [ ] Exposición del 26/10.
