@@ -302,6 +302,32 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-21 — Integración del trabajo de Juan y Emanuel
+
+**Estado al empezar:** el PR #7 se había fusionado el 19/10 sin revisión de Emanuel ni de Nicolás. Cambió la escala de los valores que reciben la app y el render, así que se les avisó.
+
+**Qué se integró** (rama `integra/companeros-21-10`)
+- **Nicolás** (`docs/investigacion`): ya estaba en `main` desde el PR #1. La rama aparecía con commits pendientes solo porque se fusionó con *squash*; ningún archivo difiere de `main`.
+- **Juan** (`spike/qt`, 20/10): interfaz rediseñada, con sliders tipo píldora, botones de ventana, simetría en la vista dividida e íconos en `assets/`. La fusión entró **sin conflictos** y conservó la carga con `cargar_estudio`.
+- **Emanuel** (`feat/optimizar-render`, 19/10): `render_3d.py` refactorizado a la clase **`Render3D`** del contrato (`mostrar`, `set_umbral`, `aplicar_preset` pendiente, `captura`). Hubo **conflicto** con `main`, que había agregado `superficie_por_banda` y el suavizado. Se conservaron las dos cosas: el encabezado, `a_pyvista` y `superficie_por_banda` de `main`, y `Render3D` y `explorar_3d` de Emanuel. En `results/tiempos.csv` se tomó la versión de Emanuel.
+
+**Problema detectado al integrar: ventanas 2D en Hounsfield sobre datos normalizados**
+- Los botones de Juan usaban ventanas de radiología en HU: dientes/hueso 1000/3000 y tejido blando 40/400.
+- Desde el PR #7 la app recibe la escala normalizada, con el tejido blando en ~410. Con "Tejido Blando" toda la cabeza salía **blanca y saturada**.
+- **Solución:** `densidades.VENTANAS_2D` por escala, igual que los presets 3D. En `hounsfield` quedan los valores de Juan; en `slicer` se **calculan** con la recta HU → escala normalizada (aire −1000 HU → 0, tejido blando 40 HU → 410, pendiente 0.394). Resultado: dientes/hueso **788/1183** y tejido blando **410/158**.
+- La app guarda la escala del estudio cargado y los botones llaman a `aplicar_preset_por_nombre`. Las etiquetas muestran "HU" o "u. norm." según la escala. Si la escala es desconocida, el botón avisa en lugar de aplicar números equivocados.
+
+**Verificación**
+- `Render3D` con el estudio Post: `mostrar` y `set_umbral(700)` funcionan.
+- La app abre el Post. El botón "Tejido Blando" muestra contraste en el tejido blando (antes salía saturado) y "Dientes/Hueso" funciona.
+- **38/38 tests** (uno nuevo para las ventanas 2D).
+
+**Pendientes para el equipo**
+- **Emanuel:** el umbral inicial de `Render3D.mostrar` (60 % del rango) cae en **2113** con el Post normalizado, que ya es zona de metal. Conviene arrancar con el preset `hueso` (700). Falta además `aplicar_preset` con `presets_para` + `superficie_por_banda` + `suavizado_para`, y la cámara `view_xz()`.
+- **Juan:** en la captura *offscreen* con tema claro, los nombres de los sliders ("Corte Axial (Z):", "Centro…") se ven casi blancos sobre fondo claro. Hay que revisar el contraste si el sistema no está en modo oscuro.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

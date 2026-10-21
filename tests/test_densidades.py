@@ -54,3 +54,12 @@ def test_esmalte_sin_metal_de_slicer_excluye_el_metal():
     minimo, maximo = RANGOS_DENSIDAD["slicer"]["esmalte_sin_metal"]
     sup = superficie_por_banda(_corona_y_bracket(), (0.5, 0.5, 0.5), minimo, maximo, reduccion=1)
     assert sup.n_points > 0 and sup.bounds[1] < 10
+
+
+def test_ventanas_2d_convertidas_a_la_escala_normalizada():
+    from src.densidades import VENTANAS_2D, ventana_para
+    # El tejido blando (40 HU) cae en 410, donde escala.py pone el pico de tejido blando.
+    assert ventana_para("slicer", "tejido_blando")[0] == 410
+    assert ventana_para("hounsfield", "tejido_blando") == (40, 400)
+    assert set(VENTANAS_2D["slicer"]) == set(VENTANAS_2D["hounsfield"])
+    assert ventana_para(None, "tejido_blando") is None
