@@ -406,6 +406,13 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 1. Settings → Pages → Build and deployment → **Source: GitHub Actions**, una sola vez.
 2. Con GitHub Free, Pages solo funciona en **repositorios públicos**. El 21/10 el repositorio aparecía **público**, aunque se creó privado el 28/09. Hay que confirmar que fue a propósito. Lo que sale en `main` (código, documentos, figuras de hueso y metal) no tiene datos de pacientes, porque `data/raw/` nunca se versionó.
 
+**Activación (21/10, PR #10 fusionado)**
+- David confirmó que **él hizo público el repositorio, a propósito**.
+- Pages se activó con la API de GitHub (`POST /repos/…/pages` con `build_type=workflow`), a pedido de David.
+- El primer despliegue, que se disparó al fusionar el PR #10, había **fallado** porque Pages todavía no estaba activo. Se volvió a correr: `build ✓`, `deploy ✓`.
+- **Sitio en línea:** https://69kingdavid69.github.io/radiografias-visual-computing/ (HTTP 200, muestra el marcador).
+- Advertencias del run, no urgentes: las acciones declaran Node 20 y GitHub las corre con Node 24 (subirlas de versión cuando salgan las nuevas), y `ubuntu-latest` migra a Ubuntu 26, lo que no afecta a un sitio estático.
+
 ---
 
 ## Próximas entradas
@@ -425,4 +432,5 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 - [x] Presets en la vista 3D (teclas 1–5 e `i`) y vista frontal: `Render3D.aplicar_preset` / `aplicar_capas` (rama para Emanuel).
 - [ ] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel).
 - [ ] Implementar el rediseño de la interfaz (propuesta del 21/10) después de la exposición (Juan).
+- [x] Página web publicada con GitHub Pages; el contenido de `web/` lo hace un compañero.
 - [ ] Exposición del 26/10.
