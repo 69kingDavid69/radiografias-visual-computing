@@ -392,6 +392,22 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-21 — Plan de la exposición actualizado y publicación de la página web con GitHub Actions
+
+**Plan de la exposición:** la línea de David (1:00–1:45) describía el pipeline viejo ("DICOM → reescalado → volumen → 2D y 3D"). Ahora dice archivo → carga → **escala** → `Estudio` → 2D y 3D, y enlaza la diapositiva con su guion de 45 s (https://claude.ai/artifact/NVTS1dRJ2QBUYN95hnP1Kf, privada hasta que se comparta).
+
+**Página web para la exposición** (la quiere hacer un integrante del equipo)
+- `.github/workflows/pages.yml` publica **solo la carpeta `web/`** en GitHub Pages: `data/`, `src/` y `results/` nunca salen. Se activa al subir a `main` cambios en `web/` o en el workflow, o a mano desde Actions ("Run workflow").
+- Usa las acciones oficiales, en las versiones que indica la documentación de GitHub (21/10): `actions/configure-pages@v5`, `actions/upload-pages-artifact@v4` y `actions/deploy-pages@v4`. Permisos mínimos: `pages: write`, `id-token: write` y `contents: read`. Despliega en el entorno `github-pages`.
+- `web/index.html` es un **marcador** ("en construcción") para que el primer despliegue tenga algo que publicar. Lo reemplaza la página del equipo.
+- Si la página usa un generador (Vite, Astro, MkDocs…), se agrega su paso de build antes de subir y `path` apunta a la carpeta generada (p. ej. `web/dist`).
+
+**Requisitos que no se pueden hacer desde el código**
+1. Settings → Pages → Build and deployment → **Source: GitHub Actions**, una sola vez.
+2. Con GitHub Free, Pages solo funciona en **repositorios públicos**. El 21/10 el repositorio aparecía **público**, aunque se creó privado el 28/09. Hay que confirmar que fue a propósito. Lo que sale en `main` (código, documentos, figuras de hueso y metal) no tiene datos de pacientes, porque `data/raw/` nunca se versionó.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

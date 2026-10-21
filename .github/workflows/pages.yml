@@ -1,0 +1,50 @@
+# Publica la página web del proyecto (carpeta web/) en GitHub Pages.
+#
+# Se activa al subir a main cambios dentro de web/ o este archivo, y a mano desde
+# la pestaña Actions ("Run workflow"). Solo se publica web/: data/, src/ y results/
+# nunca salen en la página.
+#
+# Requisito único (una vez): Settings → Pages → Build and deployment → Source:
+# "GitHub Actions". Con GitHub Free el repositorio tiene que ser público.
+name: Publicar página web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Permisos mínimos que pide deploy-pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo despliegue a la vez; si llega otro, el que está corriendo termina.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      # Si la página usa un generador (Vite, Astro, MkDocs…), su paso de build va
+      # aquí y `path` debe apuntar a la carpeta que genera (p. ej. web/dist).
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
