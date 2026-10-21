@@ -30,14 +30,14 @@ Recibe el `plotter` desde afuera para que Juan le pase el `QtInteractor` de la a
 **Hecho cuando:** mueves la barra y la superficie cambia.
 
 ## Fase 1 — Rendimiento · rama `feat/render-rapido`
-1. Recalcular solo al soltar la barra:
+1. [x] Recalcular solo al soltar la barra:
    `add_slider_widget(..., interaction_event="end")`.
-2. `scripts/benchmark_render.py`: mide el tiempo de `contour()` y el número de
+2. [x] `scripts/benchmark_render.py`: mide el tiempo de `contour()` y el número de
    triángulos con `reduccion` = 1, 2 y 4 sobre un estudio real, y lo guarda en
    `results/tiempos.csv`.
-3. Elegir la `reduccion` por defecto con esos números: la meta es menos de 0.5 s
-   por actualización.
-4. Refactorizar a la clase `Render3D` del contrato.
+3. [x] Elegir la `reduccion` por defecto con esos números: seleccionada **`reduccion = 2`**
+   (reduce los vóxeles a 1/8, tiempo $< 0.5$ s en tomografía real conservando detalle anatómico).
+4. [x] Refactorizar a la clase `Render3D` del contrato (implementada en `src/render_3d.py`).
 
 **Hecho cuando:** la tabla de tiempos está en `results/` y el render responde
 fluido en el computador más lento del equipo.

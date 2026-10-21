@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
+from src.densidades import unidad_de, ventana_para
 from src.visor_cortes import (
     COLOR_ANCHO,
     COLOR_AXIAL,
@@ -416,6 +417,7 @@ class MainWindow(QMainWindow):
         self.slider_z: QSlider | None = None
         self.slider_y: QSlider | None = None
         self.slider_x: QSlider | None = None
+        self.escala: str | None = None   # escala de densidad del estudio cargado
         self.slider_centro: QSlider | None = None
         self.slider_ancho: QSlider | None = None
 
@@ -534,24 +536,24 @@ class MainWindow(QMainWindow):
         fila_presets = QHBoxLayout()
         fila_presets.setSpacing(10)
 
-        lbl_titulo_seccion = QLabel("<b>🎛️ NAVEGACIÓN MULTICORTE & VENTANA HU</b>")
+        lbl_titulo_seccion = QLabel("<b>🎛️ NAVEGACIÓN MULTICORTE & VENTANA DE CONTRASTE</b>")
         lbl_titulo_seccion.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
         fila_presets.addWidget(lbl_titulo_seccion)
         fila_presets.addStretch()
 
-        # Botones de Presets Hounsfield
+        # Botones de ventana: los valores dependen de la escala del estudio (densidades.VENTANAS_2D)
         btn_preset_dientes = QPushButton("🦷 Dientes / Hueso")
         btn_preset_dientes.setProperty("class", "btn-preset")
         btn_preset_dientes.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_preset_dientes.setToolTip("Preset dental/óseo: Centro 1000 HU, Ancho 3000 HU")
-        btn_preset_dientes.clicked.connect(lambda: self.aplicar_preset_ventana(1000, 3000))
+        btn_preset_dientes.setToolTip("Ventana dental/ósea (1000/3000 HU, convertida a la escala del estudio)")
+        btn_preset_dientes.clicked.connect(lambda: self.aplicar_preset_por_nombre("dientes_hueso"))
         fila_presets.addWidget(btn_preset_dientes)
 
         btn_preset_blando = QPushButton("🧠 Tejido Blando")
         btn_preset_blando.setProperty("class", "btn-preset")
         btn_preset_blando.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_preset_blando.setToolTip("Preset tejido blando: Centro 40 HU, Ancho 400 HU")
-        btn_preset_blando.clicked.connect(lambda: self.aplicar_preset_ventana(40, 400))
+        btn_preset_blando.setToolTip("Ventana de tejido blando (40/400 HU, convertida a la escala del estudio)")
+        btn_preset_blando.clicked.connect(lambda: self.aplicar_preset_por_nombre("tejido_blando"))
         fila_presets.addWidget(btn_preset_blando)
 
         btn_preset_reset = QPushButton("🔄 Reset Ventana")
@@ -632,7 +634,7 @@ class MainWindow(QMainWindow):
         fila_c_lbl = QHBoxLayout()
         lbl_c = QLabel("<span style='color: #9b59b6; font-size: 14px;'>●</span> <b>Centro (Window Level):</b>")
         lbl_c.setStyleSheet("font-size: 12px; color: #ffffff;")
-        self.lbl_val_centro = QLabel("0 HU")
+        self.lbl_val_centro = QLabel("0")
         self.lbl_val_centro.setStyleSheet("color: #9b59b6; font-weight: bold; font-size: 11px;")
         fila_c_lbl.addWidget(lbl_c)
         fila_c_lbl.addStretch()
@@ -649,7 +651,7 @@ class MainWindow(QMainWindow):
         fila_a_lbl = QHBoxLayout()
         lbl_a = QLabel("<span style='color: #e67e22; font-size: 14px;'>●</span> <b>Ancho (Window Width):</b>")
         lbl_a.setStyleSheet("font-size: 12px; color: #ffffff;")
-        self.lbl_val_ancho = QLabel("0 HU")
+        self.lbl_val_ancho = QLabel("0")
         self.lbl_val_ancho.setStyleSheet("color: #e67e22; font-weight: bold; font-size: 11px;")
         fila_a_lbl.addWidget(lbl_a)
         fila_a_lbl.addStretch()
@@ -754,6 +756,7 @@ class MainWindow(QMainWindow):
             estudio = cargar_estudio(ruta_carpeta)
             volumen, espaciado = estudio.volumen, estudio.espaciado
             self.ruta_dicom = ruta_carpeta
+            self.escala = estudio.metadatos.get("escala")
 
             # Actualizar VisorCortes manteniendo relación de aspecto exacta
             self.visor_cortes.mostrar((volumen, espaciado))
@@ -790,6 +793,7 @@ class MainWindow(QMainWindow):
 
             estudio = cargar_estudio(self.ruta_dicom)
             volumen, espaciado = estudio.volumen, estudio.espaciado
+            self.escala = estudio.metadatos.get("escala")
             msg_estado = (
                 f"Estudio cargado: {self.ruta_dicom} | "
                 f"Volumen: {volumen.shape} (Z, Y, X) | "
@@ -901,10 +905,10 @@ class MainWindow(QMainWindow):
             self.lbl_val_x.setText(f"{idx} / {self.visor_cortes.nx - 1} ({pos_mm:.1f} mm)")
 
     def _actualizar_etiqueta_centro(self, val: int):
-        self.lbl_val_centro.setText(f"{val} HU")
+        self.lbl_val_centro.setText(f"{val} {unidad_de(self.escala)}")
 
     def _actualizar_etiqueta_ancho(self, val: int):
-        self.lbl_val_ancho.setText(f"{val} HU")
+        self.lbl_val_ancho.setText(f"{val} {unidad_de(self.escala)}")
 
     def _al_cambiar_corte_desde_visor(self, eje: str, indice: int):
         """Callback invocado cuando el usuario hace clic dentro de Matplotlib."""
@@ -962,7 +966,16 @@ class MainWindow(QMainWindow):
 
         self._actualizar_etiqueta_centro(centro)
         self._actualizar_etiqueta_ancho(ancho)
-        self.statusBar.showMessage(f"Preset aplicado: Centro {centro} HU, Ancho {ancho} HU")
+        u = unidad_de(self.escala)
+        self.statusBar.showMessage(f"Preset aplicado: Centro {centro} {u}, Ancho {ancho} {u}")
+
+    def aplicar_preset_por_nombre(self, nombre: str):
+        """Aplica una ventana de densidades.VENTANAS_2D en la escala del estudio cargado."""
+        ventana = ventana_para(self.escala, nombre)
+        if ventana is None:
+            self.statusBar.showMessage("Escala del estudio desconocida: ajusta la ventana a mano")
+            return
+        self.aplicar_preset_ventana(*ventana)
 
     def reset_ventana(self):
         """Restablece los sliders y el contraste al rango completo del estudio."""
@@ -977,7 +990,8 @@ class MainWindow(QMainWindow):
             self.slider_ancho.setValue(a_int)
         self._actualizar_etiqueta_centro(c_int)
         self._actualizar_etiqueta_ancho(a_int)
-        self.statusBar.showMessage(f"Ventana reiniciada: Centro {c_int} HU, Ancho {a_int} HU")
+        u = unidad_de(self.escala)
+        self.statusBar.showMessage(f"Ventana reiniciada: Centro {c_int} {u}, Ancho {a_int} {u}")
 
     # ==========================================================================
     # MANEJO DE VISTAS Y DIVISOR (QSPLITTER)

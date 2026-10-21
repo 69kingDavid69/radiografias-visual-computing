@@ -64,3 +64,36 @@ def presets_para(estudio):
     la app muestra entonces solo la barra libre, en lugar de presets con números
     de otro equipo que aislarían la estructura equivocada."""
     return RANGOS_DENSIDAD.get(escala_de(estudio), {})
+
+
+# Ventanas de contraste del visor 2D (centro, ancho). Las de Hounsfield son las de
+# radiología que eligió Juan; las de la escala "slicer" son las mismas convertidas con
+# la recta que deja el aire (−1000 HU) en 0 y el tejido blando (40 HU) en 410, la misma
+# referencia a la que src/escala.py normaliza cada estudio.
+VENTANAS_HU = {
+    "dientes_hueso": (1000, 3000),
+    "tejido_blando": (40, 400),
+}
+_PENDIENTE_HU = 410 / (40 - (-1000))          # 0.394 unidades por HU
+
+
+def _hu_a_slicer(centro, ancho):
+    return round(_PENDIENTE_HU * (centro + 1000)), round(_PENDIENTE_HU * ancho)
+
+
+VENTANAS_2D = {
+    "hounsfield": VENTANAS_HU,
+    "slicer": {nombre: _hu_a_slicer(*v) for nombre, v in VENTANAS_HU.items()},
+}
+
+
+def ventana_para(estudio_o_escala, nombre):
+    """(centro, ancho) de una ventana 2D en la escala del estudio, o None si no se conoce."""
+    escala = (estudio_o_escala if isinstance(estudio_o_escala, (str, type(None)))
+              else escala_de(estudio_o_escala))
+    return VENTANAS_2D.get(escala, {}).get(nombre)
+
+
+def unidad_de(escala):
+    """Etiqueta de unidades para mostrar en la interfaz."""
+    return "HU" if escala == "hounsfield" else "u. norm."
