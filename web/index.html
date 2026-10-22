@@ -3,20 +3,385 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Explorador CBCT</title>
-<style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
-         background: #0B0F14; color: #E7EDF4; font: 16px/1.5 system-ui, sans-serif; }
-  main { max-width: 640px; }
-  h1 { margin: 0 0 8px; font-size: 32px; }
-  p { margin: 0; color: #9AA7B6; }
-</style>
+<title>Explorador CBCT — de la tomografía al modelo 3D</title>
+<meta name="description" content="Proyecto de Visual Computing (UNAL Medellín): cómo una tomografía dental CBCT se convierte en un modelo 3D interactivo que aísla estructuras por densidad.">
+<link rel="icon" href="img/icono.png">
+<link rel="stylesheet" href="estilos.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js" } }
+</script>
 </head>
 <body>
+
+<nav class="nav" aria-label="Secciones">
+  <a class="marca" href="#inicio"><img src="img/icono.png" alt=""><span>Explorador CBCT</span></a>
+  <ul>
+    <li><a href="#voxel">1 · Vóxeles</a></li>
+    <li><a href="#umbral">2 · Umbral</a></li>
+    <li><a href="#malla">3 · Malla</a></li>
+    <li><a href="#modelo">4 · Modelo 3D</a></li>
+    <li><a href="#hallazgos">5 · Hallazgos</a></li>
+    <li><a href="#datos">Datos y equipo</a></li>
+  </ul>
+</nav>
+
+<header class="portada" id="inicio">
+  <div class="contenedor rejilla-2">
+    <div>
+      <div class="eyebrow">Visual Computing · UNAL Medellín · 2026-2</div>
+      <h1>De la tomografía dental al <span>modelo 3D</span></h1>
+      <p class="lead">Una radiografía es una foto plana donde todo se superpone. Una tomografía CBCT es un
+        <b>cubo de densidades</b> hecho de cientos de cortes. Esta página muestra, paso a paso y con datos
+        reales, cómo nuestro programa convierte ese cubo en un modelo 3D que se puede girar, iluminar y cortar,
+        dejando ver solo el hueso, los dientes o el esmalte.</p>
+      <blockquote class="cita-pregunta">
+        <small>Pregunta de investigación</small>
+        ¿De qué manera podemos desarrollar una interfaz gráfica que transforme los datos volumétricos de una
+        tomografía dental (CBCT) en un modelo 3D interactivo, aislando estructuras específicas según su densidad?
+      </blockquote>
+      <div class="botones">
+        <a class="btn primario" href="#voxel">Empezar el recorrido</a>
+        <a class="btn" href="#modelo">Ir al modelo 3D</a>
+        <a class="btn" href="https://github.com/69kingDavid69/radiografias-visual-computing">Código en GitHub</a>
+      </div>
+      <div class="equipo">
+        <span><b>David</b> · datos y pipeline</span>
+        <span><b>Juan Gómez</b> · visor 2D e interfaz</span>
+        <span><b>Emanuel Aristizábal</b> · render 3D</span>
+        <span><b>Nicolás Quintana</b> · investigación y datos</span>
+        <span>Profesor: <b>Paluszny</b></span>
+      </div>
+    </div>
+    <div class="visor-portada" id="visor-portada" aria-label="Modelo 3D de los dientes y el hueso girando">
+      <div class="cargando" id="cargando-portada">Cargando modelo…</div>
+    </div>
+  </div>
+
+  <div class="contenedor" style="margin-top:40px">
+    <div class="flujo" aria-label="Flujo del programa">
+      <div class="paso"><div class="num">01</div><h4>Cargar</h4><p>DICOM, GIPL o NIfTI → volumen <code>(z, y, x)</code> + tamaño del vóxel en mm.</p></div>
+      <div class="paso"><div class="num">02</div><h4>Normalizar</h4><p>Cada equipo da números distintos: se ajustan con los picos de aire y tejido blando.</p></div>
+      <div class="paso"><div class="num">03</div><h4>Ver en 2D</h4><p>Cortes axial, coronal y sagital con control de contraste.</p></div>
+      <div class="paso"><div class="num">04</div><h4>Umbralizar</h4><p>Elegir una densidad: lo que la supera es "la estructura".</p></div>
+      <div class="paso"><div class="num">05</div><h4>Malla 3D</h4><p>Marching cubes pone triángulos en el borde; luego se ilumina y se suaviza.</p></div>
+    </div>
+  </div>
+</header>
+
 <main>
-  <h1>Explorador CBCT</h1>
-  <p>Página del proyecto de Visual Computing (UNAL Medellín), en construcción. Este archivo es solo un punto de partida: se reemplaza por la página del equipo.</p>
+
+<!-- ============ 1. VÓXELES ============ -->
+<section id="voxel">
+  <div class="contenedor">
+    <div class="eyebrow">1 · El dato de entrada</div>
+    <h2 class="titulo-seccion">Una tomografía es un cubo de vóxeles</h2>
+    <p class="intro">El equipo CBCT gira una vez alrededor de la cabeza y reconstruye un volumen 3D. Cada cubito de ese
+      volumen es un <b>vóxel</b> (un "píxel 3D") y guarda cuánto frena los rayos X el material que hay ahí: su
+      <b>densidad</b>. Abajo está la tomografía real con la que trabajamos, vista en los tres planos que usa el visor
+      del programa. Pasa el ratón por encima para leer el valor de cada vóxel.</p>
+
+    <div class="tarjeta">
+      <div class="chips" role="group" aria-label="Contraste">
+        <button class="chip" data-ventana="completo" aria-pressed="true">Rango completo</button>
+        <button class="chip" data-ventana="dientes_hueso" aria-pressed="false">Dientes y hueso</button>
+        <button class="chip" data-ventana="tejido_blando" aria-pressed="false">Tejido blando</button>
+        <button class="chip" id="btn-voxeles" aria-pressed="true">Ver los vóxeles</button>
+      </div>
+      <div class="planos" id="planos">
+        <div class="plano" data-plano="axial">
+          <span class="etiqueta" style="color:var(--axial)">AXIAL · desde arriba</span>
+          <canvas width="180" height="180"></canvas>
+          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--axial)" aria-label="Corte axial"></div></div>
+        </div>
+        <div class="plano" data-plano="coronal">
+          <span class="etiqueta" style="color:var(--coronal)">CORONAL · de frente</span>
+          <canvas width="180" height="180"></canvas>
+          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--coronal)" aria-label="Corte coronal"></div></div>
+        </div>
+        <div class="plano" data-plano="sagital">
+          <span class="etiqueta" style="color:var(--sagital)">SAGITAL · de lado</span>
+          <canvas width="180" height="180"></canvas>
+          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--sagital)" aria-label="Corte sagital"></div></div>
+        </div>
+      </div>
+      <div class="rejilla-2" style="margin-top:16px">
+        <div>
+          <div class="control"><label>Centro de la ventana (nivel) <output id="out-centro"></output></label><input type="range" id="centro" min="0" max="3000" step="10"></div>
+          <div class="control"><label>Ancho de la ventana <output id="out-ancho"></output></label><input type="range" id="ancho" min="50" max="4000" step="10"></div>
+          <div class="lectura" id="lectura-voxel">Pasa el ratón por un corte para leer un vóxel.</div>
+        </div>
+        <div class="explicacion">
+          <p><strong>Ventana / nivel.</strong> Una pantalla muestra ~256 grises, pero el volumen tiene miles de valores. La
+            ventana elige qué parte se ve: todo lo que está por debajo sale negro y lo de arriba, blanco. Con una ventana
+            estrecha y alta se distingue el esmalte de la dentina.</p>
+          <p class="nota">Esta vista usa 1 de cada 2 vóxeles (1 mm) para que la página sea liviana; el programa usa la
+            resolución completa de 0.5 mm. Con "Ver los vóxeles" activado se ven los cubitos tal cual.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. UMBRAL ============ -->
+<section id="umbral">
+  <div class="contenedor">
+    <div class="eyebrow">2 · Aislar por densidad</div>
+    <h2 class="titulo-seccion">La barra de umbral: qué es hueso, qué es diente</h2>
+    <div class="pregunta-profe"><span>❓</span><span><b>¿Cómo se traduce la escala de grises en algo visualizable?</b>
+      Eligiendo un umbral: todo vóxel con densidad mayor o igual se considera parte de la estructura. Subir el umbral
+      va "pelando" capas: piel → hueso → dientes → esmalte → metal.</span></div>
+
+    <div class="rejilla-2">
+      <div class="tarjeta">
+        <div class="chips" role="group" aria-label="Presets de densidad" id="chips-umbral"></div>
+        <div class="control"><label>Umbral de densidad <output id="out-umbral"></output></label><input type="range" id="umbral-barra" min="0" max="3000" step="10" value="1000"></div>
+        <div class="control"><label>Corte axial <output id="out-corte-umbral"></output></label><input type="range" id="corte-umbral" style="--color-barra:var(--axial)"></div>
+        <div class="lienzo-umbral"><canvas id="lienzo-umbral" width="180" height="180" aria-label="Corte axial con los vóxeles que pasan el umbral resaltados"></canvas></div>
+        <div class="estadistica">
+          <span>Vóxeles sobre el umbral en este corte: <b id="pct-corte">—</b></span>
+          <span>En todo el volumen: <b id="pct-total">—</b></span>
+        </div>
+      </div>
+      <div>
+        <div class="tarjeta histograma">
+          <h3 style="font-size:16px;margin-bottom:4px">Histograma de densidades</h3>
+          <p class="nota" style="margin-bottom:8px">Cuántos vóxeles hay de cada densidad (eje vertical en escala logarítmica). En celeste, lo que pasa el umbral.</p>
+          <div id="histograma"></div>
+        </div>
+        <div class="explicacion" style="margin-top:16px">
+          <h3>Cómo leer el histograma</h3>
+          <ul>
+            <li>El pico en <b>0</b> es el <b>aire</b> alrededor de la cabeza.</li>
+            <li>El pico ancho cerca de <b>400</b> es la <b>piel y el tejido blando</b>.</li>
+            <li>La cola de 600 a ~1300 es el <b>hueso</b> y los <b>dientes</b>; por encima de ~2000 solo queda <b>metal</b>.</li>
+          </ul>
+          <p>Estos números <b>no son unidades Hounsfield</b>: en Hounsfield el aire vale −1000, aquí vale 0. Cada equipo
+            CBCT da números distintos (ver <a href="#hallazgos">hallazgos</a>).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. MARCHING ============ -->
+<section id="malla">
+  <div class="contenedor">
+    <div class="eyebrow">3 · De vóxeles a triángulos</div>
+    <h2 class="titulo-seccion">Marching cubes, visto en 2D</h2>
+    <div class="pregunta-profe"><span>❓</span><span><b>¿Cómo se convierte la escala de grises en una malla 3D?</b>
+      Con el algoritmo <i>marching cubes</i> (Lorensen y Cline, 1987). Aquí está su versión plana,
+      <i>marching squares</i>, sobre un pedazo real de un diente: es exactamente la misma idea con una dimensión menos.</span></div>
+
+    <div class="rejilla-2">
+      <div class="tarjeta ms">
+        <div class="control"><label>Umbral <output id="out-umbral-ms"></output></label><input type="range" id="umbral-ms" min="200" max="2500" step="10" value="1000"></div>
+        <canvas id="lienzo-ms" width="560" height="560" aria-label="Rejilla de vóxeles de un diente con el borde calculado por marching squares"></canvas>
+        <div class="leyenda-ms">
+          <span><i style="background:var(--acento)"></i>esquina dentro (≥ umbral)</span>
+          <span><i style="background:#3d4855"></i>esquina fuera</span>
+          <span><i style="background:#fff;border-radius:2px;height:3px;width:14px"></i>borde calculado</span>
+        </div>
+        <div class="caso" id="caso-ms">Pasa el ratón por una celda para ver su caso.</div>
+      </div>
+      <div class="explicacion">
+        <h3>El algoritmo, paso a paso</h3>
+        <ol>
+          <li>Se recorre la imagen tomando <b>celdas de 4 vóxeles vecinos</b> (en 3D, cubos de 8).</li>
+          <li>Cada esquina queda <b>dentro</b> o <b>fuera</b> según el umbral. Con 4 esquinas hay 2⁴ = <b>16 casos</b>;
+            en 3D, con 8 esquinas, 2⁸ = <b>256 casos</b> que por simetría se reducen a <b>15 configuraciones</b>.</li>
+          <li>Una <b>tabla</b> dice qué segmentos (en 3D, qué triángulos) poner en cada caso.</li>
+          <li>El punto exacto sobre cada arista se calcula por <b>interpolación lineal</b> entre los dos valores. Por eso
+            el borde pasa <i>entre</i> los vóxeles y no se ve "en escalera".</li>
+          <li>En 3D, la <b>normal</b> de cada vértice sale del gradiente de la densidad y se usa para iluminar.</li>
+        </ol>
+        <p>En el programa esto lo hace una línea: <code>malla.contour([umbral])</code> de PyVista/VTK, que
+          también ofrece la variante <i>flying edges</i>, más rápida.</p>
+        <p class="nota">Mueve el umbral: los puntos celestes cambian y el borde blanco se recalcula en vivo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. MODELO 3D ============ -->
+<section id="modelo">
+  <div class="contenedor">
+    <div class="eyebrow">4 · Laboratorio 3D</div>
+    <h2 class="titulo-seccion">El modelo 3D: estructuras, luz, suavizado y corte</h2>
+    <p class="intro">Estas mallas salen del mismo código del programa (<code>superficie_por_banda</code> con los presets
+      de <code>densidades.py</code>) aplicado a la tomografía real. Cada pestaña responde una de las preguntas de la
+      propuesta. Arrastra para girar, rueda para acercar.</p>
+
+    <div class="laboratorio">
+      <div class="escena" id="escena-lab">
+        <div class="cargando" id="cargando-lab">Cargando modelo…</div>
+        <div class="ayuda-raton">🖱 arrastrar: girar · rueda: zoom · derecho: mover</div>
+        <div class="hud" id="hud-lab"></div>
+      </div>
+      <div class="panel-lab">
+        <div class="pestanas" role="tablist" aria-label="Temas del laboratorio">
+          <button role="tab" aria-selected="true" data-pestana="estructuras">Estructuras</button>
+          <button role="tab" aria-selected="false" data-pestana="luz">Luz</button>
+          <button role="tab" aria-selected="false" data-pestana="suavizado">Suavizado</button>
+          <button role="tab" aria-selected="false" data-pestana="corte">Corte</button>
+          <button role="tab" aria-selected="false" data-pestana="rendimiento">Rendimiento</button>
+        </div>
+
+        <div class="contenido-pestana" data-contenido="estructuras" role="tabpanel">
+          <h3>Aislar estructuras por densidad</h3>
+          <div class="chips" role="group" aria-label="Estructura" id="chips-estructura"></div>
+          <p id="texto-estructura"></p>
+          <p class="nota">Los rangos se midieron en esta tomografía (están en <code>src/densidades.py</code>). No se publica la
+            superficie de la piel porque reconstruye la cara del paciente.</p>
+        </div>
+
+        <div class="contenido-pestana" data-contenido="luz" role="tabpanel" hidden>
+          <h3>¿Qué iluminación ayuda a ver raíces e irregularidades?</h3>
+          <div class="interruptor" role="group" aria-label="Sombreado">
+            <button data-sombreado="plano" aria-pressed="false">Plano</button>
+            <button data-sombreado="phong" aria-pressed="true">Phong</button>
+          </div>
+          <div class="control"><label>Brillo especular (exponente n) <output id="out-brillo"></output></label><input type="range" id="brillo" min="1" max="120" value="40"></div>
+          <div class="chips"><button class="chip" id="btn-triangulos" aria-pressed="false">Ver triángulos</button></div>
+          <div class="formula">color = ambiente + difusa·(N·L) + especular·(R·V)ⁿ</div>
+          <ul>
+            <li><b>Plano:</b> una normal por triángulo; se ven las facetas.</li>
+            <li><b>Gouraud:</b> la luz se calcula en los vértices y se interpolan los colores; los brillos pequeños se pierden.</li>
+            <li><b>Phong:</b> se interpolan las normales y la luz se calcula en cada píxel; los brillos marcan curvas finas como las raíces. Es el que usa el programa (<code>smooth_shading=True</code>).</li>
+          </ul>
+        </div>
+
+        <div class="contenido-pestana" data-contenido="suavizado" role="tabpanel" hidden>
+          <h3>¿Cómo se suaviza sin perder la forma?</h3>
+          <div class="chips" role="group" aria-label="Suavizado" id="chips-suavizado">
+            <button class="chip" data-suavizado="ninguno" aria-pressed="true">Sin suavizar</button>
+            <button class="chip" data-suavizado="laplaciano" aria-pressed="false">Laplaciano</button>
+            <button class="chip" data-suavizado="taubin" aria-pressed="false">Taubin</button>
+          </div>
+          <div class="control"><label>Iteraciones <output id="out-iter"></output></label><input type="range" id="iteraciones" min="5" max="100" step="5" value="30"></div>
+          <div class="dato-vivo">
+            <div><small>Volumen respecto al original</small><b id="vol-cambio">100 %</b></div>
+            <div><small>Triángulos</small><b id="tri-suav">—</b></div>
+          </div>
+          <ul>
+            <li><b>Laplaciano:</b> cada vértice va al promedio de sus vecinos. Suaviza, pero <b>encoge</b> el modelo.</li>
+            <li><b>Taubin:</b> alterna un paso que encoge y otro que infla (filtro pasa-bajos): quita el ruido <b>sin encoger</b>.</li>
+          </ul>
+          <p class="nota">Se calcula en vivo en el navegador sobre el modelo de los dientes (λ = 0.33, μ = −0.34). Con más iteraciones el Laplaciano encoge cada vez más, mientras Taubin se mantiene cerca del 100 %. En el programa (PyVista) se midió −10.4 % y −1.3 %. Como el modelo está recortado, el volumen es aproximado.</p>
+        </div>
+
+        <div class="contenido-pestana" data-contenido="corte" role="tabpanel" hidden>
+          <h3>Plano de corte: ver por dentro</h3>
+          <div class="interruptor" role="group" aria-label="Eje del plano">
+            <button data-eje="x" aria-pressed="true">Lado a lado</button>
+            <button data-eje="y" aria-pressed="false">Adelante-atrás</button>
+            <button data-eje="z" aria-pressed="false">Arriba-abajo</button>
+          </div>
+          <div class="control"><label>Posición del plano <output id="out-corte"></output></label><input type="range" id="pos-corte" min="0" max="1000" value="500"></div>
+          <p>Todo lo que queda de un lado del plano se oculta. Como la superficie es una cáscara, al cortarla se ve el
+            interior en <b style="color:var(--metal)">rojo</b>: las cavidades de la pulpa y los conductos aparecen como superficies internas del diente.</p>
+          <p class="nota">En el programa: <code>pl.add_mesh_clip_plane(superficie)</code> (PyVista).</p>
+        </div>
+
+        <div class="contenido-pestana" data-contenido="rendimiento" role="tabpanel" hidden>
+          <h3>¿Cuánto cuestan los polígonos?</h3>
+          <div class="dato-vivo">
+            <div><small>Triángulos en pantalla</small><b id="tri-vivo">—</b></div>
+            <div><small>Cuadros por segundo</small><b id="fps-vivo">—</b></div>
+          </div>
+          <div class="chips"><button class="chip" id="btn-girar" aria-pressed="false">Girar solo</button></div>
+          <p>Hay dos costos distintos:</p>
+          <ul>
+            <li><b>Extraer</b> la superficie depende de los vóxeles y se paga al mover la barra de umbral.</li>
+            <li><b>Dibujarla</b> depende de los triángulos y se paga en cada cuadro mientras se gira.</li>
+          </ul>
+          <p>Las mediciones del programa están en <a href="#hallazgos">hallazgos</a>: <i>flying edges</i> es 4–5× más
+            rápido y tomar 1 de cada 2 vóxeles deja 4.4× menos triángulos.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. HALLAZGOS ============ -->
+<section id="hallazgos">
+  <div class="contenedor">
+    <div class="eyebrow">5 · Resultados</div>
+    <h2 class="titulo-seccion">Lo que encontramos</h2>
+    <div class="rejilla-4">
+      <div class="cifra"><div class="valor">0 – 3874</div><div class="que">El CBCT no está en Hounsfield</div><p>En esta tomografía el aire vale 0, no −1000. Cada equipo da números distintos, así que el programa normaliza cada estudio antes de aplicar los presets.</p></div>
+      <div class="cifra"><div class="valor">4–5<small>×</small></div><div class="que">Más rápido con flying edges</div><p>0.086 s contra 0.408 s para extraer la superficie a resolución completa.</p></div>
+      <div class="cifra"><div class="valor">4.4<small>×</small></div><div class="que">Menos triángulos al reducir</div><p>Con 1 de cada 2 vóxeles: de 423 mil a 96 mil triángulos. La superficie crece con el área, no con el volumen.</p></div>
+      <div class="cifra"><div class="valor">−10 %<small> / −1.3 %</small></div><div class="que">Laplaciano vs. Taubin</div><p>Cuánto encoge el volumen de los dientes con cada suavizado.</p></div>
+    </div>
+
+    <div class="rejilla-2" style="margin-top:24px">
+      <div class="tarjeta">
+        <h3 style="font-size:16px;margin-bottom:10px">Tiempo de extracción de la superficie (umbral 1000)</h3>
+        <table>
+          <thead><tr><th>Reducción</th><th class="num">contour</th><th class="num">marching_cubes</th><th class="num">flying_edges</th><th class="num">Triángulos</th></tr></thead>
+          <tbody>
+            <tr><td>1 (0.5 mm)</td><td class="num">0.408 s</td><td class="num">0.278 s</td><td class="num"><span class="mejor">0.086 s</span></td><td class="num">≈ 423 000</td></tr>
+            <tr><td>2 (1 mm)</td><td class="num">0.053 s</td><td class="num">0.047 s</td><td class="num"><span class="mejor">0.013 s</span></td><td class="num">≈ 96 000</td></tr>
+            <tr><td>4 (2 mm)</td><td class="num">0.007 s</td><td class="num">0.008 s</td><td class="num"><span class="mejor">0.002 s</span></td><td class="num">≈ 19 500</td></tr>
+          </tbody>
+        </table>
+        <p class="nota" style="margin-top:10px">Volumen de 330×360×360 vóxeles, portátil Ryzen 7 5800H, 15/10/2026. Datos: <code>results/investigacion/tiempos_muestra_slicer.csv</code>.</p>
+      </div>
+      <div class="lista-limites">
+        <div class="tarjeta"><h4>Densidades que se cruzan</h4><p>El hueso cortical denso se parece a la dentina; un solo umbral no los separa.</p></div>
+        <div class="tarjeta"><h4>El metal manda</h4><p>Brackets e implantes superan al esmalte y además generan rayas (artefactos).</p></div>
+        <div class="tarjeta"><h4>Volumen parcial</h4><p>En los bordes un vóxel mezcla dos tejidos y queda con un valor intermedio.</p></div>
+        <div class="tarjeta"><h4>Detalle vs. fluidez</h4><p>Reducir la resolución hace la interacción fluida, pero borra raíces delgadas.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DATOS Y EQUIPO ============ -->
+<section id="datos">
+  <div class="contenedor">
+    <div class="eyebrow">Datos, documentos y equipo</div>
+    <h2 class="titulo-seccion">De dónde salen los datos</h2>
+    <div class="rejilla-3">
+      <div class="tarjeta dataset"><h4>Muestra CBCT de 3D Slicer</h4><div class="uso">Desarrollo, demo y esta página</div><p>Tomografía dental real de 360×360×330 vóxeles de 0.5 mm. Pública, 24 MB, sin registro.</p></div>
+      <div class="tarjeta dataset"><h4>ToothFairy3</h4><div class="uso">Resultados del informe</div><p>532 tomografías de la Universidad de Módena, en Hounsfield, con 77 estructuras etiquetadas para validar los rangos.</p></div>
+      <div class="tarjeta dataset"><h4>Missing teeth (ScienceDB)</h4><div class="uso">Opcional</div><p>158 tomografías DICOM de 3 equipos distintos, para comparar cómo cambia cada máquina.</p></div>
+    </div>
+
+    <h3 style="margin:36px 0 14px;font-size:20px">Documentos del proyecto</h3>
+    <div class="rejilla-4 docs">
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/investigacion/marco-teorico.md">Marco teórico<span>CBCT, DICOM, Hounsfield, marching cubes, luz y glosario</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/investigacion/densidades.md">Rangos de densidad<span>Presets medidos y su justificación</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/investigacion/datasets.md">Datasets<span>Qué tomografías se usan y por qué</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/investigacion/preguntas-clave.md">Preguntas técnicas<span>Las 5 preguntas de la propuesta, con código</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/ARCHITECTURE.md">Arquitectura<span>Módulos y flujo del programa</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/bitacora-desarrollo.md">Bitácora<span>Qué se construyó y por qué</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing/blob/main/docs/investigacion/informe.md">Informe<span>Borrador del informe final</span></a>
+      <a class="tarjeta" href="https://github.com/69kingDavid69/radiografias-visual-computing">Repositorio<span>Código fuente y pruebas</span></a>
+    </div>
+
+    <h3 style="margin:36px 0 14px;font-size:20px">Equipo</h3>
+    <div class="rejilla-4">
+      <div class="tarjeta persona"><div class="avatar">D</div><div><b>David</b><span>Datos, pipeline e integración</span></div></div>
+      <div class="tarjeta persona"><div class="avatar">J</div><div><b>Juan Gómez</b><span>Visor 2D e interfaz</span></div></div>
+      <div class="tarjeta persona"><div class="avatar">E</div><div><b>Emanuel Aristizábal</b><span>Render 3D</span></div></div>
+      <div class="tarjeta persona"><div class="avatar">N</div><div><b>Nicolás Quintana</b><span>Investigación y datos</span></div></div>
+    </div>
+  </div>
+</section>
+
 </main>
+
+<footer>
+  <div class="contenedor">
+    <p>Explorador CBCT · Visual Computing, Universidad Nacional de Colombia, Sede Medellín, 2026-2 · Profesor Paluszny.</p>
+    <p>Datos: muestra <i>CBCTDentalSurgery</i> de 3D Slicer (Fedorov et al., 2012). Los modelos se generaron con el código
+      del proyecto (<code>src/</code>). No se muestra la superficie de la piel. Gráficos 3D con three.js.</p>
+  </div>
+</footer>
+
+<div class="tooltip" id="tooltip" role="status"></div>
+
+<script type="module" src="js/principal.js"></script>
 </body>
 </html>

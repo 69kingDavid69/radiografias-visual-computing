@@ -5,6 +5,10 @@ rangos de densidad aplica, en qué teoría se apoya y cómo se evalúa**. Corres
 rol de investigación y datos del [ROADMAP](../ROADMAP.md) (Nicolás) y alimenta
 directamente al código (`src/`), al informe final y a la exposición.
 
+**Página web del proyecto:** https://69kingdavid69.github.io/radiografias-visual-computing/
+— la misma investigación, explicada con la tomografía real y modelos 3D interactivos
+(código en [`web/`](../../web/README.md)).
+
 ## Resumen
 
 - **Datos:** la muestra CBCT dental de 3D Slicer para el desarrollo y la demo (ya
@@ -52,3 +56,4 @@ En `scripts/`, probados con DICOM, NIfTI con etiquetas y GIPL. Además de
 |---|---|---|
 | `verificar_anonimizacion.py` | Revisa si los DICOM traen datos del paciente y resume cada estudio (equipo, cortes, vóxel) | Antes de usar cualquier estudio nuevo |
 | `histograma_densidades.py` | Histograma, umbrales automáticos, percentiles altos y densidad por estructura etiquetada | Definir y validar `RANGOS_DENSIDAD` |
+| `generar_web.py` | Genera los cortes, el histograma y las mallas 3D de la página web con `cargar_estudio`, los presets y `superficie_por_banda` | Cada vez que cambien los presets o el suavizado |
