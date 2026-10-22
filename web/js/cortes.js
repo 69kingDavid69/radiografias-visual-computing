@@ -242,7 +242,7 @@ export function iniciarUmbral(vol, meta, tooltip) {
   const opciones = [["piel", "Piel (~400)", 400, "#c9a27e"]];
   for (const [nombre, [minimo]] of Object.entries(meta.presets)) {
     if (!NOMBRES_PRESET[nombre]) continue;
-    const color = nombre === "metal" ? "var(--metal)" : nombre === "hueso" ? "var(--hueso)" : nombre === "esmalte" ? "#cfe8ff" : "#f1ece0";
+    const color = nombre === "metal" ? "var(--metal)" : nombre === "hueso" ? "var(--hueso)" : nombre === "esmalte" ? "var(--esmalte)" : "var(--dientes)";
     opciones.push([nombre, `${NOMBRES_PRESET[nombre]} (${minimo})`, minimo, color]);
   }
   for (const [nombre, texto, valor, color] of opciones) {

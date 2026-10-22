@@ -435,6 +435,34 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-22 — Colores de los tejidos con referencia (3D Slicer)
+
+**Pedido de David:** que los colores correspondan a los de los tejidos, y usar más referencias.
+
+**Problema:** había tres paletas distintas. La página usaba hueso beige, esmalte celeste y metal rojo; la app, todo marfil y metal rojo. Ninguna tenía fuente.
+
+**Referencia:** la curva de color **"CT-Bone"** de 3D Slicer (`presets.xml` del módulo Volume Rendering), el estándar de la herramienta de la que vienen los datos: rojizo en el tejido blando (−16 HU), amarillo cálido en el hueso (641 HU) y blanco a 3071 HU.
+
+**Método:** cada preset se pasó a su equivalente en HU con la recta de `escala.py` (`HU = (u − 394) / 0,394`) y se **interpoló** en la curva:
+
+| Estructura | HU equivalentes | Color |
+|---|---|---|
+| tejido blando | ≈ 0 | `#BB454F` |
+| hueso (700 u) | ≈ 776 | `#E8D393` |
+| dientes (1000 u) | ≈ 1537 | `#F0E1B7` |
+| esmalte (1250 u) | ≈ 2171 | `#F6EED5` |
+| metal | > 3071 (fuera de la curva) | `#C9D1D9`, plateado del titanio |
+
+**Decisiones**
+- Una **sola paleta**, `densidades.COLORES_TEJIDO`, que usan `Render3D` y la página (`lab3d.js`, `estilos.css`). Un test compara los valores de Python, JavaScript y CSS.
+- El metal se dibuja con **brillo especular alto** (app: `specular` 1.0 y potencia 60; página: `shininess` 90).
+- **Costo:** en la vista de implante el titanio plateado contrasta menos que el rojo anterior. Se ve, pero es más tenue. Se eligió el color real; si en la demo hace falta más contraste, se puede bajar la opacidad del hueso.
+- El interior rojo de los dientes en el plano de corte de la página es la **pulpa**: conserva el rojo con su propia variable `--pulpa`.
+
+**Verificación:** 45/45 tests y renders de la app con el estudio Post en [results/colores_tejidos_app.png](../results/colores_tejidos_app.png).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
