@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { OrbitControls } from "../vendor/three/OrbitControls.js";
 import { PLYLoader } from "../vendor/three/PLYLoader.js";
 
-const COLOR = { hueso: 0xe8dcc4, dientes: 0xf1ece0, esmalte: 0xdcecff, metal: 0xff6347, dientes_detalle: 0xf1ece0 };
+// Colores de los tejidos: los mismos de src/densidades.py (COLORES_TEJIDO); un test los compara.
+const COLOR = { hueso: 0xe8d393, dientes: 0xf0e1b7, esmalte: 0xf6eed5, metal: 0xc9d1d9, dientes_detalle: 0xf0e1b7 };
 const INTERIOR = 0xd94a3d;
 // Factores clásicos de Taubin (1995): un paso que encoge (λ) y otro que infla (μ, con |μ| > λ).
 const LAMBDA = 0.33, MU = -0.34;
@@ -86,7 +87,7 @@ export async function iniciarPortada(contenedor) {
   const e = crearEscena(contenedor, { controles: false });
   const [hueso, metal] = await Promise.all([cargarMalla("hueso"), cargarMalla("metal")]);
   e.grupo.add(new THREE.Mesh(hueso, material(COLOR.hueso)));
-  e.grupo.add(new THREE.Mesh(metal, material(COLOR.metal, { shininess: 80 })));
+  e.grupo.add(new THREE.Mesh(metal, material(COLOR.metal, { shininess: 90, specular: 0xd0d6dc })));
   encuadrar(e, hueso.boundingSphere, 0.95);
   document.getElementById("cargando-portada").remove();
   const reducirMov = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -181,7 +182,7 @@ export function iniciarLaboratorio(meta) {
     const b = document.createElement("button");
     b.className = "chip";
     b.dataset.estructura = clave;
-    const color = clave === "metal" || clave === "implante" ? "var(--metal)" : `#${COLOR[clave].toString(16)}`;
+    const color = clave === "implante" ? "var(--metal)" : `#${COLOR[clave].toString(16)}`;
     b.innerHTML = `<span class="punto" style="background:${color}"></span>${texto}`;
     b.setAttribute("aria-pressed", String(clave === estado.estructura));
     b.addEventListener("click", () => { estado.estructura = clave; marcar(chips, "estructura", clave); mostrar(); });
@@ -248,7 +249,8 @@ export function iniciarLaboratorio(meta) {
       let g = geos[k];
       if (nombre === "dientes_detalle") g = prepararDetalle(g);
       const transparente = opacidad < 1;
-      const mesh = new THREE.Mesh(g, material(COLOR[nombre], transparente ? { transparent: true, opacity: opacidad, depthWrite: false } : {}));
+      const acabado = nombre === "metal" ? { shininess: 90, specular: 0xd0d6dc } : {};
+      const mesh = new THREE.Mesh(g, material(COLOR[nombre], transparente ? { ...acabado, transparent: true, opacity: opacidad, depthWrite: false } : acabado));
       mesh.renderOrder = transparente ? 2 : 1;
       const interior = new THREE.Mesh(g, material(INTERIOR, { side: THREE.BackSide, shininess: 10 }));
       interior.visible = false;

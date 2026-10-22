@@ -435,6 +435,66 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-22 — Colores de los tejidos con referencia (3D Slicer)
+
+**Pedido de David:** que los colores correspondan a los de los tejidos, y usar más referencias.
+
+**Problema:** había tres paletas distintas. La página usaba hueso beige, esmalte celeste y metal rojo; la app, todo marfil y metal rojo. Ninguna tenía fuente.
+
+**Referencia:** la curva de color **"CT-Bone"** de 3D Slicer (`presets.xml` del módulo Volume Rendering), el estándar de la herramienta de la que vienen los datos: rojizo en el tejido blando (−16 HU), amarillo cálido en el hueso (641 HU) y blanco a 3071 HU.
+
+**Método:** cada preset se pasó a su equivalente en HU con la recta de `escala.py` (`HU = (u − 394) / 0,394`) y se **interpoló** en la curva:
+
+| Estructura | HU equivalentes | Color |
+|---|---|---|
+| tejido blando | ≈ 0 | `#BB454F` |
+| hueso (700 u) | ≈ 776 | `#E8D393` |
+| dientes (1000 u) | ≈ 1537 | `#F0E1B7` |
+| esmalte (1250 u) | ≈ 2171 | `#F6EED5` |
+| metal | > 3071 (fuera de la curva) | `#C9D1D9`, plateado del titanio |
+
+**Decisiones**
+- Una **sola paleta**, `densidades.COLORES_TEJIDO`, que usan `Render3D` y la página (`lab3d.js`, `estilos.css`). Un test compara los valores de Python, JavaScript y CSS.
+- El metal se dibuja con **brillo especular alto** (app: `specular` 1.0 y potencia 60; página: `shininess` 90).
+- **Costo:** en la vista de implante el titanio plateado contrasta menos que el rojo anterior. Se ve, pero es más tenue. Se eligió el color real; si en la demo hace falta más contraste, se puede bajar la opacidad del hueso.
+- El interior rojo de los dientes en el plano de corte de la página es la **pulpa**: conserva el rojo con su propia variable `--pulpa`.
+
+**Verificación:** 45/45 tests y renders de la app con el estudio Post en [results/colores_tejidos_app.png](../results/colores_tejidos_app.png).
+
+---
+
+## 2026-10-22 — Segundo equipo: STS-3D-Tooth y los límites de la normalización
+
+**Pedido de David:** más radiografías. Se descargó **un** estudio etiquetado de **STS-3D-Tooth** (Hugging Face `MedOtter/STS-3D-Tooth`, CC-BY-4.0; Wang et al., *Scientific Data* 12, 117 (2025), doi:10.1038/s41597-024-04306-9): `ROI_L_001.nii.gz` (40,6 MB) y su máscara de dientes (0,5 MB), en `data/raw/sts3d/`, fuera de git. Existe además un subconjunto de **radiografías panorámicas 2D** (`Angelou0516/STS-2D-Tooth`), pero su API no respondió el 22/10.
+
+**El estudio:** 400 × 512 × 512 vóxeles de **0,15 mm**, más de 3 veces más fino que la muestra de Slicer. Viene en **Hounsfield** (aire en −1000).
+
+**Lo que funcionó:** `cargar_estudio` lo leyó sin cambios y la normalización encontró sola los picos: aire −993 y tejido blando −56 (a = 0,438, b = 435), sin avisos.
+
+**Máscara:** la etiqueta 1 son los dientes. La etiqueta 4 es un artefacto: una capa de exactamente 512 × 512 vóxeles con valor 2. La alineación es correcta (voltearla en cualquier eje empeora el resultado). El 7 % de la etiqueta 1 cae en aire, por el borde de la anotación; para medir se descartaron esos vóxeles.
+
+**Hallazgo: cuánto de los dientes etiquetados captura cada preset ya normalizado**
+
+| Preset | Dientes | Resto denso (sobre todo hueso) |
+|---|---|---|
+| hueso ≥ 700 | 77 % | 6 % |
+| dientes ≥ 1000 | **29 %** | 1 % |
+| esmalte ≥ 1250 | **4 %** | 0 % |
+
+Render en [results/sts_presets.png](../results/sts_presets.png).
+
+**Lectura**
+- La normalización corrige bien los **dos puntos que usa** (aire y tejido blando), pero una recta fijada con dos densidades bajas no reproduce las **densidades altas** de otro equipo. Los dientes de STS quedan en una mediana de 925 (normalizado): bajo el umbral de "dientes", que se midió en la muestra de Slicer.
+- Los presets de dientes y esmalte **no se transfieren** entre equipos con esta normalización. Es una limitación para el informe y responde a la pregunta de investigación: aislar estructuras por densidad funciona dentro de un equipo, pero entre equipos hace falta más calibración.
+- La vista frontal (`view_xz`) depende de la orientación de la muestra de Slicer: en STS la cara no queda de frente.
+
+**Opciones (por decidir con el equipo; no antes del 26/10)**
+1. Un **tercer punto de anclaje** en las densidades altas, por ejemplo el pico del esmalte o un percentil alto.
+2. Presets en **percentiles** de cada estudio en lugar de valores fijos.
+3. **Calibrar con las etiquetas:** STS (32 estudios etiquetados) y ToothFairy3 traen máscaras. Con varios estudios se puede medir el rango real de los dientes, que era el plan de Nicolás para ToothFairy3.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

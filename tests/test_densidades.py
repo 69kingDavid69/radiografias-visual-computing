@@ -63,3 +63,37 @@ def test_ventanas_2d_convertidas_a_la_escala_normalizada():
     assert ventana_para("hounsfield", "tejido_blando") == (40, 400)
     assert set(VENTANAS_2D["slicer"]) == set(VENTANAS_2D["hounsfield"])
     assert ventana_para(None, "tejido_blando") is None
+
+
+def test_colores_de_la_pagina_web_coinciden_con_los_de_python():
+    # La página (JS y CSS) repite los colores de COLORES_TEJIDO: si alguien cambia uno
+    # solo de los lados, la app y la página mostrarían tejidos de colores distintos.
+    import re
+    from pathlib import Path
+    from src.densidades import COLORES_TEJIDO
+    web = Path(__file__).resolve().parent.parent / "web"
+    js = (web / "js" / "lab3d.js").read_text(encoding="utf-8")
+    colores_js = dict(re.findall(r"(\w+): 0x([0-9a-fA-F]{6})", re.search(r"const COLOR = \{([^}]*)\}", js).group(1)))
+    css = (web / "estilos.css").read_text(encoding="utf-8")
+    for nombre in ("hueso", "dientes", "esmalte", "metal"):
+        esperado = COLORES_TEJIDO[nombre].lower()
+        assert "#" + colores_js[nombre].lower() == esperado, f"lab3d.js: {nombre}"
+        assert re.search(rf"--{nombre}:\s*{esperado}", css.lower()), f"estilos.css: --{nombre}"
+
+
+def test_tejidos_siguen_la_curva_de_slicer_y_el_metal_se_distingue():
+    # Más densidad, más claro (como la curva CT-Bone de Slicer); el metal es frío
+    # (más azul que rojo) para no confundirse con el hueso, que es cálido.
+    from src.densidades import COLORES_TEJIDO
+    def rgb(h):
+        return [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    def luminosidad(h):
+        r, g, b = rgb(h)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    orden = ["tejido_blando", "hueso", "dientes", "esmalte"]
+    valores = [luminosidad(COLORES_TEJIDO[n]) for n in orden]
+    assert valores == sorted(valores)
+    r, _, b = rgb(COLORES_TEJIDO["metal"])
+    assert b > r
+    r, _, b = rgb(COLORES_TEJIDO["hueso"])
+    assert r > b

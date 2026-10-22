@@ -2,7 +2,7 @@
 import numpy as np
 import pyvista as pv
 
-from src.densidades import presets_para, suavizado_para
+from src.densidades import color_para, presets_para, suavizado_para
 from src.filtros import suavizar
 
 
@@ -44,8 +44,8 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
     return a_pyvista(campo, esp, 1).contour([nivel], scalars="densidad")
 
 
-# Color de cada preset en la vista 3D; los que no aparecen se dibujan en marfil.
-COLORES_PRESET = {"metal": "tomato"}
+# El metal brilla como metal: reflejo especular más fuerte y concentrado.
+ACABADO_METAL = {"specular": 1.0, "specular_power": 60}
 
 # Vista de implante: hueso casi transparente para ver el metal dentro de él (idea de David).
 CAPAS_IMPLANTE = [("hueso", 0.2), ("metal", 1.0)]
@@ -133,7 +133,7 @@ class Render3D:
                                           suavizado_mm=suavizado_para(nombre))
         self._limpiar()
         if superficie.n_points > 0:
-            self._dibujar("estructura", superficie, color=COLORES_PRESET.get(nombre, "ivory"))
+            self._dibujar("estructura", superficie, color=color_para(nombre), **self._acabado(nombre))
         self.umbral_actual = minimo
         self.preset_actual = nombre
 
@@ -154,16 +154,21 @@ class Render3D:
                                               reduccion=self.reduccion,
                                               suavizado_mm=suavizado_para(nombre))
             if superficie.n_points > 0:
-                self._dibujar(f"capa_{nombre}", superficie,
-                              color=COLORES_PRESET.get(nombre, "ivory"), opacity=opacidad)
+                self._dibujar(f"capa_{nombre}", superficie, color=color_para(nombre),
+                              opacity=opacidad, **self._acabado(nombre))
         self.preset_actual = "+".join(nombre for nombre, _ in capas)
 
     def captura(self, ruta: str):
         """Guarda una captura de pantalla del render 3D actual."""
         self.pl.screenshot(ruta)
 
+    @staticmethod
+    def _acabado(nombre):
+        return ACABADO_METAL if nombre == "metal" else {}
+
     def _dibujar(self, nombre, superficie, **estilo):
-        self.pl.add_mesh(superficie, name=nombre, smooth_shading=True, specular=0.4, **estilo)
+        estilo = {"specular": 0.4, **estilo}
+        self.pl.add_mesh(superficie, name=nombre, smooth_shading=True, **estilo)
         if nombre not in self._actores:
             self._actores.append(nombre)
 

@@ -97,3 +97,28 @@ def ventana_para(estudio_o_escala, nombre):
 def unidad_de(escala):
     """Etiqueta de unidades para mostrar en la interfaz."""
     return "HU" if escala == "hounsfield" else "u. norm."
+
+
+# Color de cada estructura en 3D. Los tejidos salen de la curva de color "CT-Bone" de
+# 3D Slicer (presets.xml del módulo Volume Rendering): cada preset se pasa a su
+# equivalente en HU con la recta de src/escala.py (HU = (u − 394) / 0,394) y se
+# interpola en la curva: rojizo en tejido blando, amarillo cálido en el hueso y cada vez
+# más blanco al subir la densidad. El metal queda fuera de esa curva (pasa de 3071 HU):
+# se usa el plateado frío del titanio, que además se distingue del hueso cálido en la
+# vista de implante. La app (Render3D) y la página (web/js/lab3d.js, web/estilos.css)
+# usan estos valores; tests/test_densidades.py verifica que no se desincronicen.
+COLORES_TEJIDO = {
+    "tejido_blando": "#BB454F",   # ≈ 0 HU
+    "hueso":         "#E8D393",   # 700 u ≈ 776 HU
+    "hueso_denso":   "#E9D497",   # 850 HU (preset en Hounsfield)
+    "dientes":       "#F0E1B7",   # 1000 u ≈ 1537 HU
+    "esmalte":       "#F6EED5",   # 1250 u ≈ 2171 HU
+    "esmalte_sin_metal": "#F6EED5",
+    "metal":         "#C9D1D9",   # titanio pulido: plateado frío
+}
+
+
+def color_para(nombre):
+    """Color del tejido de un preset; los que no tienen color propio salen en marfil."""
+    return COLORES_TEJIDO.get(nombre, "#EEE4C6")
+

@@ -14,8 +14,12 @@
   --axial: #e74c3c;
   --coronal: #2ecc71;
   --sagital: #3498db;
-  --metal: #ff6347;
-  --hueso: #e8dcc4;
+  /* Colores de los tejidos: los mismos de src/densidades.py (COLORES_TEJIDO). */
+  --metal: #c9d1d9;
+  --hueso: #e8d393;
+  --dientes: #f0e1b7;
+  --esmalte: #f6eed5;
+  --pulpa: #d94a3d;   /* interior de los dientes (pulpa y conductos) en el plano de corte */
   --radio: 14px;
   --sombra: 0 10px 30px rgba(0, 0, 0, 0.35);
   --fuente: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
