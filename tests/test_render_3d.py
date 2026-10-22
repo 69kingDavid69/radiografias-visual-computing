@@ -95,3 +95,28 @@ def test_render3d_sin_escala_usa_la_barra_libre():
     assert r.umbral_actual == pytest.approx(0.6 * 3000)
     with pytest.raises(KeyError, match="desconocida"):
         r.aplicar_preset("hueso")
+
+
+def test_render3d_dientes_limitados_a_la_arcada_y_vista_de_blandos():
+    import pyvista as pv
+    from src.carga import Estudio
+    from src.render_3d import CAPAS_BLANDAS, Render3D
+    v = np.zeros((120, 30, 30), dtype=np.float32)
+    v[5:15, 5:25, 5:25] = 1100            # "cráneo" denso
+    v[80:95, 10:20, 10:20] = 1100         # dientes
+    v[86:89, 10:20, 10:20] = 1400         # esmalte
+    v[40:70, 3:27, 3:27] = np.where(v[40:70, 3:27, 3:27] == 0, 420, v[40:70, 3:27, 3:27])  # "músculo"
+    v[40:70, 3:27, 3:5] = 330             # "grasa" en un costado
+    r = Render3D(pv.Plotter(off_screen=True))
+    r.mostrar(Estudio(id="x", volumen=v, espaciado=ESPACIADO, metadatos={"escala": "slicer"}), reduccion=1)
+    assert r.arcada is not None
+    r.aplicar_preset("dientes")
+    assert _actor_bounds(r, "estructura")[4] > 35       # sin el "cráneo" de arriba (z < 8 mm)
+    r.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True)
+    assert {"capa_grasa", "capa_musculo"} <= set(r.pl.actors)
+    # La mitad que queda es x < centro; la cámara debe estar del lado del corte (+x),
+    # mirando el interior y no la cara de perfil.
+    assert max(b.GetBounds()[1] for b in (r.pl.actors["capa_grasa"], r.pl.actors["capa_musculo"])) <= 30 * 0.5 / 2 + 0.5
+    assert r.pl.camera.position[0] > r.pl.camera.focal_point[0]
+    r.aplicar_preset("hueso")
+    assert r.pl.camera.up == pytest.approx((0, 0, 1)) and r._vista_lateral is False

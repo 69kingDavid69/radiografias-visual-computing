@@ -516,6 +516,37 @@ Render en [results/sts_presets.png](../results/sts_presets.png).
 
 ---
 
+## 2026-10-22 — Dientes limitados a la arcada, error de normalización y tejidos blandos (experimental)
+
+**Reporte de David:** en la app, el preset "Dientes" marcaba parte del cráneo. También preguntó si se pueden mostrar músculos y tejido blando.
+
+### 1. Error en la normalización: capas de relleno
+- Las primeras y últimas capas del estudio Post (**14** en total) y del Pre (**16**) son **relleno constante**: el tomógrafo no midió ahí y todos sus vóxeles valen 0 en crudo.
+- En el Post ese 0 cae cerca del tejido blando, así que la normalización tomó el **relleno** como "pico de tejido blando" (−14). Por eso esas capas quedaban en ~413 y aparecían en 3D como **planos** arriba y abajo.
+- **Arreglo:** `escala.capas_de_relleno()` detecta las capas constantes; la normalización las **excluye del histograma** y, ya normalizado el volumen, las marca como aire.
+
+  | Estudio | Antes | Después |
+  |---|---|---|
+  | Post | blando −14 → a = 0,184 | blando **−153** → a = **0,197** (7 % de diferencia) |
+  | Pre | a = 1,001 | a = 1,029 |
+  | STS | a = 0,438 | a = 0,438 (1 capa de relleno) |
+
+### 2. Dientes limitados a la arcada dental
+- **Causa:** el hueso cortical denso del cráneo tiene la densidad de la dentina. En el Post, solo el **34 %** de lo que supera el umbral de "dientes" está en la boca (Pre: 29 %; STS, que ya es un recorte dental: 90 %).
+- **Arreglo:** `region.arcada_dental()` busca la altura (z) con más esmalte (perfil suavizado de ~5 mm) y toma **±25 mm** a su alrededor. `superficie_por_banda(..., rango_z=)` limita la superficie a esa franja y mantiene su posición en mm. Se aplica a `dientes`, `esmalte` y `esmalte_sin_metal` (`densidades.EN_ARCADA`).
+- **Resultado (Post):** arcada en z 65–166. "Dientes" muestra las dos arcadas con raíces y sin el cráneo, aunque todavía entran las placas y algo de hueso maxilar pegado a las coronas.
+- **Supuesto:** el eje z del volumen es el vertical del paciente.
+
+### 3. Tejido blando: "denso / graso" (experimental)
+- **Medición:** el ruido del tejido blando, medido en bloques de 6³ vóxeles, es de ~18 u (Post y STS); la diferencia esperada entre grasa y músculo es de ~55 u. Pero el histograma de los bloques tiene **un solo pico** (~405–415): la grasa no forma una población propia, sino un "hombro" entre ~260 y ~380.
+- **Presets experimentales** (escala `slicer`): `grasa` 280–375 y `musculo` 375–600. El corte en 375 queda ~1,5 veces el ruido por debajo del pico.
+- **Se muestran solo en una vista combinada con corte sagital** (`CAPAS_BLANDAS`: grasa 35 % + músculo + hueso), mirando **desde el lado del corte**, hacia el interior: nunca la cara de frente ni de perfil. No hay botones sueltos (`densidades.EXPERIMENTALES`).
+- **Limitación:** "músculo" también incluye el **cerebro y la lengua**, por su densidad parecida. Por eso en la app se llama "Blandos: denso / graso (exp.)". Separar músculos individuales necesitaría segmentación, no umbrales. Además, el CBCT tiene variaciones de brillo según la zona (*cupping*, radiación dispersa) del mismo orden que la diferencia grasa–músculo.
+
+**Verificación:** 50/50 tests. Hay tests nuevos de: capas de relleno, arcada (cubre los dientes y deja fuera el "cráneo"), `rango_z` que conserva la posición, "dientes" sin cráneo en `Render3D`, y la vista de blandos con la cámara del lado del corte. Con el Post real: "dientes" 0,04 s, "esmalte" 0,02 s y blandos 1,7 s. En la app, la barra muestra 7 botones, incluido "Blandos: denso / graso (exp.)".
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

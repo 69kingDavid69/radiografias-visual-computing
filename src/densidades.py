@@ -21,6 +21,13 @@ RANGOS_DENSIDAD = {
         # quita sus artefactos: sirve para comparar con "esmalte" en la demo.
         "esmalte_sin_metal": (1250, 2000),
         "metal":   (2000, INF),    # solo metal: brackets en esta muestra; implantes en otros estudios
+        # EXPERIMENTALES. En el CBCT la grasa no forma un pico propio en el histograma: es
+        # un "hombro" a la izquierda del pico del tejido blando (≈ 410). El corte en 375
+        # queda ~1,5 veces el ruido (≈ 18 u) por debajo del pico. No es una segmentación
+        # de músculos: es la parte más densa del tejido blando contra la menos densa. En el
+        # estudio Post, "musculo" también incluye el cerebro y la lengua (densidad parecida).
+        "grasa":   (280, 375),
+        "musculo": (375, 600),
     },
     # Datasets calibrados en Hounsfield (ToothFairy3). Propuesta de la literatura,
     # falta validarla con las etiquetas de ToothFairy3 (densidades.md §2.2 y §5).
@@ -115,7 +122,17 @@ COLORES_TEJIDO = {
     "esmalte":       "#F6EED5",   # 1250 u ≈ 2171 HU
     "esmalte_sin_metal": "#F6EED5",
     "metal":         "#C9D1D9",   # titanio pulido: plateado frío
+    "grasa":         "#E3B04B",   # grasa: amarillo anaranjado, distinto del hueso
+    "musculo":       "#A8323E",   # músculo: rojo
 }
+
+# Presets que la app no ofrece sueltos: solo en la vista de tejidos blandos con corte
+# sagital (Render3D.CAPAS_BLANDAS), porque la grasa de frente reconstruye la cara.
+EXPERIMENTALES = {"grasa", "musculo"}
+
+# Presets que se limitan a la arcada dental (src/region.py): por densidad sola incluyen
+# el hueso cortical del cráneo, que es tan denso como la dentina.
+EN_ARCADA = {"dientes", "esmalte", "esmalte_sin_metal"}
 
 
 def color_para(nombre):
