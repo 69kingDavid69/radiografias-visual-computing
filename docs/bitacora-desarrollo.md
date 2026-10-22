@@ -495,6 +495,25 @@ Render en [results/sts_presets.png](../results/sts_presets.png).
 
 ---
 
+## 2026-10-22 — PR #15 bloqueado y despliegue manual de la página
+
+**PR #15 que no se dejaba fusionar**
+- **Síntoma:** GitHub mostraba `mergeable: unknown` y no habilitaba el botón de fusionar. No había protección de rama ni conflictos: en local, la fusión con `main` entraba limpia.
+- **Causa:** la rama `feat/colores-tejidos` en GitHub tenía 2 commits (`e6a4743` y `0610845`), pero el PR seguía apuntando al primero. El segundo envío llegó mientras la red estaba inestable y GitHub no actualizó el PR, así que no podía calcular si era fusionable.
+- **Solución:** cerrar y reabrir el PR, que obliga a GitHub a releer la rama. Quedó con 2 commits y `mergeable=true` (`clean`), sin perder revisores ni descripción.
+
+**Despliegue de la página que no arrancó solo**
+- **Síntoma:** la fusión del #15 (`062998e`) cambió archivos de `web/` (`estilos.css`, `index.html`, `cortes.js`, `lab3d.js`), pero el workflow "Publicar página web" no corrió. El sitio seguía con los colores viejos (metal `#ff6347`).
+- **Causa probable:** otro evento perdido de GitHub, igual que el del PR. El último despliegue automático era el de la fusión del #11 (`7372009`).
+- **Solución:** se lanzó el workflow **a mano** (`workflow_dispatch`, "Run workflow" sobre `main`): run `39828193981`, `success`, sobre `062998e`.
+- **Verificación en el sitio publicado:**
+  - `lab3d.js` y `estilos.css` sirven la paleta nueva (metal `#c9d1d9`, hueso `#e8d393`, dientes `#f0e1b7`, esmalte `#f6eed5`, pulpa `#d94a3d`);
+  - en el navegador, la vista "Hueso + metal" muestra los brackets en plateado dentro del hueso semitransparente, a 60 FPS y sin errores en la consola.
+
+**Procedimiento para el equipo:** si se fusiona algo de `web/` y el sitio no cambia en unos minutos, revisar en **Actions** si corrió "Publicar página web". Si no corrió, abrir el workflow y usar **Run workflow** sobre `main`. Si un PR se queda en "unknown", cerrarlo y reabrirlo.
+
+---
+
 ## 2026-10-22 — Panel 3D de la app: arreglos de integración
 
 **Reporte de David:** con la app abierta, el panel 3D mostraba solo pedacitos sueltos sobre fondo blanco.
