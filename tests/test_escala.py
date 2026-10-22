@@ -68,3 +68,18 @@ def test_cargar_estudio_normaliza_por_defecto(tmp_path):
     e = cargar_estudio(tmp_path / "post.nii.gz", registro=tmp_path / "vacio.json")
     assert e.metadatos["escala"] == "slicer"
     assert e.metadatos["normalizacion"]["a"] == pytest.approx(410 / 2200, rel=0.05)
+
+
+def test_capas_de_relleno_no_cuentan_como_tejido():
+    # Como en la muestra Post: capas constantes arriba y abajo con un valor (0) cercano al
+    # tejido blando. No deben formar el pico de "tejido blando" ni quedar como planos.
+    from src.escala import capas_de_relleno
+    v = _cabeza(-2200, -150, 1450)
+    v[:4] = 0
+    v[-4:] = 0
+    assert list(capas_de_relleno(v)) == [0, 1, 2, 3, 36, 37, 38, 39]
+    aire, blando = picos_aire_y_blando(v)
+    assert blando == pytest.approx(-150, abs=60)
+    e = asignar_escala(_estudio(v), registro="/no/existe.json")
+    assert e.metadatos["capas_relleno"] == 8
+    assert np.all(e.volumen[:4] == REFERENCIA["aire"])

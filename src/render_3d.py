@@ -2,25 +2,30 @@
 import numpy as np
 import pyvista as pv
 
-from src.densidades import color_para, presets_para, suavizado_para
+from src.densidades import EN_ARCADA, EXPERIMENTALES, color_para, presets_para, suavizado_para
+from src.region import arcada_dental
 from src.filtros import suavizar
 
 
-def a_pyvista(volumen, espaciado, reduccion=1):
+def a_pyvista(volumen, espaciado, reduccion=1, origen_z_mm=0.0):
     """Convierte el volumen (z, y, x) en una malla regular de PyVista.
 
     `reduccion` toma uno de cada N vóxeles por eje: un CBCT de 512³ es pesado
-    y con reduccion=2 el render es ~8 veces más liviano.
+    y con reduccion=2 el render es ~8 veces más liviano. `origen_z_mm` desplaza la
+    malla en z cuando el volumen es solo una franja (la arcada), para que quede en su
+    lugar respecto de las demás superficies.
     """
     v = volumen[::reduccion, ::reduccion, ::reduccion]
     malla = pv.ImageData(dimensions=v.shape[::-1],
-                         spacing=tuple(s * reduccion for s in espaciado[::-1]))
+                         spacing=tuple(s * reduccion for s in espaciado[::-1]),
+                         origin=(0.0, 0.0, origen_z_mm))
     # VTK recorre x más rápido, igual que un ravel en orden C sobre (z, y, x).
     malla.point_data["densidad"] = v.ravel(order="C")
     return malla
 
 
-def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, suavizado_mm=0.0):
+def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, suavizado_mm=0.0,
+                         rango_z=None):
     """Superficie de la estructura cuya densidad está entre `minimo` y `maximo`.
 
     Sin `maximo` (None o infinito) es la isosuperficie de siempre: todo lo que supera `minimo`.
@@ -31,7 +36,14 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
 
     `suavizado_mm` aplica un gaussiano (sigma en mm) antes de marching cubes: sobre la
     densidad si no hay máximo, sobre la máscara si lo hay.
+
+    `rango_z` = (z0, z1) limita la superficie a esa franja de capas (p. ej. la arcada
+    dental de src/region.py), para separar lo que la densidad sola no separa.
     """
+    z0 = 0
+    if rango_z is not None:
+        z0, z1 = rango_z
+        volumen = volumen[z0:z1]
     # Primero se reduce y después se suaviza: es 8 veces menos trabajo con reduccion=2.
     v = volumen[::reduccion, ::reduccion, ::reduccion]
     esp = tuple(s * reduccion for s in espaciado)
@@ -41,7 +53,7 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
         mascara = ((v >= minimo) & (v <= maximo)).astype(np.float32)
         campo, nivel = suavizar(mascara, esp, suavizado_mm), 0.5
     # a_pyvista nombra el campo "densidad"; con máximo contiene la máscara (0 a 1).
-    return a_pyvista(campo, esp, 1).contour([nivel], scalars="densidad")
+    return a_pyvista(campo, esp, 1, origen_z_mm=z0 * espaciado[0]).contour([nivel], scalars="densidad")
 
 
 # El metal brilla como metal: reflejo especular más fuerte y concentrado.
@@ -49,6 +61,10 @@ ACABADO_METAL = {"specular": 1.0, "specular_power": 60}
 
 # Vista de implante: hueso casi transparente para ver el metal dentro de él (idea de David).
 CAPAS_IMPLANTE = [("hueso", 0.2), ("metal", 1.0)]
+
+# Vista experimental de tejidos blandos: siempre con corte sagital, para ver el interior
+# y nunca la cara (la grasa está justo bajo la piel). Ver densidades.EXPERIMENTALES.
+CAPAS_BLANDAS = [("grasa", 0.35), ("musculo", 1.0), ("hueso", 1.0)]
 
 
 class Render3D:
@@ -69,6 +85,8 @@ class Render3D:
         self.umbral_actual = None
         self.reduccion = 2
         self.presets = {}            # presets que corresponden a la escala del estudio
+        self.arcada = None           # (z0, z1) de la arcada dental, para los presets de dientes
+        self._vista_lateral = False  # la vista de tejidos blandos gira la cámara de costado
         self.preset_actual = None
         self._actores = []           # nombres de los actores dibujados (para borrarlos al cambiar)
 
@@ -83,6 +101,9 @@ class Render3D:
             self.volumen, self.espaciado = estudio
             self.presets = {}
         self.reduccion = reduccion
+        # La arcada se ubica por el esmalte; sin preset de esmalte no se limita nada.
+        self.arcada = (arcada_dental(self.volumen, self.espaciado, self.presets["esmalte"][0])
+                       if "esmalte" in self.presets else None)
 
         # Convierte el volumen NumPy a ImageData de PyVista aplicando la reducción por defecto
         self.malla = a_pyvista(self.volumen, self.espaciado, reduccion=reduccion)
@@ -130,18 +151,22 @@ class Render3D:
         minimo, maximo = self.presets[nombre]
         superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
                                           reduccion=self.reduccion,
-                                          suavizado_mm=suavizado_para(nombre))
+                                          suavizado_mm=suavizado_para(nombre),
+                                          rango_z=self._rango_z(nombre))
         self._limpiar()
+        self._volver_al_frente()
         if superficie.n_points > 0:
             self._dibujar("estructura", superficie, color=color_para(nombre), **self._acabado(nombre))
         self.umbral_actual = minimo
         self.preset_actual = nombre
 
-    def aplicar_capas(self, capas=CAPAS_IMPLANTE):
+    def aplicar_capas(self, capas=CAPAS_IMPLANTE, corte_sagital=False):
         """Dibuja varios presets a la vez, cada uno con su opacidad.
 
         `capas` es una lista de (nombre_preset, opacidad). Por defecto es la vista de
-        implante: hueso al 20 % y metal sólido.
+        implante: hueso al 20 % y metal sólido. `corte_sagital` deja media cabeza
+        (x < centro, el corte por el plano medio) y la mira desde el lado del corte, es
+        decir, el interior: nunca la cara de frente ni de perfil.
         """
         faltan = [nombre for nombre, _ in capas if nombre not in self.presets]
         if faltan:
@@ -152,15 +177,34 @@ class Render3D:
             minimo, maximo = self.presets[nombre]
             superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
                                               reduccion=self.reduccion,
-                                              suavizado_mm=suavizado_para(nombre))
+                                              suavizado_mm=suavizado_para(nombre),
+                                              rango_z=self._rango_z(nombre))
+            if corte_sagital and superficie.n_points > 0:
+                centro_x = self.volumen.shape[2] * self.espaciado[2] / 2
+                superficie = superficie.clip(normal=(1, 0, 0), origin=(centro_x, 0, 0))
             if superficie.n_points > 0:
                 self._dibujar(f"capa_{nombre}", superficie, color=color_para(nombre),
                               opacity=opacidad, **self._acabado(nombre))
         self.preset_actual = "+".join(nombre for nombre, _ in capas)
+        if corte_sagital:
+            self.pl.view_yz()            # cámara en +x: mira la cara cortada, hacia el interior
+            self.pl.reset_camera()
+            self._vista_lateral = True
+        else:
+            self._volver_al_frente()
 
     def captura(self, ruta: str):
         """Guarda una captura de pantalla del render 3D actual."""
         self.pl.screenshot(ruta)
+
+    def _volver_al_frente(self):
+        if self._vista_lateral:
+            self.pl.view_xz()
+            self.pl.reset_camera()
+            self._vista_lateral = False
+
+    def _rango_z(self, nombre):
+        return self.arcada if nombre in EN_ARCADA else None
 
     @staticmethod
     def _acabado(nombre):
@@ -191,12 +235,16 @@ def explorar_3d(volumen, espaciado, umbral_inicial=None, reduccion=2, estudio=No
 
     # Teclas para los presets, en el orden de RANGOS_DENSIDAD
     ayuda = ["Barra: umbral libre"]
-    for tecla, nombre in zip("123456789", render.presets):
+    normales = [n for n in render.presets if n not in EXPERIMENTALES]
+    for tecla, nombre in zip("123456789", normales):
         pl.add_key_event(tecla, lambda nombre=nombre: render.aplicar_preset(nombre))
         ayuda.append(f"{tecla}: {nombre}")
     if all(nombre in render.presets for nombre, _ in CAPAS_IMPLANTE):
         pl.add_key_event("i", lambda: render.aplicar_capas())
         ayuda.append("i: vista de implante (hueso + metal)")
+    if all(nombre in render.presets for nombre, _ in CAPAS_BLANDAS):
+        pl.add_key_event("m", lambda: render.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True))
+        ayuda.append("m: tejido blando denso / graso (experimental, corte sagital)")
     pl.add_text("\n".join(ayuda), font_size=9)
 
     minimo, maximo = float(np.min(volumen)), float(np.max(volumen))

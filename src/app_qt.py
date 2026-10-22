@@ -61,7 +61,8 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
-from src.render_3d import CAPAS_IMPLANTE, Render3D
+from src.densidades import EXPERIMENTALES
+from src.render_3d import CAPAS_BLANDAS, CAPAS_IMPLANTE, Render3D
 from src.densidades import unidad_de, ventana_para
 from src.visor_cortes import (
     COLOR_ANCHO,
@@ -743,9 +744,11 @@ class MainWindow(QMainWindow):
         titulo = QLabel("Estructura 3D:")
         titulo.setStyleSheet("color: #9aa7b6; font-size: 12px; font-weight: bold;")
         self.barra_presets_3d.addWidget(titulo)
-        opciones = [(n, n.replace("_", " ").capitalize()) for n in presets]
+        opciones = [(n, n.replace("_", " ").capitalize()) for n in presets if n not in EXPERIMENTALES]
         if all(n in presets for n, _ in CAPAS_IMPLANTE):
             opciones.append(("implante", "Implante"))
+        if all(n in presets for n, _ in CAPAS_BLANDAS):
+            opciones.append(("blandos", "Blandos: denso / graso (exp.)"))
         for nombre, texto in opciones:
             boton = QPushButton(texto)
             boton.setProperty("class", "btn-preset")
@@ -762,6 +765,8 @@ class MainWindow(QMainWindow):
             return
         if nombre == "implante":
             self.render3d.aplicar_capas()
+        elif nombre == "blandos":
+            self.render3d.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True)
         else:
             self.render3d.aplicar_preset(nombre)
         self.panel_3d.render()

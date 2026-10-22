@@ -27,6 +27,17 @@ REGISTRO = Path(__file__).resolve().parent.parent / "data" / "estudios.json"
 REFERENCIA = {"escala": "slicer", "aire": 0.0, "blando": 410.0}
 
 
+def capas_de_relleno(volumen):
+    """Índices z de las capas constantes (todos sus vóxeles iguales).
+
+    Son relleno: el tomógrafo no midió ahí (en la muestra Post, las ~6 primeras y
+    últimas capas valen 0). Si entran al histograma, su valor único forma un pico
+    falso; si quedan en el volumen, aparecen en 3D como planos.
+    """
+    plano = volumen.reshape(volumen.shape[0], -1)
+    return np.flatnonzero(plano.min(axis=1) == plano.max(axis=1))
+
+
 def picos_aire_y_blando(volumen, bins=1024):
     """(aire, blando): densidad de los picos de aire y de tejido blando, o None.
 
@@ -34,7 +45,10 @@ def picos_aire_y_blando(volumen, bins=1024):
     el tejido blando, el pico más alto en la parte alta del rango (a más de un
     cuarto del camino entre el aire y el percentil 99.9).
     """
-    muestra = volumen[::2, ::2, ::2]           # 8 veces menos datos, el histograma no cambia
+    medidas = np.delete(volumen, capas_de_relleno(volumen), axis=0)
+    if medidas.size == 0:
+        return None
+    muestra = medidas[::2, ::2, ::2]           # 8 veces menos datos, el histograma no cambia
     lo, hi = np.percentile(muestra, [0.1, 99.9])
     if hi <= lo:
         return None
@@ -74,7 +88,11 @@ def asignar_escala(estudio, registro=REGISTRO):
     a = (REFERENCIA["blando"] - REFERENCIA["aire"]) / (blando - aire)
     b = REFERENCIA["aire"] - a * aire
     estudio.volumen = (estudio.volumen * a + b).astype(np.float32)
+    # El relleno no es tejido: se marca como aire para que no aparezca como planos en 3D.
+    relleno = capas_de_relleno(estudio.volumen)
+    estudio.volumen[relleno] = REFERENCIA["aire"]
     estudio.metadatos.update(
+        capas_relleno=int(len(relleno)),
         escala=REFERENCIA["escala"],
         normalizacion={"aire": aire, "blando": blando, "a": a, "b": b},
         rango=(float(estudio.volumen.min()), float(estudio.volumen.max())),
