@@ -10,6 +10,11 @@ import argparse
 import ctypes
 import os
 import sys
+
+# Ensure the project root is on PYTHONPATH for relative imports
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 from typing import Tuple
 
 import matplotlib
@@ -30,6 +35,9 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
 )
+
+# QtInteractor for 3D rendering
+from pyvistaqt import QtInteractor
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -53,6 +61,7 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
+from src.render_3d import Render3D
 from src.densidades import unidad_de, ventana_para
 from src.visor_cortes import (
     COLOR_ANCHO,
@@ -402,9 +411,11 @@ class MainWindow(QMainWindow):
         self.canvas_2d: FigureCanvasQTAgg | None = None
         self.visor_cortes: VisorCortes | None = None
         self.widget_2d: QWidget | None = None
-        self.panel_3d: QWidget | None = None
+        self.panel_3d: QtInteractor | None = None
         self.splitter: QSplitter | None = None
         self.panel_controles: QFrame | None = None
+        # Motor de render 3D que será inicializado después de cargar datos.
+        self.render3d: Render3D | None = None
 
         # Botones de navegación y vistas
         self.btn_cargar: QPushButton | None = None
@@ -508,8 +519,8 @@ class MainWindow(QMainWindow):
         self.panel_controles = self._crear_panel_controles_2d(self.widget_2d)
         layout_2d.addWidget(self.panel_controles, stretch=0)
 
-        # Contenedor de reserva para el Panel 3D
-        self.panel_3d = self._crear_panel_3d_placeholder(self.splitter)
+        # Contenedor del panel 3D interactivo
+        self.panel_3d = self._crear_panel_3d(self.splitter)
 
         self.splitter.addWidget(self.widget_2d)
         self.splitter.addWidget(self.panel_3d)
@@ -671,62 +682,13 @@ class MainWindow(QMainWindow):
         layout_panel.addLayout(fila_sliders)
         return panel
 
-    def _crear_panel_3d_placeholder(self, parent: QWidget) -> QWidget:
-        """Crea el panel de reserva elegante para la reconstrucción 3D."""
-        panel = QWidget(parent)
-        layout_centro = QVBoxLayout(panel)
-        layout_centro.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout_centro.setContentsMargins(20, 20, 20, 20)
-
-        tarjeta = QFrame(panel)
-        tarjeta.setObjectName("Tarjeta3D")
-        tarjeta.setMaximumWidth(600)
-        tarjeta.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
-
-        layout_tarjeta = QVBoxLayout(tarjeta)
-        layout_tarjeta.setSpacing(14)
-        layout_tarjeta.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        lbl_icono = QLabel("⬡")
-        lbl_icono.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_icono.setStyleSheet("font-size: 58px; color: #38bdf8; line-height: 1;")
-
-        lbl_titulo = QLabel("Panel 3D - Renderizado de Volúmenes (Emanuel)")
-        lbl_titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_titulo.setStyleSheet("font-size: 18px; font-weight: bold; color: #ffffff;")
-        lbl_titulo.setWordWrap(True)
-
-        lbl_subtitulo = QLabel(
-            "Módulo de reconstrucción tridimensional por isosuperficies y marcha de cubos (Marching Cubes)."
-        )
-        lbl_subtitulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_subtitulo.setStyleSheet("font-size: 13px; color: #a0a0a0; margin-bottom: 6px;")
-        lbl_subtitulo.setWordWrap(True)
-
-        layout_badges = QHBoxLayout()
-        layout_badges.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout_badges.setSpacing(8)
-
-        for texto in ("PyVista", "VTK", "Isosuperficie", "Filtrado Hounsfield"):
-            badge = QLabel(texto)
-            badge.setStyleSheet(
-                "background-color: #1e293b; color: #38bdf8; border: 1px solid #0284c7; "
-                "border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: 600;"
-            )
-            layout_badges.addWidget(badge)
-
-        lbl_info = QLabel("Integración prevista para la Fase 2 y 3 del proyecto.")
-        lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_info.setStyleSheet("font-size: 11px; color: #64748b; font-style: italic;")
-
-        layout_tarjeta.addWidget(lbl_icono)
-        layout_tarjeta.addWidget(lbl_titulo)
-        layout_tarjeta.addWidget(lbl_subtitulo)
-        layout_tarjeta.addLayout(layout_badges)
-        layout_tarjeta.addWidget(lbl_info)
-
-        layout_centro.addWidget(tarjeta)
-        return panel
+    def _crear_panel_3d(self, parent: QWidget) -> QtInteractor:
+        """Crea el panel 3D usando QtInteractor.
+        Returns the QtInteractor widget which contains the VTK render window.
+        """
+        interactor = QtInteractor(parent)
+        interactor.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        return interactor
 
     def _abrir_dialogo_cargar_dicom(self):
         """Abre un diálogo para elegir un archivo de volumen o un corte DICOM.
@@ -800,7 +762,6 @@ class MainWindow(QMainWindow):
                 f"Espaciado: {espaciado[0]:.2f} x {espaciado[1]:.2f} x {espaciado[2]:.2f} mm"
             )
             self.statusBar.showMessage(msg_estado)
-
         except Exception as e:
             volumen, espaciado = generar_volumen_sintetico()
             msg_alerta = (
@@ -809,7 +770,13 @@ class MainWindow(QMainWindow):
             )
             self.statusBar.showMessage(msg_alerta)
 
+        # Inicializar el motor 3D si aún no existe
+        if self.render3d is None:
+            # self.panel_3d es el QtInteractor creado antes
+            self.render3d = Render3D(self.panel_3d)
+        # Mostrar el volumen en ambos visores
         self.visor_cortes.mostrar((volumen, espaciado))
+        self.render3d.mostrar((volumen, espaciado))
         self._sincronizar_sliders_con_datos()
         self.visor_cortes.reajustar_tamano()
 

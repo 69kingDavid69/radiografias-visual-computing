@@ -56,8 +56,8 @@ fluido en el computador más lento del equipo.
 los dientes se distinguen del maxilar.
 
 ## Fase 3 — Integración
-- [ ] Probar `Render3D` dentro de la app de Juan (`QtInteractor`).
-- [ ] Conectar el selector de preset y la barra de umbral de la app a
+- [x] Probar `Render3D` dentro de la app de Juan (`QtInteractor`).
+- [x] Conectar el selector de preset y la barra de umbral de la app a
   `aplicar_preset` y `set_umbral`.
 
 **Hecho cuando:** el panel 3D funciona dentro de la ventana única.
@@ -68,3 +68,4 @@ los dientes se distinguen del maxilar.
   abrirlo en Blender o compararlo con el húmero de clase.
 - [ ] Sección técnica del informe: marching cubes, umbralización y rendimiento.
 - [ ] Conducir la parte 3D de la demo.
+
