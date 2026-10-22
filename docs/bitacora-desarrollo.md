@@ -514,6 +514,27 @@ Render en [results/sts_presets.png](../results/sts_presets.png).
 
 ---
 
+## 2026-10-22 — Panel 3D de la app: arreglos de integración
+
+**Reporte de David:** con la app abierta, el panel 3D mostraba solo pedacitos sueltos sobre fondo blanco.
+
+**Causas** (en la integración del PR #13)
+1. `app_qt.py` llamaba `render3d.mostrar((volumen, espaciado))` con una **tupla** y no con el `Estudio`. `Render3D` no conocía la escala, no tenía presets y usaba el umbral de respaldo (60 % del rango ≈ 2100), que con datos normalizados es **metal**: se veían solo las placas y tornillos del estudio Post.
+2. El `QtInteractor` usaba el **fondo blanco** de VTK.
+3. Al abrir otro estudio con el botón, **el 3D no se actualizaba**: solo se dibujaba el estudio con el que arrancaba la app.
+4. La app no tenía forma de cambiar de estructura; los presets solo existían como teclas en `--modo 3d`.
+
+**Arreglos** (rama `fix/vista-3d-app`)
+- `_mostrar_en_3d(estudio)` le pasa el `Estudio` completo. Con el volumen sintético de respaldo se mantiene la tupla, y entonces hay solo umbral libre.
+- Fondo `#181818`, el del tema oscuro de la app.
+- **Barra "Estructura 3D"** sobre el panel: un botón por preset del estudio más "Implante" si hay hueso y metal. Se arma según la escala de cada estudio, y si la escala es desconocida lo avisa. Se agregó el estilo `:checked` a `btn-preset` para ver cuál está activo.
+- `cargar_nuevo_estudio` también actualiza el 3D.
+- La visibilidad de los modos 2D, 3D y dividido se aplica al contenedor (barra + render).
+
+**Verificación sin ventana:** arranca en "Hueso" (umbral 700) con 6 botones; "Implante" dibuja dos capas; al abrir Pre y STS el 3D cambia. 45/45 tests. El dibujo con OpenGL se revisa con la app abierta.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

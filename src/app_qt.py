@@ -61,7 +61,7 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
-from src.render_3d import Render3D
+from src.render_3d import CAPAS_IMPLANTE, Render3D
 from src.densidades import unidad_de, ventana_para
 from src.visor_cortes import (
     COLOR_ANCHO,
@@ -203,6 +203,12 @@ QPushButton.btn-preset:hover {
 QPushButton.btn-preset:pressed {
     background-color: #0e639c;
     color: #ffffff;
+}
+
+QPushButton.btn-preset:checked {
+    background-color: #0e639c;
+    color: #ffffff;
+    border: 1px solid #38bdf8;
 }
 
 /* ==========================================================================
@@ -416,6 +422,10 @@ class MainWindow(QMainWindow):
         self.panel_controles: QFrame | None = None
         # Motor de render 3D que será inicializado después de cargar datos.
         self.render3d: Render3D | None = None
+        # Contenedor del panel 3D: barra de estructuras + QtInteractor
+        self.contenedor_3d: QWidget | None = None
+        self.barra_presets_3d: QHBoxLayout | None = None
+        self.grupo_presets_3d: QButtonGroup | None = None
 
         # Botones de navegación y vistas
         self.btn_cargar: QPushButton | None = None
@@ -519,11 +529,20 @@ class MainWindow(QMainWindow):
         self.panel_controles = self._crear_panel_controles_2d(self.widget_2d)
         layout_2d.addWidget(self.panel_controles, stretch=0)
 
-        # Contenedor del panel 3D interactivo
-        self.panel_3d = self._crear_panel_3d(self.splitter)
+        # Contenedor del panel 3D interactivo: barra de estructuras arriba, render abajo
+        self.contenedor_3d = QWidget(self.splitter)
+        layout_3d = QVBoxLayout(self.contenedor_3d)
+        layout_3d.setContentsMargins(0, 0, 0, 0)
+        layout_3d.setSpacing(6)
+        self.barra_presets_3d = QHBoxLayout()
+        self.barra_presets_3d.setContentsMargins(8, 6, 8, 0)
+        self.barra_presets_3d.setSpacing(6)
+        layout_3d.addLayout(self.barra_presets_3d)
+        self.panel_3d = self._crear_panel_3d(self.contenedor_3d)
+        layout_3d.addWidget(self.panel_3d, stretch=1)
 
         self.splitter.addWidget(self.widget_2d)
-        self.splitter.addWidget(self.panel_3d)
+        self.splitter.addWidget(self.contenedor_3d)
 
         # 3. Barra de estado
         self.statusBar = QStatusBar(self)
@@ -688,7 +707,65 @@ class MainWindow(QMainWindow):
         """
         interactor = QtInteractor(parent)
         interactor.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # Fondo del tema oscuro de la app (el de VTK por defecto es blanco)
+        interactor.set_background("#181818")
         return interactor
+
+    def _mostrar_en_3d(self, estudio_o_tupla):
+        """Dibuja el estudio en el panel 3D y arma la barra de estructuras.
+
+        Con un Estudio, Render3D conoce su escala, arranca en el preset "hueso" y ofrece
+        los presets de esa escala; con una tupla (volumen sintético) solo hay umbral libre.
+        """
+        if self.render3d is None:
+            self.render3d = Render3D(self.panel_3d)
+        self.render3d.mostrar(estudio_o_tupla)
+        self._reconstruir_barra_presets_3d()
+        self.panel_3d.render()
+
+    def _reconstruir_barra_presets_3d(self):
+        """Un botón por preset del estudio cargado, más "Implante" si hay hueso y metal."""
+        while self.barra_presets_3d.count():
+            item = self.barra_presets_3d.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.grupo_presets_3d = QButtonGroup(self)
+        self.grupo_presets_3d.setExclusive(True)
+
+        presets = list(self.render3d.presets)
+        if not presets:
+            aviso = QLabel("Escala desconocida: sin presets 3D")
+            aviso.setStyleSheet("color: #9aa7b6; font-size: 12px;")
+            self.barra_presets_3d.addWidget(aviso)
+            self.barra_presets_3d.addStretch()
+            return
+
+        titulo = QLabel("Estructura 3D:")
+        titulo.setStyleSheet("color: #9aa7b6; font-size: 12px; font-weight: bold;")
+        self.barra_presets_3d.addWidget(titulo)
+        opciones = [(n, n.replace("_", " ").capitalize()) for n in presets]
+        if all(n in presets for n, _ in CAPAS_IMPLANTE):
+            opciones.append(("implante", "Implante"))
+        for nombre, texto in opciones:
+            boton = QPushButton(texto)
+            boton.setProperty("class", "btn-preset")
+            boton.setCheckable(True)
+            boton.setCursor(Qt.CursorShape.PointingHandCursor)
+            boton.setChecked(nombre == self.render3d.preset_actual)
+            boton.clicked.connect(lambda _=False, n=nombre: self._aplicar_preset_3d(n))
+            self.grupo_presets_3d.addButton(boton)
+            self.barra_presets_3d.addWidget(boton)
+        self.barra_presets_3d.addStretch()
+
+    def _aplicar_preset_3d(self, nombre: str):
+        if self.render3d is None:
+            return
+        if nombre == "implante":
+            self.render3d.aplicar_capas()
+        else:
+            self.render3d.aplicar_preset(nombre)
+        self.panel_3d.render()
+        self.statusBar.showMessage(f"Estructura 3D: {nombre.replace('_', ' ')}")
 
     def _abrir_dialogo_cargar_dicom(self):
         """Abre un diálogo para elegir un archivo de volumen o un corte DICOM.
@@ -724,6 +801,8 @@ class MainWindow(QMainWindow):
             self.visor_cortes.mostrar((volumen, espaciado))
             self._sincronizar_sliders_con_datos()
             self.visor_cortes.reajustar_tamano()
+            # Y el modelo 3D con el estudio completo (escala y presets)
+            self._mostrar_en_3d(estudio)
 
             msg_estado = (
                 f"Estudio cargado: {ruta_carpeta} | "
@@ -756,6 +835,7 @@ class MainWindow(QMainWindow):
             estudio = cargar_estudio(self.ruta_dicom)
             volumen, espaciado = estudio.volumen, estudio.espaciado
             self.escala = estudio.metadatos.get("escala")
+            para_3d = estudio
             msg_estado = (
                 f"Estudio cargado: {self.ruta_dicom} | "
                 f"Volumen: {volumen.shape} (Z, Y, X) | "
@@ -764,19 +844,17 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage(msg_estado)
         except Exception as e:
             volumen, espaciado = generar_volumen_sintetico()
+            para_3d = (volumen, espaciado)
             msg_alerta = (
                 f"Aviso: No se pudo cargar '{self.ruta_dicom}' ({e}). "
                 f"Mostrando volumen sintético de prueba."
             )
             self.statusBar.showMessage(msg_alerta)
 
-        # Inicializar el motor 3D si aún no existe
-        if self.render3d is None:
-            # self.panel_3d es el QtInteractor creado antes
-            self.render3d = Render3D(self.panel_3d)
-        # Mostrar el volumen en ambos visores
+        # Mostrar el volumen en ambos visores. Al 3D va el Estudio completo, no la tupla:
+        # sin su escala Render3D no tiene presets y el umbral de respaldo cae en el metal.
         self.visor_cortes.mostrar((volumen, espaciado))
-        self.render3d.mostrar((volumen, espaciado))
+        self._mostrar_en_3d(para_3d)
         self._sincronizar_sliders_con_datos()
         self.visor_cortes.reajustar_tamano()
 
@@ -978,7 +1056,7 @@ class MainWindow(QMainWindow):
     def mostrar_modo_2d(self):
         """Modo 2D: Expande el VisorCortes a pantalla completa."""
         self.widget_2d.setVisible(True)
-        self.panel_3d.setVisible(False)
+        self.contenedor_3d.setVisible(False)
         self.btn_2d.setChecked(True)
         if self.visor_cortes:
             self.visor_cortes.reajustar_tamano()
@@ -986,13 +1064,13 @@ class MainWindow(QMainWindow):
     def mostrar_modo_3d(self):
         """Modo 3D: Muestra el contenedor de reconstrucción 3D."""
         self.widget_2d.setVisible(False)
-        self.panel_3d.setVisible(True)
+        self.contenedor_3d.setVisible(True)
         self.btn_3d.setChecked(True)
 
     def mostrar_modo_dividido(self):
         """Modo Dividido: Distribuye el ancho libremente con el QSplitter."""
         self.widget_2d.setVisible(True)
-        self.panel_3d.setVisible(True)
+        self.contenedor_3d.setVisible(True)
         self.btn_dividido.setChecked(True)
 
         ancho_total = max(self.splitter.width(), self.width(), 900)
