@@ -595,6 +595,12 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 - El techo de Dice (~0,58) no viene de un mal umbral: dentro de la zona dental, el **hueso alveolar** que rodea las raíces también supera el umbral. Es la misma limitación de fondo: la densidad sola no separa diente de hueso.
 - El umbral `dientes` = 1000 de la escala `slicer` se fijó a ojo en la muestra Pre (otro equipo). Para STS el óptimo es ~750. Cada equipo necesita su propia calibración: confirma el hallazgo del 22/10 con 11 pacientes en vez de 1.
 
+**Aplicado (decisión de David):**
+- `RANGOS_DENSIDAD["hounsfield"]["dientes"]` pasa de 1300 a **820 HU** (medido); `esmalte` se queda en 2000 HU (confirmado). La escala `slicer` no cambia.
+- Los 11 estudios STS se declaran `"hounsfield"` en `data/estudios.json`: usan esos presets sin renormalizarse.
+- `tejido_blando` (escala Hounsfield) pasa a `EXPERIMENTALES`: suelto reconstruye la cara, así que la app no lo ofrece como botón.
+- **Verificación:** Dice de "dientes" (con la arcada) en 3 pacientes: 0,57 → **0,62**, 0,30 → **0,56** y 0,42 → **0,56**. Render en [results/sts_dientes_calibrado.png](../results/sts_dientes_calibrado.png): se ven las coronas de molares y premolares, junto con el hueso cortical de la mandíbula. 52/52 tests.
+
 ---
 
 ## Próximas entradas

@@ -29,14 +29,15 @@ RANGOS_DENSIDAD = {
         "grasa":   (280, 375),
         "musculo": (375, 600),
     },
-    # Datasets calibrados en Hounsfield (ToothFairy3). Propuesta de la literatura,
-    # falta validarla con las etiquetas de ToothFairy3 (densidades.md §2.2 y §5).
+    # Datasets calibrados en Hounsfield (STS-3D-Tooth, ToothFairy3). Propuesta de la
+    # literatura (densidades.md §2.2), corregida con 11 pacientes etiquetados de STS
+    # (scripts/calibrar_presets.py, results/calibracion_sts.csv, bitácora 22/10).
     "hounsfield": {
         "tejido_blando": (-200, 150),   # encía, lengua, músculo; ruidoso en CBCT
         "hueso":         (150, INF),    # todo el hueso + dientes
         "hueso_denso":   (850, INF),    # hueso cortical + dientes
-        "dientes":       (1300, INF),   # dentina + esmalte (y restauraciones)
-        "esmalte":       (2000, INF),   # coronas (y metal o resinas radiopacas)
+        "dientes":       (820, INF),    # medido: óptimo de Dice ~816 HU (609–1084); antes 1300
+        "esmalte":       (2000, INF),   # confirmado: el 10 % más denso del diente empieza en ~2010 HU
     },
 }
 
@@ -127,8 +128,9 @@ COLORES_TEJIDO = {
 }
 
 # Presets que la app no ofrece sueltos: solo en la vista de tejidos blandos con corte
-# sagital (Render3D.CAPAS_BLANDAS), porque la grasa de frente reconstruye la cara.
-EXPERIMENTALES = {"grasa", "musculo"}
+# sagital (Render3D.CAPAS_BLANDAS), porque la grasa o el tejido blando de frente
+# reconstruyen la cara.
+EXPERIMENTALES = {"grasa", "musculo", "tejido_blando"}
 
 # Presets que se limitan a la arcada dental (src/region.py): por densidad sola incluyen
 # el hueso cortical del cráneo, que es tan denso como la dentina.

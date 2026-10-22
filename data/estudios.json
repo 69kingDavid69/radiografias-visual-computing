@@ -1,1 +1,35 @@
-{}
+{
+  "ROI_L_001": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_002": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_003": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_004": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_005": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_006": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_007": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_008": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_009": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_010": {
+    "escala": "hounsfield"
+  },
+  "ROI_L_011": {
+    "escala": "hounsfield"
+  }
+}
