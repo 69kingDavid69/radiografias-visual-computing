@@ -415,6 +415,26 @@ Además, `test_densidades.py` fija los sigmas medidos. **37/37 tests en verde.**
 
 ---
 
+## 2026-10-22 — Página de Nicolás y panel 3D de Emanuel en `main`; prueba en localhost
+
+**Fusionados por David (22/10)**
+- **#13, Emanuel:** `Render3D` dentro de la app Qt con `pyvistaqt.QtInteractor`. El panel 3D deja de ser un *placeholder*.
+- **#12:** bitácora de la activación de Pages.
+- **#11, Nicolás:** página web con cortes reales y modelos 3D interactivos (*three.js* incluido en `web/vendor/`). Los modelos salen de `superficie_por_banda` y de los sigmas de `densidades.py`, sin piel. El despliegue corrió solo al fusionar (`build ✓`, `deploy ✓`).
+
+**Problema encontrado al integrar:** `app_qt.py` importa `pyvistaqt`, pero no estaba en `requirements.txt`. Una instalación nueva fallaba al abrir la app. Se agregó a los requisitos (PR `fix/requisitos-pyvistaqt`).
+
+**Prueba en localhost** (`python -m http.server 8000 --directory web`, como indica `web/README.md`)
+- La portada y el laboratorio 3D cargan **sin errores en la consola**.
+- Todos los recursos responden 200: *three.js*, `meta.json`, `cortes.png`, `hueso.ply`, `metal.ply` y `dientes.ply`.
+- El cráneo de la portada y el preset "Dientes" del laboratorio se dibujan.
+
+**App Qt:** sin ventana arranca, carga el estudio Post y crea el `QtInteractor`. El dibujo 3D necesita OpenGL, así que hay que probarlo con una ventana real.
+
+**Pendiente:** decidir si `web/datos/cortes.png` se guarda con ventana ósea, para que el tejido blando no quede publicado (regla de `datasets.md`).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

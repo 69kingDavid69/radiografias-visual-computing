@@ -4,6 +4,7 @@ SimpleITK
 matplotlib
 pyvista
 PySide6
+pyvistaqt
 scikit-image
 jupyter
 pytest
