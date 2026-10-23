@@ -120,3 +120,27 @@ def test_render3d_dientes_limitados_a_la_arcada_y_vista_de_blandos():
     assert r.pl.camera.position[0] > r.pl.camera.focal_point[0]
     r.aplicar_preset("hueso")
     assert r.pl.camera.up == pytest.approx((0, 0, 1)) and r._vista_lateral is False
+
+
+def test_banda_se_interpola_y_no_sale_escalonada():
+    # Con una máscara 0/1 cada vértice cae justo a mitad de camino entre dos vóxeles
+    # (la superficie sale en escalones). Con el campo continuo cae donde la densidad
+    # cruza el límite: en cualquier punto del borde entre vóxeles.
+    z, y, x = np.mgrid[:30, :30, :30]
+    r = np.sqrt((z - 15) ** 2 + (y - 15) ** 2 + (x - 15) ** 2)
+    v = (2000 - 100 * r).astype(np.float32)          # densidad que baja suave hacia afuera
+    sup = superficie_por_banda(v, (1.0, 1.0, 1.0), 1250, 1700, reduccion=1)
+    frac = np.abs(np.asarray(sup.points) % 1.0 - 0.5)
+    en_mitades = (frac < 1e-3).all(axis=1).mean()
+    assert sup.n_points > 0
+    assert en_mitades < 0.1, f"{en_mitades:.0%} de los vértices en mitades exactas: superficie escalonada"
+
+
+def test_pulido_taubin_no_encoge_la_superficie():
+    z, y, x = np.mgrid[:30, :30, :30]
+    r = np.sqrt((z - 15) ** 2 + (y - 15) ** 2 + (x - 15) ** 2)
+    v = (2000 - 100 * r).astype(np.float32)
+    sin = superficie_por_banda(v, (1.0, 1.0, 1.0), 1000, reduccion=1)
+    con = superficie_por_banda(v, (1.0, 1.0, 1.0), 1000, reduccion=1, pulido=20)
+    ancho = lambda s: s.bounds[1] - s.bounds[0]
+    assert ancho(con) == pytest.approx(ancho(sin), rel=0.03)

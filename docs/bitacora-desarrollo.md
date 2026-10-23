@@ -616,6 +616,27 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 
 ---
 
+## 2026-10-23 — Tejidos "pixelados": campo continuo para las bandas
+
+**Reporte de David:** los tejidos se veían muy pixelados.
+
+**Causas**
+1. Las bandas (`esmalte_sin_metal`, `grasa`, `musculo`) se dibujaban desde una **máscara 0/1**. Sin valores intermedios, marching cubes pone cada vértice justo a mitad de camino entre vóxeles: la superficie sale **escalonada**, en bloques de 1 mm con `reduccion=2`. Es la opción B3 del 19/10, que ya había dejado anotado ese "ruido en los bordes".
+2. `grasa` y `musculo` **no tenían suavizado configurado** (sigma 0), con un ruido de ~18 u.
+
+**Arreglo** (`superficie_por_banda`)
+- En lugar de la máscara se usa el **campo continuo** `min(densidad − mínimo, máximo − densidad)`: positivo dentro de la banda, negativo fuera. Marching cubes dibuja su cero e **interpola entre vóxeles**, igual que con un umbral simple.
+- El gaussiano ahora se aplica a la **densidad** antes de calcular el campo, no a la máscara.
+- Sigma de 1 mm para `grasa`, `musculo` y `tejido_blando`.
+- Pulido **Taubin** (20 iteraciones; encoge ~1 %, mientras que el Laplaciano encoge ~10 %) solo en la vista de tejidos blandos.
+
+**Verificación**
+- Comparación en el estudio Post: el esmalte sin metal pasa de bloques a coronas lisas en el mismo tiempo (0,02 s), y la grasa de granulada a continua.
+- Renders del motor de la app en [results/tejidos_suaves.png](../results/tejidos_suaves.png): dientes 0,07 s, esmalte sin metal 0,03 s y blandos 1,8 s.
+- Dos tests nuevos: uno verifica que menos del 10 % de los vértices de una banda caigan en mitades exactas (la huella de la máscara) y otro que el pulido no encoge la superficie (±3 %). **54/54.**
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
