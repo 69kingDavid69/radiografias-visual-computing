@@ -40,8 +40,32 @@ function resaltarNavegacion() {
   secciones.forEach((s) => s && obs.observe(s));
 }
 
+// Exposición: → / ← (o AvPág / RePág) pasan a la sección siguiente o anterior.
+function navegarConTeclado() {
+  const secciones = [document.getElementById("inicio"), ...document.querySelectorAll("main > section, #equipo")]
+    .filter((s, i, todas) => s && todas.indexOf(s) === i);
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target.closest("input, textarea, select, [role=tab], canvas")) return;
+    const adelante = e.key === "ArrowRight" || e.key === "PageDown";
+    const atras = e.key === "ArrowLeft" || e.key === "PageUp";
+    if (!adelante && !atras) return;
+    const y = window.scrollY + 90;
+    let actual = 0;
+    secciones.forEach((s, i) => { if (s.offsetTop <= y) actual = i; });
+    const destino = secciones[Math.max(0, Math.min(secciones.length - 1, actual + (adelante ? 1 : -1)))];
+    destino.scrollIntoView({ behavior: "smooth", block: "start" });
+    e.preventDefault();
+  });
+}
+
 async function arrancar() {
   resaltarNavegacion();
+  navegarConTeclado();
+  // Las tarjetas de preguntas abren su pestaña del laboratorio 3D.
+  document.querySelectorAll("[data-abrir-pestana]").forEach((a) => a.addEventListener("click", () => {
+    document.querySelector(`[data-pestana="${a.dataset.abrirPestana}"]`)?.click();
+  }));
   const meta = await (await fetch("datos/meta.json")).json();
   iniciarPortada(document.getElementById("visor-portada")).catch((e) => console.error("portada", e));
   iniciarLaboratorio(meta);

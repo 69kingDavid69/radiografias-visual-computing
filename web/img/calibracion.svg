@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-label="Umbral óptimo de dientes en 11 pacientes: mediana 816 HU frente a 1300 HU de la literatura">
+<line x1="40" x2="680" y1="110" y2="110" stroke="#2a3340" stroke-width="2"/>
+<line x1="40.0" x2="40.0" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="40.0" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">400</text>
+<line x1="156.4" x2="156.4" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="156.4" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">600</text>
+<line x1="272.7" x2="272.7" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="272.7" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">800</text>
+<line x1="389.1" x2="389.1" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="389.1" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">1000</text>
+<line x1="505.5" x2="505.5" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="505.5" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">1200</text>
+<line x1="621.8" x2="621.8" y1="110" y2="116" stroke="#6f7d8c"/>
+<text x="621.8" y="134" text-anchor="middle" fill="#6f7d8c" font-size="15" font-family="Segoe UI, system-ui, sans-serif">1400</text>
+<text x="360.0" y="164" text-anchor="middle" fill="#a3b0bf" font-size="16" font-family="Segoe UI, system-ui, sans-serif">umbral óptimo de "dientes" (HU) — un punto por paciente</text>
+<circle cx="161.5" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>609 HU</title></circle>
+<circle cx="208.5" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>690 HU</title></circle>
+<circle cx="218.7" cy="86.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>707 HU</title></circle>
+<circle cx="224.8" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>718 HU</title></circle>
+<circle cx="257.1" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>773 HU</title></circle>
+<circle cx="282.3" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>816 HU</title></circle>
+<circle cx="364.1" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>957 HU</title></circle>
+<circle cx="378.9" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>982 HU</title></circle>
+<circle cx="391.1" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>1003 HU</title></circle>
+<circle cx="394.3" cy="86.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>1009 HU</title></circle>
+<circle cx="437.8" cy="98.0" r="7" fill="#38bdf8" stroke="#0e1116" stroke-width="2"><title>1084 HU</title></circle>
+<line x1="282.3" x2="282.3" y1="30" y2="110" stroke="#38bdf8" stroke-dasharray="4 4" stroke-width="2"/>
+<text x="282.3" y="22" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="600" font-family="Segoe UI, system-ui, sans-serif">medido: 816 HU</text>
+<line x1="563.6" x2="563.6" y1="30" y2="110" stroke="#e8d393" stroke-dasharray="4 4" stroke-width="2"/>
+<text x="563.6" y="22" text-anchor="middle" fill="#e8d393" font-size="16" font-weight="600" font-family="Segoe UI, system-ui, sans-serif">literatura: 1300 HU</text>
+</svg>

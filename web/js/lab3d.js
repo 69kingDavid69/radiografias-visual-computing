@@ -4,7 +4,7 @@ import { OrbitControls } from "../vendor/three/OrbitControls.js";
 import { PLYLoader } from "../vendor/three/PLYLoader.js";
 
 // Colores de los tejidos: los mismos de src/densidades.py (COLORES_TEJIDO); un test los compara.
-const COLOR = { hueso: 0xe8d393, dientes: 0xf0e1b7, esmalte: 0xf6eed5, metal: 0xc9d1d9, dientes_detalle: 0xf0e1b7 };
+const COLOR = { hueso: 0xe8d393, dientes: 0xf0e1b7, esmalte: 0xf6eed5, esmalte_sin_metal: 0xf6eed5, metal: 0xc9d1d9, dientes_detalle: 0xf0e1b7 };
 const INTERIOR = 0xd94a3d;
 // Factores clásicos de Taubin (1995): un paso que encoge (λ) y otro que infla (μ, con |μ| > λ).
 const LAMBDA = 0.33, MU = -0.34;
@@ -88,7 +88,7 @@ export async function iniciarPortada(contenedor) {
   const [hueso, metal] = await Promise.all([cargarMalla("hueso"), cargarMalla("metal")]);
   e.grupo.add(new THREE.Mesh(hueso, material(COLOR.hueso)));
   e.grupo.add(new THREE.Mesh(metal, material(COLOR.metal, { shininess: 90, specular: 0xd0d6dc })));
-  encuadrar(e, hueso.boundingSphere, 0.95);
+  encuadrar(e, hueso.boundingSphere, 0.78);
   document.getElementById("cargando-portada").remove();
   const reducirMov = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let visible = true;
@@ -166,13 +166,15 @@ export function iniciarLaboratorio(meta) {
     hueso: { texto: "Hueso (≥ 700)", capas: [["hueso", 1]] },
     dientes: { texto: "Dientes (≥ 1000)", capas: [["dientes", 1]] },
     esmalte: { texto: "Esmalte (≥ 1250)", capas: [["esmalte", 1]] },
+    esmalte_sin_metal: { texto: "Esmalte sin metal (1250–2000)", capas: [["esmalte_sin_metal", 1]] },
     metal: { texto: "Metal (≥ 2000)", capas: [["metal", 1]] },
     implante: { texto: "Hueso + metal", capas: [["hueso", 0.18], ["metal", 1]] },
   };
   const DESCRIPCION = {
     hueso: "Todo lo que supera 700: cráneo, maxilares y dientes. El programa le aplica un suavizado gaussiano de 0.5 mm antes de marching cubes para quitar pedacitos sueltos.",
-    dientes: "Desde 1000 queda el hueso más denso y los dientes con sus raíces. Es el preset con el que mejor se ven las raíces.",
-    esmalte: "Desde 1250 quedan las coronas (esmalte), pero también los brackets y algo de hueso cortical: sus densidades se cruzan.",
+    dientes: "Desde 1000 quedan los dientes con sus raíces. Por densidad sola también aparecería el hueso denso del cráneo (es tan denso como la dentina), así que el programa limita este preset a la arcada dental: la franja donde se concentra el esmalte.",
+    esmalte: "Desde 1250 quedan las coronas (el esmalte) y también los brackets, porque el metal es todavía más denso. Se limita a la arcada dental igual que los dientes.",
+    esmalte_sin_metal: "La misma banda pero con tope en 2000: se quita el metal y quedan huecos donde estaban los brackets. Es una banda de densidad (mínimo y máximo), no un umbral simple.",
     metal: "Desde 2000 solo queda metal: aquí, los brackets de ortodoncia. El metal es más denso que cualquier tejido.",
     implante: "Vista de implante (idea del equipo): hueso casi transparente y metal sólido, para ver el metal dentro del hueso.",
   };
