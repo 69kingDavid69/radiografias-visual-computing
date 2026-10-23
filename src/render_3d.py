@@ -25,17 +25,20 @@ def a_pyvista(volumen, espaciado, reduccion=1, origen_z_mm=0.0):
 
 
 def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, suavizado_mm=0.0,
-                         rango_z=None):
+                         rango_z=None, pulido=0):
     """Superficie de la estructura cuya densidad está entre `minimo` y `maximo`.
 
     Sin `maximo` (None o infinito) es la isosuperficie de siempre: todo lo que supera `minimo`.
     Con `maximo` se aísla la banda (por ejemplo, el esmalte sin el metal de los
     brackets). Una isosuperficie en `maximo` no sirve para eso, porque queda
-    encerrada dentro de la de `minimo`; en cambio se marca con 1 cada vóxel de la
-    banda y con 0 el resto, y marching cubes dibuja la frontera en 0.5.
+    encerrada dentro de la de `minimo`. Se usa el campo continuo
+    min(densidad − mínimo, máximo − densidad), positivo dentro de la banda, y marching
+    cubes dibuja su cero. A diferencia de una máscara 0/1, el campo conserva los valores
+    intermedios y la superficie se interpola entre vóxeles: no sale escalonada.
 
-    `suavizado_mm` aplica un gaussiano (sigma en mm) antes de marching cubes: sobre la
-    densidad si no hay máximo, sobre la máscara si lo hay.
+    `suavizado_mm` aplica un gaussiano (sigma en mm) a la densidad antes de marching
+    cubes. `pulido` = iteraciones de suavizado Taubin sobre la malla (encoge ~1 %, a
+    diferencia del Laplaciano); sirve para el tejido blando, que es ruidoso.
 
     `rango_z` = (z0, z1) limita la superficie a esa franja de capas (p. ej. la arcada
     dental de src/region.py), para separar lo que la densidad sola no separa.
@@ -47,13 +50,16 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
     # Primero se reduce y después se suaviza: es 8 veces menos trabajo con reduccion=2.
     v = volumen[::reduccion, ::reduccion, ::reduccion]
     esp = tuple(s * reduccion for s in espaciado)
+    v = suavizar(v, esp, suavizado_mm)
     if maximo is None or np.isinf(maximo):
-        campo, nivel = suavizar(v, esp, suavizado_mm), minimo
+        campo, nivel = v, minimo
     else:
-        mascara = ((v >= minimo) & (v <= maximo)).astype(np.float32)
-        campo, nivel = suavizar(mascara, esp, suavizado_mm), 0.5
-    # a_pyvista nombra el campo "densidad"; con máximo contiene la máscara (0 a 1).
-    return a_pyvista(campo, esp, 1, origen_z_mm=z0 * espaciado[0]).contour([nivel], scalars="densidad")
+        campo, nivel = np.minimum(v - minimo, maximo - v).astype(np.float32), 0.0
+    # a_pyvista nombra el campo "densidad"; con máximo contiene la distancia a la banda.
+    superficie = a_pyvista(campo, esp, 1, origen_z_mm=z0 * espaciado[0]).contour([nivel], scalars="densidad")
+    if pulido and superficie.n_points:
+        superficie = superficie.smooth_taubin(n_iter=pulido, pass_band=0.05)
+    return superficie
 
 
 # El metal brilla como metal: reflejo especular más fuerte y concentrado.
@@ -65,6 +71,7 @@ CAPAS_IMPLANTE = [("hueso", 0.2), ("metal", 1.0)]
 # Vista experimental de tejidos blandos: siempre con corte sagital, para ver el interior
 # y nunca la cara (la grasa está justo bajo la piel). Ver densidades.EXPERIMENTALES.
 CAPAS_BLANDAS = [("grasa", 0.35), ("musculo", 1.0), ("hueso", 1.0)]
+PULIDO_BLANDOS = 20     # iteraciones de Taubin para el tejido blando (ruidoso en CBCT)
 
 
 class Render3D:
@@ -178,7 +185,8 @@ class Render3D:
             superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
                                               reduccion=self.reduccion,
                                               suavizado_mm=suavizado_para(nombre),
-                                              rango_z=self._rango_z(nombre))
+                                              rango_z=self._rango_z(nombre),
+                                              pulido=PULIDO_BLANDOS if nombre in EXPERIMENTALES else 0)
             if corte_sagital and superficie.n_points > 0:
                 centro_x = self.volumen.shape[2] * self.espaciado[2] / 2
                 superficie = superficie.clip(normal=(1, 0, 0), origin=(centro_x, 0, 0))

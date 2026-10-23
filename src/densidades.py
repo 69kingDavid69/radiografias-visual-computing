@@ -50,6 +50,9 @@ SUAVIZADO_MM = {
     "esmalte": 0.0,            # con 0.5 la capa pierde la mitad de la superficie
     "esmalte_sin_metal": 0.0,  # con 1.0 desaparece
     "metal": 0.0,              # suavizar encoge brackets e implantes
+    "grasa": 1.0,              # tejido blando: ruido ~18 u, sin suavizar se ve granulado
+    "musculo": 1.0,
+    "tejido_blando": 1.0,
 }
 
 
