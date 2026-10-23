@@ -1,6 +1,7 @@
 numpy
 pydicom
 SimpleITK
+scipy
 matplotlib
 pyvista
 PySide6

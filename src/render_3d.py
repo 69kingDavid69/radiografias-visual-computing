@@ -1,9 +1,10 @@
 """Herramienta 2: reconstrucción 3D por umbral de densidad."""
 import numpy as np
 import pyvista as pv
+from scipy import ndimage
 
 from src.densidades import EN_ARCADA, EXPERIMENTALES, color_para, presets_para, suavizado_para
-from src.region import arcada_dental
+from src.region import arcada_dental, piezas_con_esmalte
 from src.filtros import suavizar
 
 
@@ -25,7 +26,7 @@ def a_pyvista(volumen, espaciado, reduccion=1, origen_z_mm=0.0):
 
 
 def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, suavizado_mm=0.0,
-                         rango_z=None, pulido=0):
+                         rango_z=None, pulido=0, conservar=None):
     """Superficie de la estructura cuya densidad está entre `minimo` y `maximo`.
 
     Sin `maximo` (None o infinito) es la isosuperficie de siempre: todo lo que supera `minimo`.
@@ -35,6 +36,10 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
     min(densidad − mínimo, máximo − densidad), positivo dentro de la banda, y marching
     cubes dibuja su cero. A diferencia de una máscara 0/1, el campo conserva los valores
     intermedios y la superficie se interpola entre vóxeles: no sale escalonada.
+
+    `conservar` = máscara booleana (del tamaño de la franja `rango_z`) de lo que se
+    dibuja; el resto se lleva al mínimo. Se dilata 2 vóxeles para no recortar el borde
+    que marching cubes necesita para interpolar.
 
     `suavizado_mm` aplica un gaussiano (sigma en mm) a la densidad antes de marching
     cubes. `pulido` = iteraciones de suavizado Taubin sobre la malla (encoge ~1 %, a
@@ -47,6 +52,8 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
     if rango_z is not None:
         z0, z1 = rango_z
         volumen = volumen[z0:z1]
+    if conservar is not None:
+        volumen = np.where(ndimage.binary_dilation(conservar, iterations=2), volumen, volumen.min())
     # Primero se reduce y después se suaviza: es 8 veces menos trabajo con reduccion=2.
     v = volumen[::reduccion, ::reduccion, ::reduccion]
     esp = tuple(s * reduccion for s in espaciado)
@@ -159,7 +166,8 @@ class Render3D:
         superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
                                           reduccion=self.reduccion,
                                           suavizado_mm=suavizado_para(nombre),
-                                          rango_z=self._rango_z(nombre))
+                                          rango_z=self._rango_z(nombre),
+                                          conservar=self._piezas_dentales(nombre, minimo))
         self._limpiar()
         self._volver_al_frente()
         if superficie.n_points > 0:
@@ -210,6 +218,15 @@ class Render3D:
             self.pl.view_xz()
             self.pl.reset_camera()
             self._vista_lateral = False
+
+    def _piezas_dentales(self, nombre, umbral):
+        """Para "dientes": solo las piezas conectadas que tienen esmalte (src/region.py)."""
+        if nombre != "dientes" or self.arcada is None or "esmalte" not in self.presets:
+            return None
+        esmalte_min = self.presets["esmalte"][0]
+        esmalte_max = self.presets.get("esmalte_sin_metal", (esmalte_min, np.inf))[1]
+        z0, z1 = self.arcada
+        return piezas_con_esmalte(self.volumen[z0:z1], umbral, esmalte_min, esmalte_max)
 
     def _rango_z(self, nombre):
         return self.arcada if nombre in EN_ARCADA else None

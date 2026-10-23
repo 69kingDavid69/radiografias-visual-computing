@@ -637,6 +637,29 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 
 ---
 
+## 2026-10-23 — "Dientes" solo con piezas conectadas al esmalte
+
+**Reporte de David:** con la arcada (±25 mm), "Dientes" seguía mostrando pedazos de arriba.
+
+**Análisis** (estudio Post, dentro de la arcada, densidad ≥ 1000): **317** piezas conectadas; solo **16** tienen esmalte (≥ 50 vóxeles entre 1250 y 2000). En el Pre, 295 y 8.
+- Las piezas sin esmalte son **fragmentos sueltos de hueso**.
+- Los 4 pedazos de arriba del Post (z ≈ 80 mm, unos 26 mm por encima del centro de los dientes) y las barras laterales sí tienen "esmalte": son los **tornillos y las placas de fijación** de la cirugía. El borde del metal tiene densidades de esmalte por volumen parcial.
+- La proporción de metal **no los separa**: tornillos 25–32 %, pero dientes con brackets del Pre hasta 47 %. Una regla con ese número se ajustaría a estos dos estudios, así que **no se usó**.
+
+**Arreglo:** `region.piezas_con_esmalte()` etiqueta las piezas conectadas (`scipy.ndimage.label`) y conserva las que tienen esmalte. `superficie_por_banda(..., conservar=)` dibuja solo eso, con la máscara dilatada 2 vóxeles para no cortar el borde que se interpola. Se aplica al preset `dientes`.
+
+**Resultado**
+- Post y Pre: desaparecen los fragmentos sueltos. Siguen los tornillos y las placas, que son metal al nivel de los dientes: separarlos necesita **forma**, no densidad.
+- Tiempo de "dientes": 0,07 → 0,39 s.
+- STS (Dice con las máscaras): 0,626 → 0,631, 0,555 → 0,560 y 0,560 → 0,561. No empeora.
+- Figura en [results/dientes_piezas_conectadas.png](../results/dientes_piezas_conectadas.png). Test nuevo: conserva un diente completo (raíz y corona) y descarta un fragmento sin esmalte. 55/55.
+
+**Interfaz:** los botones 3D se cortaban en la vista dividida. Quedaron "Sin metal" y "Blandos (exp.)". **Para Juan:** en la vista dividida, los títulos de los cortes 2D se montan uno sobre otro ("Coronal… mm)Sagital").
+
+`scipy` se agregó a `requirements.txt` (ya venía como dependencia de scikit-image).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

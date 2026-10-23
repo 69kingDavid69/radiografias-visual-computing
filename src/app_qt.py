@@ -744,11 +744,13 @@ class MainWindow(QMainWindow):
         titulo = QLabel("Estructura 3D:")
         titulo.setStyleSheet("color: #9aa7b6; font-size: 12px; font-weight: bold;")
         self.barra_presets_3d.addWidget(titulo)
-        opciones = [(n, n.replace("_", " ").capitalize()) for n in presets if n not in EXPERIMENTALES]
+        cortos = {"esmalte_sin_metal": "Sin metal", "hueso_denso": "Hueso denso"}
+        opciones = [(n, cortos.get(n, n.replace("_", " ").capitalize()))
+                    for n in presets if n not in EXPERIMENTALES]
         if all(n in presets for n, _ in CAPAS_IMPLANTE):
             opciones.append(("implante", "Implante"))
         if all(n in presets for n, _ in CAPAS_BLANDAS):
-            opciones.append(("blandos", "Blandos: denso / graso (exp.)"))
+            opciones.append(("blandos", "Blandos (exp.)"))
         for nombre, texto in opciones:
             boton = QPushButton(texto)
             boton.setProperty("class", "btn-preset")
