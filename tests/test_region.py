@@ -36,3 +36,14 @@ def test_rango_z_quita_el_craneo_y_conserva_la_posicion():
     assert todo.bounds[4] < 10            # sin límite aparece el "cráneo" (z ≈ 2,5–7 mm)
     assert solo.bounds[4] > 35            # con límite, solo los dientes (z ≈ 40–47 mm)
     assert solo.bounds[5] == pytest.approx(todo.bounds[5], abs=1.0)   # misma posición en mm
+
+
+def test_piezas_con_esmalte_descarta_fragmentos_sueltos():
+    from src.region import piezas_con_esmalte
+    v = np.zeros((40, 30, 30), dtype=np.float32)
+    v[20:30, 10:20, 10:20] = 1100          # diente (dentina)
+    v[20:22, 10:20, 10:20] = 1400          # su corona con esmalte
+    v[5:9, 3:7, 3:7] = 1100                # fragmento suelto de hueso, sin esmalte
+    keep = piezas_con_esmalte(v, 1000, 1250, 2000, minimo_esmalte=10)
+    assert keep[25, 15, 15] and keep[21, 15, 15]   # el diente completo (raíz y corona)
+    assert not keep[6, 5, 5]                        # el fragmento no
