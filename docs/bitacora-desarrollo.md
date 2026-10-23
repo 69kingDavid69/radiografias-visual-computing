@@ -566,6 +566,43 @@ Render en [results/sts_presets.png](../results/sts_presets.png).
 
 ---
 
+## 2026-10-22 — Calibración del preset "dientes" con 11 pacientes etiquetados (STS)
+
+**Pedido de David:** más radiografías "para entrenar la aplicación". La app usa umbrales, no una red neuronal: el equivalente a entrenarla es **calibrar** los umbrales con estudios etiquetados.
+
+**Datos:** 10 estudios más de STS-3D-Tooth (`ROI_L_002` a `ROI_L_011`, con máscara; ~560 MB, CC-BY-4.0). Con el `ROI_L_001` suman **11 pacientes**, en `data/raw/sts3d/`, fuera de git. Se descargó con reintentos y sin errores.
+
+**Método** (`scripts/calibrar_presets.py`):
+- cada estudio se carga y se normaliza como en la app;
+- se toma la zona dental (las capas con diente según la máscara, ±10 mm);
+- para cada umbral se mide el **Dice** entre "densidad ≥ umbral" y la máscara de dientes. Todos los umbrales se evalúan con histogramas acumulados, en una sola pasada.
+
+Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
+
+**Resultados**
+
+| | Valor |
+|---|---|
+| Umbral óptimo (escala normalizada) | mediana **750**, rango 640–865 |
+| Umbral óptimo en Hounsfield | mediana **~816 HU**, rango 609–1084 |
+| Dice con el umbral óptimo | mediana **0,58** (0,45–0,78) |
+| Dice con el preset actual (1000) | 0,22–0,47 |
+| Densidad de los dientes | mediana ~1220 HU; el 10 % más denso empieza en ~2010 HU |
+| Normalización de STS | a = 0,40–0,44 en los 11: muy estable dentro de un mismo equipo |
+
+**Lectura**
+- La propuesta de la literatura para Hounsfield (`dientes` 1300 HU) es **demasiado alta** para este CBCT: el óptimo medido es ~820 HU. El **esmalte en 2000 HU sí se confirma**: coincide con el 10 % más denso del diente.
+- El techo de Dice (~0,58) no viene de un mal umbral: dentro de la zona dental, el **hueso alveolar** que rodea las raíces también supera el umbral. Es la misma limitación de fondo: la densidad sola no separa diente de hueso.
+- El umbral `dientes` = 1000 de la escala `slicer` se fijó a ojo en la muestra Pre (otro equipo). Para STS el óptimo es ~750. Cada equipo necesita su propia calibración: confirma el hallazgo del 22/10 con 11 pacientes en vez de 1.
+
+**Aplicado (decisión de David):**
+- `RANGOS_DENSIDAD["hounsfield"]["dientes"]` pasa de 1300 a **820 HU** (medido); `esmalte` se queda en 2000 HU (confirmado). La escala `slicer` no cambia.
+- Los 11 estudios STS se declaran `"hounsfield"` en `data/estudios.json`: usan esos presets sin renormalizarse.
+- `tejido_blando` (escala Hounsfield) pasa a `EXPERIMENTALES`: suelto reconstruye la cara, así que la app no lo ofrece como botón.
+- **Verificación:** Dice de "dientes" (con la arcada) en 3 pacientes: 0,57 → **0,62**, 0,30 → **0,56** y 0,42 → **0,56**. Render en [results/sts_dientes_calibrado.png](../results/sts_dientes_calibrado.png): se ven las coronas de molares y premolares, junto con el hueso cortical de la mandíbula. 52/52 tests.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

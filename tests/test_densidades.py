@@ -97,3 +97,19 @@ def test_tejidos_siguen_la_curva_de_slicer_y_el_metal_se_distingue():
     assert b > r
     r, _, b = rgb(COLORES_TEJIDO["hueso"])
     assert r > b
+
+
+def test_registro_de_estudios_usa_escalas_conocidas():
+    import json
+    from pathlib import Path
+    registro = json.loads((Path(__file__).resolve().parent.parent / "data" / "estudios.json").read_text())
+    for id_estudio, datos in registro.items():
+        assert datos["escala"] in RANGOS_DENSIDAD, f"{id_estudio}: escala desconocida"
+
+
+def test_dientes_en_hounsfield_calibrado_con_sts():
+    # Valor medido con 11 pacientes etiquetados (results/calibracion_sts.csv): óptimo
+    # de Dice ~816 HU. La propuesta de la literatura (1300 HU) dejaba fuera más de la
+    # mitad del diente. No cambiarlo sin volver a correr scripts/calibrar_presets.py.
+    assert RANGOS_DENSIDAD["hounsfield"]["dientes"][0] == 820
+    assert RANGOS_DENSIDAD["hounsfield"]["esmalte"][0] == 2000
