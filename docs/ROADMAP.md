@@ -37,38 +37,38 @@ Los rangos de `src/densidades.py` los proponen en conjunto **Nicolás**
 - [x] Repo, estructura de carpetas, `.gitignore` de datos médicos — David
 - [x] Esqueleto: carga DICOM → visor 2D → isosuperficie 3D con barra — David
 - [x] Prueba con volumen sintético (esfera) y DICOM de ejemplo de pydicom — David
-- [ ] Cada dev clona, crea el `.venv` y corre `--modo cortes` y `--modo 3d` — todos
+- [x] Cada dev clona, crea el `.venv` y corre `--modo cortes` y `--modo 3d` — todos (los tres subieron código probado: PRs #2, #3, #13)
 - [x] Lista de 2–3 datasets CBCT dentales candidatos con licencia y forma de acceso — Nicolás ([datasets.md](investigacion/datasets.md))
 
 **Hito:** los tres devs ven un modelo 3D en su computador.
 
 ## Fase 1 — Datos reales (1–2 semanas)
 
-- [ ] Descargar el dataset elegido y verificar que está anonimizado — Nicolás
-- [ ] Cargar estudios reales: orientación, espaciado z, caso multiframe — David
-- [ ] Caché del volumen en `data/processed/*.npy` para no releer los DICOM — David
-- [ ] Visor 2D: control de ventana/nivel (contraste) y número de corte en mm — Juan
-- [ ] Vistas coronal y sagital además de la axial — Juan
-- [ ] Render 3D: recalcular solo al soltar la barra; medir tiempos con `reduccion` 1, 2 y 4 — Emanuel
+- [x] Descargar el dataset elegido y verificar que está anonimizado — Nicolás (muestras de Slicer; `scripts/verificar_anonimizacion.py`)
+- [x] Cargar estudios reales: orientación, espaciado z, caso multiframe — David (`cargar_estudio`, GIPL/NIfTI/DICOM, PR #4)
+- [x] Caché del volumen en `data/processed/*.npz` para no releer los DICOM — David (solo carpetas DICOM: un `.gipl.gz` se lee más rápido que su caché)
+- [x] Visor 2D: control de ventana/nivel (contraste) y número de corte en mm — Juan (PR #3)
+- [x] Vistas coronal y sagital además de la axial — Juan (PR #3)
+- [x] Render 3D: recalcular solo al soltar la barra; medir tiempos con `reduccion` 1, 2 y 4 — Emanuel (PR #2; benchmark con la muestra real en `scripts/benchmark_render.py`)
 
 **Hito:** se recorre un CBCT dental real en 2D y se ve la mandíbula en 3D.
 
 ## Fase 2 — Aislar estructuras por densidad (2 semanas)
 
-- [ ] Histograma de densidades de cada estudio; identificar los picos de aire, tejido blando, hueso y esmalte — Nicolás + Emanuel
-- [ ] Llenar `RANGOS_DENSIDAD` y justificar cada rango con fuentes — Nicolás + Emanuel
-- [ ] Presets en la vista 3D (botones o menú) — Emanuel
-- [ ] Filtro de ruido opcional antes del umbral (scikit-image) — David
-- [ ] Opacidad por estructura: hueso semitransparente y esmalte sólido — Emanuel
+- [x] Histograma de densidades de cada estudio; identificar los picos de aire, tejido blando, hueso y esmalte — Nicolás + Emanuel (`scripts/histograma_densidades.py`; picos automáticos en `src/escala.py`)
+- [x] Llenar `RANGOS_DENSIDAD` y justificar cada rango con fuentes — Nicolás + Emanuel (escala `slicer` medida; `hounsfield` calibrada con 11 pacientes de STS, PR #19)
+- [x] Presets en la vista 3D (botones o menú) — Emanuel (`Render3D.aplicar_preset`, teclas en `--modo 3d` y barra *Estructura 3D* en la app: PRs #9, #17)
+- [x] Filtro de ruido opcional antes del umbral — David (`src/filtros.py`, gaussiano de SimpleITK con sigma en mm por estructura, PR #7)
+- [x] Opacidad por estructura: hueso semitransparente y esmalte sólido — Emanuel (`aplicar_capas`: vista de implante y tejidos blandos, PRs #9, #18)
 
 **Hito:** con un clic se ve solo el hueso o solo el esmalte.
 
 ## Fase 3 — Interfaz única (2 semanas)
 
-- [ ] Cerrar la decisión abierta #1 (Qt vs. web) — equipo
-- [ ] Ventana con panel 2D y panel 3D lado a lado — Juan
-- [ ] Selector de carpeta de estudio desde la interfaz, sin línea de comandos — Juan + David
-- [ ] Integrar presets y barra de sensibilidad en la ventana — Emanuel
+- [x] Cerrar la decisión abierta #1 (Qt vs. web) — equipo (**las dos**: app de escritorio en Qt y página web de apoyo en GitHub Pages)
+- [x] Ventana con panel 2D y panel 3D lado a lado — Juan (vista *Dividida*; panel 3D de Emanuel, PRs #13, #17)
+- [x] Selector de carpeta de estudio desde la interfaz, sin línea de comandos — Juan + David (botón *Cargar estudio*: archivo de volumen o un `.dcm`)
+- [ ] Integrar presets y barra de sensibilidad en la ventana — Emanuel (presets **hechos**, PR #17; falta la barra de umbral libre dentro de la app: hoy solo está en `--modo 3d`)
 - [ ] Aplicar el rediseño de la interfaz (propuesta del 21/10: tema oscuro clínico, panel lateral con escala, presets y contraste, diálogo de abrir estudio con diagnóstico de escala; detalle en [bitacora-desarrollo.md](bitacora-desarrollo.md)) — Juan
 - [ ] Probar la app con usuarios que no la construyeron (compañeros de salud, si hay) — Nicolás
 
@@ -76,10 +76,10 @@ Los rangos de `src/densidades.py` los proponen en conjunto **Nicolás**
 
 ## Fase 4 — Cierre (1 semana)
 
-- [ ] Capturas y figuras en `results/` — Emanuel
+- [x] Capturas y figuras en `results/` — Emanuel (figuras de presets, suavizado, colores, implante, STS y calibración; falta el video de respaldo del plan B)
 - [ ] Informe: pregunta de investigación, método (marching cubes, umbrales), resultados y limitaciones — Nicolás (con secciones técnicas de cada dev)
 - [ ] Guion y ensayo de la demo en vivo — todos
-- [ ] README final con instrucciones de instalación y uso — David
+- [x] README final con instrucciones de instalación y uso — David (comandos probados el 23/10)
 
 **Hito:** entrega al profesor Paluszny.
 

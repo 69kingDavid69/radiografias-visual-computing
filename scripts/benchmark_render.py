@@ -6,7 +6,8 @@ import time
 
 import numpy as np
 
-from src.carga import cargar_serie_dicom
+from src.carga import cargar_estudio
+from src.densidades import presets_para
 from src.render_3d import a_pyvista
 
 def medir_reduccion(volumen, espaciado, reduccion, umbral):
@@ -57,20 +58,26 @@ def medir_reduccion(volumen, espaciado, reduccion, umbral):
 def main():
     # 1. Configurar argumentos de consola (nargs='?' permite ejecutar sin pasar ruta obligatoria)
     parser = argparse.ArgumentParser(description="Benchmark de render 3D con reducciones 1, 2 y 4")
-    parser.add_argument("carpeta", nargs="?", default="data/raw/muestra_sintetica",
-                        help="Ruta a la carpeta DICOM (por defecto: data/raw/muestra_sintetica)")
+    parser.add_argument("carpeta", nargs="?", default="data/raw/PreDentalSurgery.gipl.gz",
+                        help="Carpeta DICOM o archivo .gipl.gz / .nii.gz (por defecto: la muestra de Slicer)")
     parser.add_argument("--salida", default="results/tiempos.csv",
                         help="Ruta del CSV de salida (por defecto: results/tiempos.csv)")
     args = parser.parse_args()
 
     # 2. Cargar el volumen médico y su espaciado en milímetros
     print(f"\n Cargando estudio desde: {args.carpeta}")
-    volumen, espaciado = cargar_serie_dicom(args.carpeta)
+    estudio = cargar_estudio(args.carpeta)
+    volumen, espaciado = estudio.volumen, estudio.espaciado
     print(f"   Volumen {volumen.shape} (z, y, x), vóxel {espaciado} mm")
 
-    # 3. Umbral de prueba: tomamos el 60% del rango de densidad para simular estructura ósea
-    minimo, maximo = float(np.min(volumen)), float(np.max(volumen))
-    umbral = minimo + 0.6 * (maximo - minimo)
+    # 3. Umbral de prueba: el preset "hueso" si el estudio tiene escala; si no, el 60 % del
+    #    rango (con datos normalizados ese 60 % ya cae en el metal y mediría casi nada).
+    presets = presets_para(estudio)
+    if "hueso" in presets:
+        umbral = presets["hueso"][0]
+    else:
+        minimo, maximo = float(np.min(volumen)), float(np.max(volumen))
+        umbral = minimo + 0.6 * (maximo - minimo)
     print(f"   Umbral de densidad seleccionado: {umbral:.1f}\n")
 
     # 4. Medir sistemáticamente los tres niveles de reducción exigidos en el plan

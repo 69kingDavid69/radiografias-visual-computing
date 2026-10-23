@@ -603,6 +603,19 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 
 ---
 
+## 2026-10-23 — README final, scripts revisados y pendientes al día
+
+**README** reescrito para el estado actual: instalación, datos (muestras de Slicer con sus enlaces SHA-256 y STS-3D-Tooth), uso de la app, de la línea de comandos y de la página en local, cómo funciona el pipeline, tabla de presets por escala, scripts, pruebas, estructura, limitaciones conocidas y créditos de los datos. **Se ejecutaron todos sus comandos** antes de escribirlos, y la app se abrió con el comando del README.
+
+**Scripts revisados al documentarlos**
+- `histograma_densidades.py` fallaba porque `scikit-image` (que está en `requirements.txt`) no estaba instalado en el entorno de David. Instalado, funciona.
+- `benchmark_render.py` solo leía carpetas DICOM (`cargar_serie_dicom`) y usaba el 60 % del rango como umbral, que con datos normalizados cae en el metal. Ahora usa `cargar_estudio` y el preset `hueso` cuando hay escala. Con la muestra Pre a resolución completa: 0,47 s y 1,5 millones de triángulos. Se corre como módulo: `python -m scripts.benchmark_render`.
+- `generar_web.py` no se ejecutó porque sobrescribe `web/`, que estaba en revisión (PR #20 de Nicolás).
+
+**Casillas al día:** el roadmap y esta lista tenían tareas hechas sin marcar. Se marcaron con el PR que las hizo (21 de 26 del roadmap). Siguen abiertas, con nota: la barra de umbral libre dentro de la app, el rediseño de la interfaz, las pruebas con usuarios, el informe y el ensayo, y el video del plan B.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -610,15 +623,19 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 - [x] PR #6 (contenido del #5) fusionado en `main`; verificado: 26 tests, app y 5 presets con la muestra real.
 - [x] Sigma de suavizado por preset.
 - [x] Escala por estudio: declarada en `data/estudios.json` o normalizada por picos del histograma.
-- [ ] Probar la normalización con las radiografías que suba David y con un volumen de STS 3D Tooth.
-- [ ] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel).
-- [ ] FPS al rotar con la muestra real y `reduccion` por defecto (el tiempo de `contour` ya se midió).
+- [x] Probar la normalización con un volumen de STS-3D-Tooth (y luego 11 pacientes). Pendiente: las radiografías propias de David.
+- [x] Panel 3D real dentro de la app Qt (`Render3D` de Emanuel): PRs #13 y #17.
+- [ ] FPS al rotar en la app con la muestra real (la página web mide 60 FPS con ~90 000 triángulos; falta medirlo en la app de escritorio).
 - [x] Técnica de presets decidida (B3) e implementada.
 - [x] `RANGOS_DENSIDAD` por escala (slicer y hounsfield) y `presets_para(estudio)`.
-- [ ] Validar los presets en Hounsfield con las etiquetas de ToothFairy3 (Nicolás + Emanuel).
-- [ ] Vista de implante: `metal` opaco + `hueso` o tejido blando semitransparente, para ver el metal en relación con la encía (idea de David; usa la opacidad por estructura de la fase 2, Emanuel).
+- [x] Validar los presets en Hounsfield con etiquetas: hecho con 11 pacientes de STS (dientes 1300 → 820 HU; esmalte 2000 HU confirmado). ToothFairy3 queda como segunda validación.
+- [x] Vista de implante: `metal` opaco + `hueso` semitransparente (botón *Implante* en la app; placas de fijación visibles en el estudio Post).
 - [x] Presets en la vista 3D (teclas 1–5 e `i`) y vista frontal: `Render3D.aplicar_preset` / `aplicar_capas` (rama para Emanuel).
-- [ ] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel).
+- [x] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel): PR #13, arreglado en el #17.
 - [ ] Implementar el rediseño de la interfaz (propuesta del 21/10) después de la exposición (Juan).
 - [x] Página web publicada con GitHub Pages; el contenido de `web/` lo hace un compañero.
 - [ ] Exposición del 26/10.
+- [ ] Plan B de la exposición: capturas y video de 60 s de la demo (Emanuel + Juan).
+- [ ] Barra de umbral libre dentro de la app (hoy solo en `--modo 3d`).
+- [ ] Separar diente de hueso alveolar: segmentación por forma o red entrenada con las máscaras de STS/ToothFairy3 (después de la exposición).
+- [ ] Documento final detallado del proyecto a partir de esta bitácora.
