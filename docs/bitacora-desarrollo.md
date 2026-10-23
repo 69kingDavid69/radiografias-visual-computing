@@ -660,6 +660,32 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 
 ---
 
+## 2026-10-23 — "Dientes" sin tornillos, placas ni restos de hueso
+
+**Reporte de David** (con una captura marcada): en "Dientes" aparecían los tornillos de arriba, las placas de los lados y hueso del borde de la mandíbula.
+
+**Arreglo** (`region.piezas_con_esmalte`)
+1. **Quitar el metal y su halo:** todo lo que supera el umbral de metal, más 2 vóxeles (1 mm) alrededor, porque en ese borde el volumen parcial imita al esmalte. Los tornillos y las placas pierden lo que los hacía pasar. Los brackets pegados a los dientes se van y el diente queda.
+2. Piezas conectadas **con esmalte** (≥ 50 vóxeles).
+3. Piezas de **al menos el 2 % de la más grande**: los dientes van unidos en la arcada; los restos de hueso del borde de la franja son chicos.
+4. **Franja de la arcada: de ±25 a ±22 mm.** Con los 11 pacientes de STS, el diente etiquetado que queda dentro de la franja fue:
+
+   | Franja | Mediana | Peor caso |
+   |---|---|---|
+   | ±20 mm | 98,8 % | 89,7 % |
+   | ±22 mm | **99,5 %** | **94,4 %** |
+   | ±25 mm | 100 % | 98,2 % (pero entra la base de la mandíbula) |
+
+**Resultado** ([results/dientes_sin_metal.png](../results/dientes_sin_metal.png))
+- **Post:** solo la arcada, sin tornillos, placas ni fragmentos.
+- **Pre:** queda parte de la base de la mandíbula, unida a las raíces por el hueso alveolar. Ninguna regla de densidad, posición o conectividad la separa sin cortar dientes.
+- STS: el Dice no empeora. Tiempo de "dientes": ~0,9 s.
+- Test nuevo con un bracket pegado, un tornillo con halo y un resto chico. 56/56.
+
+**Conclusión para el informe:** con densidad, posición, conectividad y metal ya se limpió todo lo que se podía con reglas. Lo que queda (hueso alveolar pegado a la raíz, base de la mandíbula) necesita **aprendizaje**: un modelo que reconozca la forma y el contexto.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.

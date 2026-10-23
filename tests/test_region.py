@@ -47,3 +47,18 @@ def test_piezas_con_esmalte_descarta_fragmentos_sueltos():
     keep = piezas_con_esmalte(v, 1000, 1250, 2000, minimo_esmalte=10)
     assert keep[25, 15, 15] and keep[21, 15, 15]   # el diente completo (raíz y corona)
     assert not keep[6, 5, 5]                        # el fragmento no
+
+
+def test_piezas_con_esmalte_quita_metal_y_restos_chicos():
+    from src.region import piezas_con_esmalte
+    v = np.zeros((40, 40, 40), dtype=np.float32)
+    v[20:32, 10:30, 10:30] = 1100          # arcada (dentina)
+    v[20:22, 10:30, 10:30] = 1400          # coronas con esmalte
+    v[20:22, 9, 15:20] = 3000              # bracket pegado a la corona
+    v[3:6, 3:6, 3:6] = 3000                # tornillo suelto (metal)...
+    v[2:7, 2:7, 2:7] = np.where(v[2:7, 2:7, 2:7] == 0, 1500, v[2:7, 2:7, 2:7])  # ...con halo tipo esmalte
+    v[35:37, 35:37, 35:37] = 1400          # resto chico con "esmalte" (hueso cortical denso)
+    keep = piezas_con_esmalte(v, 1000, 1250, 2000, minimo_esmalte=5, metal=2000)
+    assert keep[26, 20, 20]                # el diente se conserva
+    assert not keep[3:7, 3:7, 3:7].any()   # el tornillo y su halo no
+    assert not keep[35:37, 35:37, 35:37].any()   # el resto chico no
