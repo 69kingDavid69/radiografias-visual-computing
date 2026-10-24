@@ -730,6 +730,33 @@ Lo que encontró y se arregló:
 
 ---
 
+## 2026-10-23 — Primer modelo entrenado: clasificador por vóxel (Random Forest)
+
+**Pregunta de David:** ¿se puede entrenar un modelo que aprenda qué es diente, hueso o tejido, y que mejore con más datos? Respuesta: sí. El preset es un clasificador de **un** parámetro (el umbral); un modelo con más características puede aprender contexto y forma. Se empezó por la opción viable en el equipo de David (MacBook Air M2, 8 GB): un **Random Forest** de scikit-learn.
+
+**Método** (`scripts/entrenar_clasificador.py`)
+- Datos: los 11 pacientes de STS con máscara de dientes (la única etiqueta disponible: diente / no diente). Zona dental (arcada ±22 mm), **media resolución** (vóxel de 0,3 mm) para que entre en 8 GB.
+- Candidatos: vóxeles ≥ 400 HU (por debajo nunca es diente).
+- **8 características en mm:** densidad; densidad suavizada a 0,5, 1,5 y 3 mm; contraste local; magnitud del gradiente; altura respecto de la arcada; distancia al esmalte más cercano.
+- Entrenamiento con 20 000 vóxeles de diente y 20 000 de no-diente por paciente. 60 árboles, profundidad 18.
+- **Evaluación dejando un paciente fuera:** se entrena con 10 y se mide el Dice en el que el modelo no vio, 11 veces. Se compara con el método de la app (umbral calibrado + arcada + piezas con esmalte) en la misma zona y resolución. El Dice cuenta también el borde de la máscara que cae en aire, que ningún método puede marcar.
+
+**Resultados** ([results/clasificador_lopo.csv](../results/clasificador_lopo.csv))
+
+| | Dice (mediana de 11 pacientes) |
+|---|---|
+| Método de la app | 0,641 (0,49–0,83) |
+| **Clasificador** | **0,863** (0,75–0,90) |
+
+- **Mejora en los 11 pacientes**, entre +0,07 y +0,29.
+- Importancia de las características: **distancia al esmalte 0,38**, suavizado a 1,5 mm 0,18, suavizado a 0,5 mm 0,10, suavizado a 3 mm 0,10, altura en la arcada 0,09, densidad 0,07, gradiente 0,05, contraste 0,03. **La densidad sola pesa solo el 7 %**: el modelo decide sobre todo por contexto (qué tan cerca está del esmalte y cómo es su entorno), que es justo lo que un umbral no puede ver.
+
+**Costo:** entrenar y evaluar tomó ~3 horas en el MacBook Air. Preparar las características de 4 pacientes tardó cerca de 1 hora cada uno, contra ~7 s los demás: probablemente la memoria (8 GB) se llenó durante la transformada de distancia y el sistema usó disco. Las características quedan guardadas en `data/processed/clasificador/` (123 MB, fuera de git), así que volver a entrenar tarda minutos.
+
+**Qué falta para usarlo en la app:** guardar el modelo entrenado, calcular las características del estudio abierto y predecir al hacer clic en "Dientes". Además, solo sabe "diente / no diente": para hueso, grasa o músculo hacen falta datos etiquetados con esas clases (ToothFairy3 tiene maxilar y mandíbula; para grasa y músculo en CBCT no hay datasets conocidos). Siguiente nivel: una red U-Net 3D en Google Colab.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -751,5 +778,5 @@ Lo que encontró y se arregló:
 - [ ] Exposición del 26/10.
 - [ ] Plan B de la exposición: capturas y video de 60 s de la demo (Emanuel + Juan).
 - [ ] Barra de umbral libre dentro de la app (hoy solo en `--modo 3d`).
-- [ ] Separar diente de hueso alveolar: segmentación por forma o red entrenada con las máscaras de STS/ToothFairy3 (después de la exposición).
+- [ ] Separar diente de hueso alveolar: el clasificador por vóxel sube el Dice de 0,64 a 0,86 (23/10). Falta integrarlo a la app y probar una U-Net 3D en Colab.
 - [ ] Documento final detallado del proyecto a partir de esta bitácora.

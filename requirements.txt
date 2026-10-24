@@ -7,5 +7,6 @@ pyvista
 PySide6
 pyvistaqt
 scikit-image
+scikit-learn
 jupyter
 pytest
