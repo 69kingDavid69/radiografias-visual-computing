@@ -41,14 +41,13 @@ NOMBRES = ["densidad", "suave_0.5mm", "suave_1.5mm", "suave_3mm", "contraste_loc
 CACHE = RAIZ / "data" / "processed" / "clasificador"
 
 
-def preparar(ruta_img, ruta_mascara):
-    """Características de los vóxeles candidatos de la zona dental, su etiqueta y la
-    predicción del método actual de la app (para comparar)."""
-    cache = CACHE / f"{ruta_img.name.split('.')[0]}.npz"
-    if cache.exists():
-        d = np.load(cache)
-        return d["X"].astype(np.float32), d["y"], d["base"]
+def volumen_y_caracteristicas(ruta_img, ruta_mascara):
+    """Zona dental a media resolución con sus características por vóxel (sin aplanar).
 
+    Devuelve un dict con: v (densidad), m (máscara del experto), cand (vóxeles
+    candidatos), caracteristicas (lista de volúmenes, en el orden de NOMBRES), base
+    (predicción del método de la app) y espaciado.
+    """
     e = cargar_estudio(ruta_img)
     p = presets_para(e)
     umbral, esmalte = p["dientes"][0], p["esmalte"][0]
@@ -67,14 +66,26 @@ def preparar(ruta_img, ruta_mascara):
     altura = (np.arange(v.shape[0]) - centro)[:, None, None] * esp[0] * np.ones_like(v)
     dist_esm = ndimage.distance_transform_edt(v < esmalte, sampling=esp)
 
-    cand = v >= CANDIDATO_MIN
-    X = np.stack([f[cand] for f in (v, s05, s15, s3, v - s3, grad, altura, dist_esm)], axis=1)
-    y = m[cand]
     base = (v >= umbral) & piezas_con_esmalte(v, umbral, esmalte, minimo_esmalte=10)
-    base = base[cand]
+    return {"v": v, "m": m, "cand": v >= CANDIDATO_MIN, "espaciado": esp, "base": base,
+            "caracteristicas": [v, s05, s15, s3, v - s3, grad, altura, dist_esm]}
+
+
+def preparar(ruta_img, ruta_mascara):
+    """Características de los vóxeles candidatos de la zona dental, su etiqueta y la
+    predicción del método actual de la app (para comparar). Se guardan en caché."""
+    cache = CACHE / f"{ruta_img.name.split('.')[0]}.npz"
+    if cache.exists():
+        d = np.load(cache)
+        return d["X"].astype(np.float32), d["y"], d["base"]
+
+    d = volumen_y_caracteristicas(ruta_img, ruta_mascara)
+    cand = d["cand"]
+    X = np.stack([f[cand] for f in d["caracteristicas"]], axis=1)
+    y, base = d["m"][cand], d["base"][cand]
     # Las máscaras traen un borde que cae en aire (fuera de los candidatos): se cuenta
     # aparte para que el Dice incluya los dientes que ningún método puede marcar.
-    faltantes = int((m & ~cand).sum())
+    faltantes = int((d["m"] & ~cand).sum())
     CACHE.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(cache, X=X.astype(np.float16), y=y, base=base, faltantes=faltantes)
     return X, y, base

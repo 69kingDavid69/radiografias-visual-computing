@@ -31,5 +31,8 @@
   },
   "ROI_L_011": {
     "escala": "hounsfield"
+  },
+  "CQ500CT397_hueso": {
+    "escala": "hounsfield"
   }
 }
