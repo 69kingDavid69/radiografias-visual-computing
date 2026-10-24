@@ -237,9 +237,9 @@ export function iniciarUmbral(vol, meta, tooltip) {
   barraCorte.max = vol.nz - 1;
   barraCorte.value = estado.z;
 
-  // Chips: los presets del programa + la piel (solo como referencia).
+  // Chips: los presets del programa + el tejido blando (solo como referencia).
   const chips = document.getElementById("chips-umbral");
-  const opciones = [["piel", "Piel (~400)", 400, "#c9a27e"]];
+  const opciones = [["blando", "Tejido blando (~400)", 400, "#c9a27e"]];
   for (const [nombre, [minimo]] of Object.entries(meta.presets)) {
     if (!NOMBRES_PRESET[nombre]) continue;
     const color = nombre === "metal" ? "var(--metal)" : nombre === "hueso" ? "var(--hueso)" : nombre === "esmalte" ? "var(--esmalte)" : "var(--dientes)";

@@ -6,33 +6,32 @@ algo en `web/`:
 
 **https://69kingdavid69.github.io/radiografias-visual-computing/**
 
-> **Para qué sirve en el proyecto.** Es el apoyo visual de la exposición y responde
-> las cinco preguntas técnicas de la propuesta con elementos que se pueden mover. Las
-> mallas y los datos salen del mismo código del programa: `src/carga.py`,
-> `src/densidades.py` y `src/render_3d.superficie_por_banda`. El texto se apoya en
+> **Para qué sirve en el proyecto.** Explica el proyecto completo con la tomografía real
+> y elementos que se pueden mover: el problema, los datos, el programa, la densidad, la
+> extracción de superficies y los resultados. Las mallas y los datos salen del mismo
+> código del programa: `src/carga.py`, `src/densidades.py` y
+> `src/render_3d.superficie_por_banda`. El texto se apoya en
 > [docs/investigacion/](../docs/investigacion/README.md).
 
 ## Secciones
 
-La página sigue el orden de la exposición del 26/10. Cada sección dice quién la expone. Las flechas → / ← del teclado pasan de sección.
+Las flechas → / ← del teclado pasan de sección; el botón **Código** de la barra lleva al repositorio.
 
-| Sección | Qué muestra | Expone |
-|---|---|---|
-| Portada | Pregunta de investigación, cráneo 3D girando y ruta de la exposición | — |
-| 1 · Problema | Radiografía simulada (proyección del volumen) vs. un corte de la tomografía | Nicolás |
-| 2 · CBCT | Ilustración haz en abanico vs. haz en cono; tabla CT vs. CBCT | Nicolás |
-| 3 · Datos | Datasets elegidos y descartados; cómo viene un DICOM y la anonimización | Nicolás / David |
-| 4 · Programa | Flujo de módulos, capturas de la app y cómo abrirla | David |
-| 5 · Cortes | Visor de tres planos con ventana/nivel y lectura de cada vóxel | Juan |
-| 6 · Densidad | Escala Hounsfield con rangos de la literatura, anatomía del diente, normalización por picos | Nicolás |
-| 7 · Umbral | Barra de umbral sobre un corte real + histograma con los presets (P1) | Nicolás |
-| 8 · Malla | Marching squares en vivo y el cubo de marching cubes (P1) | Emanuel |
-| 9 · 3D | Laboratorio: estructuras, P2 luz, P3 FPS, P4 suavizado, P5 corte | Emanuel |
-| 10 · Resultados | Cifras, calibración con 11 pacientes, tiempos y limitaciones | Nicolás |
-| 11 · Conclusión | Respuesta a la pregunta de investigación | Nicolás |
-| Preguntas | Las 5 preguntas con respuesta corta; abren su pestaña del laboratorio | Todos |
+| Sección | Qué muestra |
+|---|---|
+| Portada | Pregunta de investigación y el cráneo 3D girando |
+| 1 · Problema | Radiografía (píxeles) frente a tomografía (vóxeles), con datos reales |
+| 2 · CBCT | Haz en abanico vs. haz en cono; tabla CT vs. CBCT |
+| 3 · Datos | Datasets elegidos y descartados; cómo viene un DICOM |
+| 4 · Programa | Flujo de módulos, capturas de la app y cómo abrirla |
+| 5 · Cortes | Visor de tres planos con ventana/nivel y lectura de cada vóxel |
+| 6 · Densidad | Escala Hounsfield, anatomía del diente y normalización por picos |
+| 7 · Umbral | Barra de umbral sobre un corte real + histograma |
+| 8 · Malla | Marching squares en vivo y el cubo de marching cubes |
+| 9 · 3D | Laboratorio: estructuras, luz, FPS, suavizado y plano de corte |
+| 10 · Resultados | Cifras, calibración con 11 pacientes, tiempos y limitaciones |
+| Equipo | Quién hizo qué, documentos de investigación y referencias |
 
-**`guion.html`**: guion de cada integrante, qué aprender y preguntas probables. Se imprime a PDF desde el navegador (versión clara para papel).
 ## Estructura
 
 ```
@@ -47,8 +46,9 @@ web/
   vendor/three/               three.js 0.160.0 (MIT), incluido para no depender de internet
   img/icono.png               ícono de la app
   img/app_*.jpg               capturas de la app para la sección "Programa"
-  img/*.png, img/*.svg        ilustraciones calculadas con datos reales (scripts/generar_ilustraciones.py)
-  guion.html                  guion y guía de estudio del equipo
+  img/*.png, img/*.svg        ilustraciones calculadas con datos reales (scripts/generar_ilustraciones.py
+                              y scripts/ilustracion_pixel_voxel.py)
+  img/equipo/                 fotos de perfil de GitHub del equipo
 ```
 
 ## Verla en local o sin internet
