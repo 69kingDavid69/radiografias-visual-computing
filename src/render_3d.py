@@ -451,19 +451,31 @@ class Render3D:
                          if n in self.pl.actors and self.pl.actors[n].mapper.dataset is not None)
         self.ultima_medicion = {"triangulos": int(triangulos), "ms": (time.perf_counter() - t0) * 1000}
 
+    def direcciones(self):
+        """(hacia adelante, hacia arriba) del paciente como vectores en los ejes x, y, z del volumen.
+
+        Salen de la orientación del estudio, así que sirven aunque el volumen venga guardado de
+        lado (los de VerSe son "PIR": cortes sagitales) o con un eje invertido. Sin orientación
+        conocida se supone "LPS" (la de la muestra de Slicer y de casi todo DICOM axial).
+        """
+        delante, arriba = [0.0] * 3, [0.0] * 3
+        for eje, letra in enumerate(self.orientacion or "LPS"):
+            if letra in "AP":
+                delante[eje] = 1.0 if letra == "A" else -1.0
+            elif letra in "SI":
+                arriba[eje] = 1.0 if letra == "S" else -1.0
+        return tuple(delante), tuple(arriba)
+
+    def _vista_frontal(self):
+        """Cámara frente al paciente: del lado anterior, con la cabeza hacia arriba."""
+        delante, arriba = self.direcciones()
+        self.pl.view_vector(delante, viewup=arriba)
+
     def _encuadrar_de_frente(self):
         if self._vista_lateral:
             self._vista_frontal()
             self._vista_lateral = False
         self.pl.reset_camera()
-
-    def _vista_frontal(self):
-        """Cámara frente al paciente: del lado anterior, con z hacia arriba.
-
-        Si el eje y crece hacia atrás (LPS, lo habitual) el frente está en y mínimo; en un
-        estudio que lo guarda al revés (LAS, como los NIfTI de STS) hay que mirar desde el otro lado.
-        """
-        self.pl.view_xz(negative=bool(self.orientacion) and self.orientacion[1] == "A")
 
     def _piezas_dentales(self, nombre, umbral):
         """Para "dientes": solo las piezas conectadas que tienen esmalte (src/region.py)."""

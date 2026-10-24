@@ -1,6 +1,6 @@
 """Prueba la vista de fractura con estudios de varias partes del cuerpo.
 
-Cada argumento es una carpeta con pares `*-imagen.*` / `*-etiqueta.*` o un estudio suelto
+Cada argumento es una carpeta con pares `*-imagen.*` / `*-etiqueta.*` (o `*-vertebras.*`), o un estudio suelto
 (archivo de volumen o carpeta DICOM, sin etiquetas). Para cada estudio mide qué parte del
 hueso conserva la máscara de `src/region.py` (hueso del paciente, sin camilla) y, con las etiquetas de los expertos, cuánto de
 lo que ellos marcaron como fractura sigue en pantalla; después dibuja el hueso por delante,
@@ -32,12 +32,26 @@ FONDO = "#181818"
 
 
 def etiquetas_de(ruta_imagen, forma):
-    """Etiquetas de los expertos (arreglo z, y, x) o None si el estudio no las trae."""
-    ruta = next(iter(ruta_imagen.parent.glob(ruta_imagen.name.replace("-imagen", "-etiqueta").split(".")[0] + ".*")), None)
+    """(etiquetas, de_columna) con lo que los expertos marcaron como fractura, o (None, False).
+
+    Hay dos formas: un archivo `*-etiqueta.*` con los fragmentos (pelvis, costillas) o un
+    `*-vertebras.*` con una máscara por vértebra, de la que se toman las vértebras con fractura
+    según `data/fracturas_columna.csv` (grado de Genant de la planilla de Löffler et al.).
+    """
+    base = ruta_imagen.name.split("-imagen")[0]
+    ruta = next(iter(ruta_imagen.parent.glob(f"{base}-etiqueta.*")), None)
+    if ruta is not None:
+        etiquetas = sitk.GetArrayFromImage(sitk.ReadImage(str(ruta)))
+        return (etiquetas, False) if etiquetas.shape == forma else (None, False)
+    ruta = next(iter(ruta_imagen.parent.glob(f"{base}-vertebras.*")), None)
     if ruta is None:
-        return None
-    etiquetas = sitk.GetArrayFromImage(sitk.ReadImage(str(ruta)))
-    return etiquetas if etiquetas.shape == forma else None
+        return None, False
+    with open(RAIZ / "data" / "fracturas_columna.csv") as f:
+        rotas = [int(fila["etiqueta"]) for fila in csv.DictReader(f) if fila["estudio"] == base]
+    mascara = sitk.GetArrayFromImage(sitk.ReadImage(str(ruta)))
+    if mascara.shape != forma or not rotas:
+        return None, False
+    return np.where(np.isin(mascara, rotas), mascara, 0), True
 
 
 def medir(estudio, etiquetas):
@@ -54,12 +68,13 @@ def medir(estudio, etiquetas):
         marcado = (etiquetas > 0) & hueso
         fila["marcado_experto"] = int(marcado.sum())
         fila["marcado_conservado_pct"] = round(100 * (mascara & marcado).sum() / max(1, marcado.sum()), 1)
-        # Fragmentos (instancias) del experto que quedan casi enteros: ≥ 90 % de sus vóxeles de hueso.
+        # Fragmento del experto perdido: conserva menos de la mitad de sus vóxeles de hueso. (No se
+        # exige el 90 %: en tomografías ruidosas los vóxeles aislados se descartan a propósito.)
         perdidos = 0
         ids = np.unique(etiquetas[marcado])
         for i in ids:
             parte = marcado & (etiquetas == i)
-            if (mascara & parte).sum() < 0.9 * parte.sum():
+            if (mascara & parte).sum() < 0.5 * parte.sum():
                 perdidos += 1
         fila["fragmentos"] = len(ids)
         fila["fragmentos_perdidos"] = perdidos
@@ -76,7 +91,36 @@ def centro_de_la_fractura(etiquetas, espaciado):
     return (x * espaciado[2], y * espaciado[1], z * espaciado[0])
 
 
-def dibujar(estudio, centro, salida):
+def corte_sagital(estudio, centro, alto=1500, ancho=2250):
+    """Corte sagital del estudio por `centro` (x, y, z en mm), con la cabeza arriba y el frente a la izquierda.
+
+    Sirve con cualquier orientación guardada: busca qué eje es derecha-izquierda, cuál
+    arriba-abajo y cuál adelante-atrás, y respeta el espaciado de cada uno.
+    """
+    letras = estudio.metadatos.get("orientacion") or "LPS"
+    eje = {("x", "y", "z")[i]: i for i in range(3)}
+    lateral = next(i for i, l in enumerate(letras) if l in "LR")
+    vertical = next(i for i, l in enumerate(letras) if l in "SI")
+    anteroposterior = next(i for i, l in enumerate(letras) if l in "AP")
+    numpy_eje = lambda i: 2 - i                      # el volumen es (z, y, x)
+    esp = estudio.espaciado
+    v = np.moveaxis(estudio.volumen, [numpy_eje(lateral), numpy_eje(vertical), numpy_eje(anteroposterior)], [0, 1, 2])
+    mm = lambda i: esp[numpy_eje(i)]
+    corte = v[int(round(centro[lateral] / mm(lateral)))]
+    if letras[vertical] == "S":
+        corte = corte[::-1]                          # que lo superior quede arriba
+    if letras[anteroposterior] == "A":
+        corte = corte[:, ::-1]                       # que el frente quede a la izquierda
+    gris = (np.clip((corte + 400) / 1400, 0, 1) * 255).astype(np.uint8)
+    imagen = Image.fromarray(gris).resize((max(1, int(corte.shape[1] * mm(anteroposterior) * 4)),
+                                           max(1, int(corte.shape[0] * mm(vertical) * 4))))
+    imagen.thumbnail((ancho, alto))
+    lienzo = Image.new("L", (1500, 1000))
+    lienzo.paste(imagen.resize((int(imagen.width * 1000 / imagen.height), 1000)) if imagen.height else imagen, (0, 0))
+    return np.asarray(lienzo.convert("RGB"))
+
+
+def dibujar(estudio, centro, salida, de_lado=False):
     """Dibuja el hueso por delante, por detrás y (con `centro`) de cerca; guarda un montaje.
 
     Devuelve (triángulos, segundos que tardó la vista de fractura).
@@ -100,12 +144,18 @@ def dibujar(estudio, centro, salida):
         pl.reset_camera()
         pl.camera.azimuth = giro
         vistas.append(captura())
-    if centro is not None:
+    if centro is not None and de_lado:
+        # Una compresión vertebral no se ve en la superficie 3D (el hueso osteoporótico es
+        # poroso y las costillas tapan): se pone el corte sagital en el que la ven los radiólogos.
+        vistas.append(corte_sagital(estudio, centro))
+    elif centro is not None:
+        # Acercamiento a 16 cm de la fractura, de frente.
+        delante, arriba = render.direcciones()
         render._vista_frontal()
         pl.reset_camera()
         pl.camera.focal_point = centro
-        pl.camera.position = (centro[0], centro[1] - 160, centro[2])     # 16 cm delante de la fractura
-        pl.camera.up = (0, 0, 1)
+        pl.camera.position = tuple(np.asarray(centro) + 160 * np.asarray(delante))
+        pl.camera.up = arriba
         vistas.append(captura())
     triangulos = render.ultima_medicion["triangulos"]
     pl.close()
@@ -129,10 +179,10 @@ def main():
     filas = []
     for ruta in rutas:
         estudio = cargar_estudio(ruta)
-        etiquetas = etiquetas_de(ruta, estudio.volumen.shape) if "-imagen" in ruta.name else None
+        etiquetas, de_columna = etiquetas_de(ruta, estudio.volumen.shape) if "-imagen" in ruta.name else (None, False)
         fila = medir(estudio, etiquetas)
         fila["triangulos"], fila["dibujo_s"] = dibujar(
-            estudio, centro_de_la_fractura(etiquetas, estudio.espaciado), args.salida)
+            estudio, centro_de_la_fractura(etiquetas, estudio.espaciado), args.salida, de_columna)
         fila["dibujo_s"] = round(fila["dibujo_s"], 1)
         filas.append(fila)
         print(fila, flush=True)

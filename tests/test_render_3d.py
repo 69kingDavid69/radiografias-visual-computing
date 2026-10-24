@@ -282,3 +282,12 @@ def test_camara_frontal_mira_desde_el_lado_anterior():
     las = _render_con(_estudio_fractura("LAS")).pl.camera      # y crece hacia adelante: el frente está en y máximo
     assert lps.position[1] < lps.focal_point[1]
     assert las.position[1] > las.focal_point[1]
+
+
+def test_camara_frontal_con_el_volumen_guardado_de_lado():
+    # VerSe guarda cortes sagitales ("PIR"): x crece hacia atrás, y hacia abajo, z hacia la derecha.
+    r = _render_con(_estudio_fractura("PIR"))
+    delante, arriba = r.direcciones()
+    assert delante == (-1.0, 0.0, 0.0) and arriba == (0.0, -1.0, 0.0)
+    assert r.pl.camera.position[0] < r.pl.camera.focal_point[0]          # cámara del lado anterior (x mínimo)
+    assert r.pl.camera.up == pytest.approx((0, -1, 0))                   # la cabeza (y mínimo) hacia arriba

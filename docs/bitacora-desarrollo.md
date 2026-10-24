@@ -871,6 +871,52 @@ fractura según los metadatos de cada dataset.
 
 ---
 
+## 2026-10-24 — Fracturas de columna; lo que NO se puede mostrar en 3D
+
+**Qué:** David pidió más estudios con fracturas de columna y de extremidades. Se buscó en Hugging Face
+(espejos de `MedOtter`), Zenodo, OSF, TCIA y los índices de datasets de radiología.
+
+**Columna: sí hay.** VerSe 2019 (CC BY-SA 4.0): 160 series, y la planilla de Löffler et al. trae el grado
+de Genant y la forma de la fractura de **cada vértebra** (91 de 141 pacientes tienen al menos una
+fractura osteoporótica). La planilla está en el apéndice E1 del artículo (PMC8082364); la descarga directa de
+PMC pide una verificación de navegador, que no se eludió: se bajó por la API oficial de Europe PMC
+(`supplementaryFiles`). Con ella se escogieron tres casos del espejo `MedOtter/VerSe` (sin material
+extraño y con fracturas graves): verse033 (T6–L2, 9 vértebras fracturadas, T8 y T11 grado 3), verse009
+(8 vértebras, T5 y L3 grado 3) y verse111 (L2–L4, L3 grado 3); 20 vértebras con fractura en total
+(`data/fracturas_columna.csv`). Además de la vista de fractura se midió cuánto de cada vértebra fracturada queda.
+
+**Resultado:** 87,8–94,8 % de los vóxeles de las vértebras fracturadas se conserva y no se pierde ninguna
+(el resto son vóxeles aislados de ruido; la tomografía es ruidosa y con cortes de 2 mm, y la regla descarta
+trozos de menos de 100 vóxeles). Se relajó el criterio de "fragmento perdido" de 90 % a 50 % de sus vóxeles
+por esa razón, y las filas de pelvis y costillas no cambian (ya estaban en ≥ 99 %).
+
+**Hallazgo importante (límite de la herramienta):** **la superficie 3D por umbral no sirve para ver una
+fractura por compresión vertebral.** (1) A 300 HU el hueso osteoporótico es poroso y los cuerpos vertebrales
+salen huecos y rugosos; a 150 HU se ven mejor pero el ruido y los cortes de 2 mm siguen pareciendo una pila de
+discos. (2) De lado, las costillas tapan. (3) Una compresión es una pérdida de altura del cuerpo vertebral, no
+una línea ni un escalón en la cortical. Los radiólogos la leen en el **corte sagital**, que la app ya tiene; el
+montaje de columna lo usa como tercer panel. La vista 3D de fractura funciona donde el hueso se parte o se
+desplaza (cráneo, pelvis, costillas).
+
+**Orientación guardada de lado:** los VerSe vienen como cortes sagitales (`PIR`: x hacia atrás, y hacia abajo,
+z hacia la derecha), así que "z hacia arriba" ya no vale. `Render3D.direcciones()` calcula los vectores de
+adelante y de arriba a partir de la orientación y `_vista_frontal` los usa; la prueba nueva cubre el caso.
+Las letras del 2D y el cubo del 3D ya eran correctos porque trabajan eje por eje. Pendiente cosmético: el texto
+de las caras del cubo sale girado en estos estudios.
+
+**Extremidades: no hay conjuntos abiertos utilizables.** Lo más cercano: PlaTiF (platillo tibial, Zenodo
+18007397) es de radiografías y solo trae un corte coronal de TAC; FracAtlas, MURA y similares son radiografías 2D;
+la base de cadáveres de miembro inferior (Zenodo 8302448) tiene huesos sanos; el TotalSegmentator tiene
+extremidades de pacientes de trauma pero el espejo no trae la columna `pathology` que dice cuáles. El de la
+cervical de RSNA está en Kaggle y exige cuenta (y son cientos de GB). Quedan fuera por ahora; alternativas: pedirle
+al profesor casos anonimizados de extremidades, o usar los fémures proximales que ya aparecen en los casos de
+pelvis.
+
+**Datos:** `data/raw/fracturas/columna/` (fuera de git, ~0,1 GB); créditos y licencias en
+`results/fracturas/CREDITOS.md`.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -894,5 +940,7 @@ fractura según los metadatos de cada dataset.
 - [ ] Barra de umbral libre dentro de la app (hoy solo en `--modo 3d`).
 - [ ] Separar diente de hueso alveolar: el clasificador por vóxel sube el Dice de 0,64 a 0,86 (23/10). Falta integrarlo a la app y probar una U-Net 3D en Colab.
 - [x] Vista "fractura" en la app (sin suavizar, resolución completa, sin camilla), relieve y orientación (24/10).
-- [ ] Medir los cuadros por segundo de la vista de fractura en la app (3–4,5 M de triángulos) y probar fracturas de columna y de extremidades.
+- [ ] Medir los cuadros por segundo de la vista de fractura en la app (3–4,5 M de triángulos).
+- [x] Fracturas de columna (VerSe): probadas el 24/10; la 3D no muestra compresiones, el corte sagital sí.
+- [ ] Fracturas de extremidades: no hay conjunto abierto en 3D; ver la entrada del 24/10 y pedirle casos anonimizados al profesor.
 - [ ] Documento final detallado del proyecto a partir de esta bitácora.
