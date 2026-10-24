@@ -5,8 +5,10 @@ import numpy as np
 import pyvista as pv
 from scipy import ndimage
 
-from src.densidades import EN_ARCADA, EXPERIMENTALES, color_para, presets_para, suavizado_para
-from src.region import arcada_dental, piezas_con_esmalte
+from src.densidades import (EN_ARCADA, EXPERIMENTALES, UMBRAL_FRACTURA, UMBRAL_TEJIDO, color_para,
+                            escala_de, presets_para, suavizado_para)
+from src.orientacion import OPUESTA, texto
+from src.region import arcada_dental, hueso_del_paciente, piezas_con_esmalte
 from src.filtros import suavizar
 
 
@@ -92,11 +94,25 @@ PULIDO_BLANDOS = 20     # iteraciones de Taubin para el tejido blando (ruidoso e
 # 400×512×512 (105 M) pasa a 3. Sin esto "blandos" llegaba a 5,9 M triángulos y 4,3 s.
 VOXELES_MAX_3D = 8_000_000
 
+# La vista de fractura va a resolución completa: una línea de fractura mide 1–2 vóxeles y
+# al reducir desaparece. Solo se reduce si el volumen pasa de ~130 M de vóxeles (en un
+# Mac de 8 GB la etiquetación y la malla ya no caben).
+VOXELES_MAX_FRACTURA = 130_000_000
 
-def reduccion_para(forma, minima=2):
-    """Menor reducción (≥ `minima`) que deja la rejilla 3D por debajo de VOXELES_MAX_3D."""
+# Radio y sesgo (mm) de la oclusión ambiental: una fractura mide ~1 mm de ancho.
+RADIO_RELIEVE_MM = 2.0
+SESGO_RELIEVE_MM = 0.2
+
+# Cubo de orientación de la vista 3D: la cara anterior (el frente del paciente) en turquesa.
+COLOR_CARA_ANTERIOR = (0.27, 0.76, 0.85)
+COLOR_CARA = (0.17, 0.22, 0.30)
+COLOR_TEXTO_CARA = (0.91, 0.93, 0.96)
+
+
+def reduccion_para(forma, minima=2, maximo_voxeles=VOXELES_MAX_3D):
+    """Menor reducción (≥ `minima`) que deja la rejilla 3D por debajo de `maximo_voxeles`."""
     reduccion = max(1, int(minima))
-    while np.prod(forma) / reduccion ** 3 > VOXELES_MAX_3D:
+    while np.prod(forma) / reduccion ** 3 > maximo_voxeles:
         reduccion += 1
     return reduccion
 
@@ -135,6 +151,10 @@ class Render3D:
         # Opciones de visualización
         self.phong = True
         self.suavizar_malla = False
+        self.relieve = False         # oclusión ambiental (SSAO): oscurece grietas y huecos
+        self.orientacion = None      # "LPS", "RAS"… del estudio; None si no se conoce
+        self.escala = None
+        self._marcador = None        # widget del cubo de orientación
         self._plano_corte = None     # vtkPlane mientras el plano de corte está activo
         self.ultima_medicion = {"triangulos": 0, "ms": 0.0}
 
@@ -145,9 +165,13 @@ class Render3D:
         if hasattr(estudio, "volumen"):
             self.volumen, self.espaciado = estudio.volumen, estudio.espaciado
             self.presets = presets_para(estudio)
+            self.escala = escala_de(estudio)
+            self.orientacion = estudio.metadatos.get("orientacion")
         else:
             self.volumen, self.espaciado = estudio
             self.presets = {}
+            self.escala = self.orientacion = None
+        self._poner_marcador()
         self.reduccion = reduccion_para(self.volumen.shape, reduccion)
         # La arcada se ubica por el esmalte; sin preset de esmalte no se limita nada.
         self.arcada = (arcada_dental(self.volumen, self.espaciado, self.presets["esmalte"][0])
@@ -167,7 +191,7 @@ class Render3D:
             self.set_umbral(minimo + 0.6 * (maximo - minimo))
 
         # Vista frontal de la cara (en la muestra de Slicer es el plano XZ) y encuadre
-        self.pl.view_xz()
+        self._vista_frontal()
         self.pl.reset_camera()
 
     def set_umbral(self, valor: float):
@@ -254,6 +278,34 @@ class Render3D:
         else:
             self._encuadrar_de_frente()
 
+    def aplicar_fractura(self):
+        """Vista para buscar huesos rotos: resolución completa, sin suavizar y solo el hueso.
+
+        Una línea de fractura mide 1–2 vóxeles; el gaussiano y la reducción de los otros
+        presets la promedian con el hueso de al lado y la borran. Se quita lo que no es
+        hueso del paciente (el soporte de cabeza o la camilla: placas delgadas fuera del
+        cuerpo, ver `region.cuerpo`) pero se conservan todos los fragmentos de hueso, y se
+        enciende el relieve para que las grietas se vean como rayas oscuras.
+        """
+        if "hueso" not in self.presets:
+            raise KeyError("La vista de fractura necesita el preset 'hueso' (escala del estudio desconocida)")
+        self._ultima_accion = ("fractura",)
+
+        t0 = time.perf_counter()
+        umbral = max(self.presets["hueso"][0], UMBRAL_FRACTURA.get(self.escala, 0))
+        reduccion = reduccion_para(self.volumen.shape, 1, VOXELES_MAX_FRACTURA)
+        superficie = self._acabar(superficie_por_banda(
+            self.volumen, self.espaciado, umbral, None, reduccion=reduccion, suavizado_mm=0.0,
+            conservar=hueso_del_paciente(self.volumen, umbral, self.espaciado, UMBRAL_TEJIDO[self.escala])))
+        self._limpiar()
+        if superficie.n_points > 0:
+            self._dibujar("estructura", superficie, color=color_para("hueso"))
+        self.umbral_actual = umbral
+        self.preset_actual = "fractura"
+        self.set_relieve(True)
+        self._medir(t0)
+        self._encuadrar_de_frente()
+
     # --- Opciones de visualización ---------------------------------------------
 
     def set_phong(self, activo: bool):
@@ -263,6 +315,20 @@ class Render3D:
             actor = self.pl.actors.get(nombre)
             if actor is not None:
                 actor.prop.interpolation = "phong" if self.phong else "flat"
+
+    def set_relieve(self, activo: bool):
+        """Oclusión ambiental en espacio de pantalla (SSAO): oscurece lo que queda en hueco.
+
+        Una fractura de 1 vóxel apenas cambia el brillo de la superficie; con el relieve el
+        borde de la grieta proyecta sombra y se ve como una raya oscura. El radio es de 2 mm,
+        del orden del ancho de una fractura.
+        """
+        self.relieve = bool(activo)
+        if self.relieve:
+            self.pl.enable_ssao(radius=RADIO_RELIEVE_MM, bias=SESGO_RELIEVE_MM, kernel_size=128, blur=True)
+        else:
+            self.pl.disable_ssao()
+        self.pl.render()     # los pasos de renderizado del SSAO se arman en el primer cuadro
 
     def set_suavizar_malla(self, activo: bool):
         """Suavizado Taubin de la malla (no encoge, a diferencia del Laplaciano). Redibuja."""
@@ -325,6 +391,34 @@ class Render3D:
 
     # --- Internos ----------------------------------------------------------------
 
+    def _poner_marcador(self):
+        """Cubo de orientación en la esquina: cada cara dice hacia dónde queda ese lado del paciente.
+
+        Gira con la cámara, así que siempre se sabe cuál es la derecha del paciente, y no
+        la de la pantalla. Sin orientación conocida (volumen sintético) no se dibuja.
+        """
+        self._quitar_marcador()
+        if not self.orientacion:
+            return
+        import vtk
+        cubo = vtk.vtkAnnotatedCubeActor()
+        for eje, letra in zip(("X", "Y", "Z"), self.orientacion):
+            for signo, letra_cara in (("Plus", letra), ("Minus", OPUESTA[letra])):
+                getattr(cubo, f"Set{eje}{signo}FaceText")(texto(letra_cara))
+                cara = getattr(cubo, f"Get{eje}{signo}FaceProperty")()
+                # El texto de cada cara lleva el color de su propiedad; el cuerpo, el del cubo.
+                cara.SetColor(*(COLOR_CARA_ANTERIOR if letra_cara == "A" else COLOR_TEXTO_CARA))
+        cubo.GetCubeProperty().SetColor(*COLOR_CARA)
+        cubo.GetTextEdgesProperty().SetColor(0.6, 0.67, 0.75)
+        cubo.SetTextEdgesVisibility(True)
+        cubo.SetFaceTextScale(0.26)
+        self._marcador = self.pl.add_orientation_widget(cubo, interactive=False, viewport=(0.0, 0.0, 0.2, 0.3))
+
+    def _quitar_marcador(self):
+        if self._marcador is not None:
+            self._marcador.EnabledOff()
+            self._marcador = None
+
     def _limites_dibujados(self):
         """Caja (xmin, xmax, ymin, ymax, zmin, zmax) de lo que se ve, o del volumen si no hay nada."""
         cajas = [self.pl.actors[n].GetBounds() for n in self._actores if n in self.pl.actors]
@@ -341,6 +435,8 @@ class Render3D:
             self.set_umbral(accion[1])
         elif accion[0] == "preset":
             self.aplicar_preset(accion[1])
+        elif accion[0] == "fractura":
+            self.aplicar_fractura()
         else:
             self.aplicar_capas(accion[1], corte_sagital=accion[2])
 
@@ -357,9 +453,17 @@ class Render3D:
 
     def _encuadrar_de_frente(self):
         if self._vista_lateral:
-            self.pl.view_xz()
+            self._vista_frontal()
             self._vista_lateral = False
         self.pl.reset_camera()
+
+    def _vista_frontal(self):
+        """Cámara frente al paciente: del lado anterior, con z hacia arriba.
+
+        Si el eje y crece hacia atrás (LPS, lo habitual) el frente está en y mínimo; en un
+        estudio que lo guarda al revés (LAS, como los NIfTI de STS) hay que mirar desde el otro lado.
+        """
+        self.pl.view_xz(negative=bool(self.orientacion) and self.orientacion[1] == "A")
 
     def _piezas_dentales(self, nombre, umbral):
         """Para "dientes": solo las piezas conectadas que tienen esmalte (src/region.py)."""

@@ -71,11 +71,14 @@ Sin argumento abre `data/raw/PreDentalSurgery.gipl.gz`. Con **Cargar estudio** s
 archivo, o un `.dcm` para cargar toda su carpeta. Arriba se elige la vista **2D**, **3D** o
 **Dividida**:
 
-- **2D:** sliders de corte y de contraste; botones *Dientes / Hueso* y *Tejido blando*.
+- **2D:** sliders de corte y de contraste; botones *Dientes / Hueso* y *Tejido blando*. En el
+  borde de cada corte van las letras de orientación del paciente (*D*, *Iz*, *Ant*, *Post*,
+  *Sup*, *Inf*), leídas del encabezado del archivo; en 3D, un cubo en la esquina hace lo mismo.
 - **2D:** debajo de los cortes, un **histograma de densidades** con la ventana de contraste
   y el inicio de cada estructura marcados; un clic en él centra el contraste en esa densidad.
-- **3D:** barra *Estructura 3D* con *Hueso, Dientes, Esmalte, Sin metal, Metal, Implante* y
-  *Blandos (exp.)* (este último con corte sagital, para no mostrar la cara). Se rota con el
+- **3D:** barra *Estructura 3D* con *Hueso, Dientes, Esmalte, Sin metal, Metal, Implante*,
+  *Blandos (exp.)* (este último con corte sagital, para no mostrar la cara) y *Fractura*
+  (hueso a resolución completa, sin suavizar y sin la camilla; tarda unos segundos). Se rota con el
   mouse y se acerca con la rueda. Debajo, un control por cada pregunta de la propuesta:
 
   | Control | Qué hace | Pregunta |
@@ -85,6 +88,7 @@ archivo, o un `.dcm` para cargar toda su carpeta. Arriba se elige la vista **2D*
   | N triáng. · ms | Tamaño de la malla y tiempo del cálculo | 3. Rendimiento |
   | Taubin | Suaviza el escalonado sin encoger la malla | 4. Suavizado |
   | Corte | Plano de corte que se arrastra; el interior se ve en rojo | 5. Clipping plane |
+  | Relieve | Oclusión ambiental (SSAO): oscurece grietas y huecos; la vista *Fractura* lo enciende | — |
 
   Con estudios grandes el 3D baja la resolución solo (nivel de detalle automático).
 
@@ -153,6 +157,7 @@ archivo (DICOM, GIPL, NIfTI…)
 | `benchmark_render.py` | Tiempos y triángulos con reducción 1, 2 y 4 | `python -m scripts.benchmark_render data/raw/PreDentalSurgery.gipl.gz` |
 | `histograma_densidades.py` | Histograma de densidades y umbrales de Otsu | `python scripts/histograma_densidades.py data/raw/PreDentalSurgery.gipl.gz` |
 | `verificar_anonimizacion.py` | Revisa que los DICOM no traigan datos del paciente | `python scripts/verificar_anonimizacion.py data/raw --csv results/estudios.csv` |
+| `probar_fracturas.py` | Vista de fractura en estudios con fractura (pelvis, costillas, cráneo): hueso conservado, fragmentos del experto que se pierden y un montaje por estudio | `python -m scripts.probar_fracturas data/raw/fracturas/pelvis data/raw/fracturas/costillas` |
 | `generar_web.py` | Regenera los datos y modelos de `web/` (sobrescribe la página) | `python scripts/generar_web.py data/raw/PreDentalSurgery.gipl.gz` |
 
 ## Pruebas
@@ -161,10 +166,11 @@ archivo (DICOM, GIPL, NIfTI…)
 python -m pytest -q
 ```
 
-68 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
+90 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
 capas de relleno, presets y colores (incluida la sincronía con la página web), región de la
 arcada, suavizado con sigma en mm, el motor 3D sin ventana (Phong, Taubin, plano de corte,
-contador) y una prueba de humo de la aplicación Qt sin pantalla.
+contador, relieve, cubo de orientación y vista de fractura), la orientación del paciente y una
+prueba de humo de la aplicación Qt sin pantalla.
 
 ## Estructura
 

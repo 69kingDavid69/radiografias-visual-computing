@@ -61,6 +61,16 @@ def suavizado_para(nombre):
     return SUAVIZADO_MM.get(nombre, 0.0)
 
 
+# Umbral de la vista de fractura (ver Render3D.aplicar_fractura). Con 150 HU el borde del
+# hueso queda difuso y se llena de ruido en la mandíbula; con 300 HU la línea de fractura
+# y los bordes se ven nítidos. En la escala "slicer" no se midió: se usa el del preset "hueso".
+UMBRAL_FRACTURA = {"hounsfield": 300}
+
+# Por debajo de este valor es aire (no cuerpo): a medio camino entre el aire y el tejido blando.
+# En "slicer" el aire está en 0 y el tejido blando en 410 (src/escala.py).
+UMBRAL_TEJIDO = {"hounsfield": -400, "slicer": 205}
+
+
 def escala_de(estudio):
     """Escala de densidad del estudio ("slicer", "hounsfield"…) o None si no se sabe.
 

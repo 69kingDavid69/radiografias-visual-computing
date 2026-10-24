@@ -16,6 +16,7 @@ import SimpleITK as sitk
 from pydicom.errors import InvalidDicomError
 
 from src.escala import REGISTRO, asignar_escala
+from src.orientacion import direccion_de_dicom, orientacion_de_direccion
 
 EXTENSIONES_VOLUMEN = (".gipl.gz", ".gipl", ".nii.gz", ".nii", ".mha", ".mhd", ".nrrd")
 CARPETA_CACHE = Path(__file__).resolve().parent.parent / "data" / "processed"
@@ -76,6 +77,9 @@ def cargar_estudio(ruta, usar_cache=True, carpeta_cache=CARPETA_CACHE, normaliza
             "forma": volumen.shape,
             "rango": (float(volumen.min()), float(volumen.max())),
             "origen": str(ruta),
+            "orientacion": leer_orientacion(ruta),
+            # GIPL no guarda la orientación: SimpleITK devuelve la identidad ("LPS") y es un supuesto.
+            "orientacion_supuesta": formato == "GIPL",
         },
     )
     return asignar_escala(estudio, registro) if normalizar else estudio
@@ -134,6 +138,32 @@ def cargar_serie_dicom(carpeta):
     pendiente = float(getattr(primero, "RescaleSlope", 1))
     intercepto = float(getattr(primero, "RescaleIntercept", 0))
     return volumen * pendiente + intercepto, (dz, dy, dx)
+
+
+def leer_orientacion(ruta):
+    """Orientación del volumen ("LPS", "RAS"…, ver src/orientacion.py) o None si no se puede leer.
+
+    Solo lee el encabezado: la primera imagen de una serie DICOM o la cabecera del archivo.
+    """
+    ruta = Path(ruta)
+    try:
+        if ruta.is_dir():
+            for archivo in sorted(ruta.rglob("*")):
+                if not archivo.is_file():
+                    continue
+                try:
+                    ds = pydicom.dcmread(archivo, stop_before_pixels=True)
+                except InvalidDicomError:
+                    continue
+                if "ImageOrientationPatient" in ds:
+                    return orientacion_de_direccion(direccion_de_dicom(ds.ImageOrientationPatient))
+            return None
+        lector = sitk.ImageFileReader()
+        lector.SetFileName(str(ruta))
+        lector.ReadImageInformation()
+        return orientacion_de_direccion(lector.GetDirection())
+    except (RuntimeError, ValueError, AttributeError):
+        return None
 
 
 def calcular_dz(posiciones_z):
