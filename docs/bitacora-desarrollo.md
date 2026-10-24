@@ -769,6 +769,43 @@ Lo que encontró y se arregló:
 
 ---
 
+## 2026-10-24 — Prueba con un caso de fractura (CQ500-CT-397)
+
+**Qué:** se probó si la reconstrucción por umbral deja ver huesos rotos. Como no hay CBCT
+públicas con fractura etiquetada, se usó un TAC de cráneo por trauma de CQ500 (licencia
+CC BY-NC-SA 4.0): el paciente CQ500-CT-397, que 2 de 3 radiólogos leyeron con *fractura
+de calota*, *otra fractura* y hemorragia intraparenquimatosa derecha. Se bajó solo ese
+paciente (95 MB) a `data/raw/cq500/` (fuera de git) y se separó en tres series; la útil es
+`CQ500CT397_hueso` (kernel de hueso, 272 × 512 × 512, vóxel 0,63 × 0,47 × 0,47 mm, cubre
+172 mm, de la mandíbula a la coronilla). La anonimización está bien: `PatientName` y
+`PatientID` son el código del dataset; fecha de nacimiento, sexo y fecha del estudio vacíos.
+
+**Resultado:** **sí se ve.** Con hueso ≥ 300 HU, resolución completa y sin suavizar
+(6 millones de triángulos en 0,8 s), aparece una línea de fractura que cruza el hueso
+frontal en diagonal y baja hasta el reborde de la órbita, del lado derecho del paciente
+(el mismo lado de la hemorragia que reportaron). En los cortes axiales 166–190 se ve como
+una línea oscura que atraviesa la cortical y se va corriendo hacia afuera a medida que se
+sube, que es lo que hace una línea oblicua vista corte a corte.
+
+**Decisiones y hallazgos:**
+- *El soporte de cabeza del tomógrafo tapaba el cráneo.* Es un arco de más de 300 HU que
+  rodea la cabeza. Se quitó quedándose con el componente conectado más grande (2,9 millones
+  de vóxeles; el soporte es el segundo, con 1,0 millón). La app todavía no lo hace.
+- *El suavizado puede borrar la fractura.* Una línea de fractura mide 1–2 vóxeles; el
+  preset normal (reducción 2, σ 0,5 mm) promedia justo a esa escala. Para buscar fracturas
+  conviene resolución completa y sin suavizar.
+- *No todo trazo es fractura.* Cerca de la órbita y del pómulo hay suturas normales (por
+  ejemplo la frontocigomática) que también se ven como líneas. Lo que delata la fractura
+  del frontal es que cruza la frente en un sitio donde un adulto no tiene suturas.
+- Se declaró `CQ500CT397_hueso` como `hounsfield` en `data/estudios.json`: es un TAC
+  calibrado y no debe normalizarse.
+
+**Límite honesto:** es un TAC médico, no una CBCT dental, y los radiólogos de CQ500 no dicen
+dónde está la fractura; la ubicación es lectura nuestra de la imagen, coherente con su
+reporte, no un diagnóstico.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -791,4 +828,5 @@ Lo que encontró y se arregló:
 - [ ] Plan B de la exposición: capturas y video de 60 s de la demo (Emanuel + Juan).
 - [ ] Barra de umbral libre dentro de la app (hoy solo en `--modo 3d`).
 - [ ] Separar diente de hueso alveolar: el clasificador por vóxel sube el Dice de 0,64 a 0,86 (23/10). Falta integrarlo a la app y probar una U-Net 3D en Colab.
+- [ ] Vista "fractura" en la app: sin suavizar, resolución completa y solo la pieza más grande (sin soporte de cabeza).
 - [ ] Documento final detallado del proyecto a partir de esta bitácora.
