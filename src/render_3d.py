@@ -1,4 +1,6 @@
 """Herramienta 2: reconstrucción 3D por umbral de densidad."""
+import time
+
 import numpy as np
 import pyvista as pv
 from scipy import ndimage
@@ -63,11 +65,16 @@ def superficie_por_banda(volumen, espaciado, minimo, maximo=None, reduccion=2, s
     else:
         campo, nivel = np.minimum(v - minimo, maximo - v).astype(np.float32), 0.0
     # a_pyvista nombra el campo "densidad"; con máximo contiene la distancia a la banda.
-    superficie = a_pyvista(campo, esp, 1, origen_z_mm=z0 * espaciado[0]).contour([nivel], scalars="densidad")
+    # flying_edges: la misma superficie que marching cubes, multihilo y 4–5 veces más rápida.
+    superficie = a_pyvista(campo, esp, 1, origen_z_mm=z0 * espaciado[0]).contour([nivel], scalars="densidad",
+                                                                             method="flying_edges")
     if pulido and superficie.n_points:
         superficie = superficie.smooth_taubin(n_iter=pulido, pass_band=0.05)
     return superficie
 
+
+# Interior de los dientes (pulpa y conductos) al cortar con el plano: el mismo rojo de la página.
+COLOR_INTERIOR = "#d94a3d"
 
 # El metal brilla como metal: reflejo especular más fuerte y concentrado.
 ACABADO_METAL = {"specular": 1.0, "specular_power": 60}
@@ -80,12 +87,32 @@ CAPAS_IMPLANTE = [("hueso", 0.2), ("metal", 1.0)]
 CAPAS_BLANDAS = [("grasa", 0.35), ("musculo", 1.0), ("hueso", 1.0)]
 PULIDO_BLANDOS = 20     # iteraciones de Taubin para el tejido blando (ruidoso en CBCT)
 
+# Nivel de detalle automático: la malla se calcula sobre una rejilla de a lo sumo ~8 M de
+# vóxeles. El Post (43 M) queda en reducción 2, como siempre; un CBCT de cabeza completa de
+# 400×512×512 (105 M) pasa a 3. Sin esto "blandos" llegaba a 5,9 M triángulos y 4,3 s.
+VOXELES_MAX_3D = 8_000_000
+
+
+def reduccion_para(forma, minima=2):
+    """Menor reducción (≥ `minima`) que deja la rejilla 3D por debajo de VOXELES_MAX_3D."""
+    reduccion = max(1, int(minima))
+    while np.prod(forma) / reduccion ** 3 > VOXELES_MAX_3D:
+        reduccion += 1
+    return reduccion
+
 
 class Render3D:
     """Motor de renderizado 3D para tomografías dentales CBCT.
 
     Implementa el contrato para que la interfaz gráfica (QtInteractor o Plotter)
     pueda controlar la visualización, el umbral de densidad y los presets.
+
+    Además de la estructura, guarda tres opciones de visualización que se aplican a
+    todo lo que se dibuja (preguntas 2, 4 y 5 de la propuesta):
+      - `phong`: sombreado Phong (normales interpoladas) o plano (una normal por triángulo);
+      - `suavizar_malla`: suavizado Taubin de la malla, que no la encoge;
+      - plano de corte interactivo (`activar_corte`), que pinta el interior en rojo.
+    Y mide cada cálculo en `ultima_medicion` (triángulos y milisegundos, pregunta 3).
     """
 
     def __init__(self, plotter: pv.Plotter):
@@ -103,6 +130,13 @@ class Render3D:
         self._vista_lateral = False  # la vista de tejidos blandos gira la cámara de costado
         self.preset_actual = None
         self._actores = []           # nombres de los actores dibujados (para borrarlos al cambiar)
+        self._ultima_accion = None   # para redibujar igual al cambiar una opción
+
+        # Opciones de visualización
+        self.phong = True
+        self.suavizar_malla = False
+        self._plano_corte = None     # vtkPlane mientras el plano de corte está activo
+        self.ultima_medicion = {"triangulos": 0, "ms": 0.0}
 
     def mostrar(self, estudio, reduccion: int = 2):
         """Prepara el volumen con la reducción óptima (reduccion=2) y dibuja el modelo inicial."""
@@ -114,10 +148,12 @@ class Render3D:
         else:
             self.volumen, self.espaciado = estudio
             self.presets = {}
-        self.reduccion = reduccion
+        self.reduccion = reduccion_para(self.volumen.shape, reduccion)
         # La arcada se ubica por el esmalte; sin preset de esmalte no se limita nada.
         self.arcada = (arcada_dental(self.volumen, self.espaciado, self.presets["esmalte"][0])
                        if "esmalte" in self.presets else None)
+        # Un estudio nuevo no hereda el plano de corte del anterior (sus medidas son otras).
+        self.desactivar_corte()
 
         # Convierte el volumen NumPy a ImageData de PyVista aplicando la reducción por defecto
         self.malla = a_pyvista(self.volumen, self.espaciado, reduccion=reduccion)
@@ -138,19 +174,19 @@ class Render3D:
         """Recalcula la isosuperficie (Marching Cubes) cuando se modifica el umbral."""
         if self.malla is None:
             return
+        self._ultima_accion = ("umbral", float(valor))
 
-        # Marching Cubes extrae la superficie 3D en el valor de densidad indicado
-        superficie = self.malla.contour([valor], scalars="densidad")
+        # Marching Cubes (flying edges: la misma superficie, 4–5 veces más rápido)
+        t0 = time.perf_counter()
+        superficie = self._acabar(self.malla.contour([valor], scalars="densidad", method="flying_edges"))
         self.preset_actual = None    # la barra libre deja de seguir un preset
 
         # Si no hay vóxeles en ese rango, eliminamos el actor visual previo
-        if superficie.n_points == 0:
-            self._limpiar()
-            return
-
-        # name="estructura" actualiza la superficie existente sin recargar toda la escena
-        self._dibujar("estructura", superficie, color="ivory")
+        self._limpiar()
+        if superficie.n_points > 0:
+            self._dibujar("estructura", superficie, color=self._color_para_umbral(valor))
         self.umbral_actual = valor
+        self._medir(t0)
 
     def aplicar_preset(self, nombre: str):
         """Aísla una estructura con su rango de densidad (src/densidades.py).
@@ -161,19 +197,24 @@ class Render3D:
         if nombre not in self.presets:
             disponibles = ", ".join(self.presets) or "ninguno (escala del estudio desconocida)"
             raise KeyError(f"Preset '{nombre}' no disponible. Disponibles: {disponibles}")
+        self._ultima_accion = ("preset", nombre)
 
+        t0 = time.perf_counter()
         minimo, maximo = self.presets[nombre]
-        superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
-                                          reduccion=self.reduccion,
-                                          suavizado_mm=suavizado_para(nombre),
-                                          rango_z=self._rango_z(nombre),
-                                          conservar=self._piezas_dentales(nombre, minimo))
+        superficie = self._acabar(superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
+                                                       reduccion=self.reduccion,
+                                                       suavizado_mm=suavizado_para(nombre),
+                                                       rango_z=self._rango_z(nombre),
+                                                       conservar=self._piezas_dentales(nombre, minimo)))
         self._limpiar()
-        self._volver_al_frente()
         if superficie.n_points > 0:
             self._dibujar("estructura", superficie, color=color_para(nombre), **self._acabado(nombre))
         self.umbral_actual = minimo
         self.preset_actual = nombre
+        self._medir(t0)
+        # Cada estructura tiene otro tamaño (los dientes son una franja): se reencuadra
+        # de frente para que no quede pequeña ni fuera de vista.
+        self._encuadrar_de_frente()
 
     def aplicar_capas(self, capas=CAPAS_IMPLANTE, corte_sagital=False):
         """Dibuja varios presets a la vez, cada uno con su opacidad.
@@ -186,38 +227,139 @@ class Render3D:
         faltan = [nombre for nombre, _ in capas if nombre not in self.presets]
         if faltan:
             raise KeyError(f"Presets no disponibles para este estudio: {', '.join(faltan)}")
+        self._ultima_accion = ("capas", list(capas), corte_sagital)
 
+        t0 = time.perf_counter()
         self._limpiar()
+        # El corte sagital se hace sobre el volumen (x < centro) y no sobre la malla: recortar
+        # después una malla de ~1,7 M triángulos duplicaba la memoria y, con poca RAM libre,
+        # VTK abortaba la aplicación entera.
+        volumen = self.volumen[:, :, :(self.volumen.shape[2] + 1) // 2] if corte_sagital else self.volumen
         for nombre, opacidad in capas:
             minimo, maximo = self.presets[nombre]
-            superficie = superficie_por_banda(self.volumen, self.espaciado, minimo, maximo,
-                                              reduccion=self.reduccion,
-                                              suavizado_mm=suavizado_para(nombre),
-                                              rango_z=self._rango_z(nombre),
-                                              pulido=PULIDO_BLANDOS if nombre in EXPERIMENTALES else 0)
-            if corte_sagital and superficie.n_points > 0:
-                centro_x = self.volumen.shape[2] * self.espaciado[2] / 2
-                superficie = superficie.clip(normal=(1, 0, 0), origin=(centro_x, 0, 0))
+            superficie = self._acabar(superficie_por_banda(volumen, self.espaciado, minimo, maximo,
+                                                           reduccion=self.reduccion,
+                                                           suavizado_mm=suavizado_para(nombre),
+                                                           rango_z=self._rango_z(nombre),
+                                                           pulido=PULIDO_BLANDOS if nombre in EXPERIMENTALES else 0))
             if superficie.n_points > 0:
                 self._dibujar(f"capa_{nombre}", superficie, color=color_para(nombre),
                               opacity=opacidad, **self._acabado(nombre))
         self.preset_actual = "+".join(nombre for nombre, _ in capas)
+        self._medir(t0)
         if corte_sagital:
             self.pl.view_yz()            # cámara en +x: mira la cara cortada, hacia el interior
             self.pl.reset_camera()
             self._vista_lateral = True
         else:
-            self._volver_al_frente()
+            self._encuadrar_de_frente()
+
+    # --- Opciones de visualización ---------------------------------------------
+
+    def set_phong(self, activo: bool):
+        """Sombreado Phong (normales interpoladas, luz por píxel) o plano (una normal por cara)."""
+        self.phong = bool(activo)
+        for nombre in self._actores:
+            actor = self.pl.actors.get(nombre)
+            if actor is not None:
+                actor.prop.interpolation = "phong" if self.phong else "flat"
+
+    def set_suavizar_malla(self, activo: bool):
+        """Suavizado Taubin de la malla (no encoge, a diferencia del Laplaciano). Redibuja."""
+        self.suavizar_malla = bool(activo)
+        self._redibujar()
+
+    def activar_corte(self, normal=None):
+        """Plano de corte interactivo: oculta un lado y muestra el interior en rojo.
+
+        Se arrastra con el ratón (widget de PyVista); se aplica a todo lo que se dibuje
+        mientras esté activo, también al cambiar de estructura. Sin `normal`, el plano
+        mira en la dirección de la cámara y pasa por el centro de lo dibujado: quita la
+        mitad más cercana y deja ver el interior de frente.
+        """
+        import vtk
+        if self._plano_corte is None:
+            self._plano_corte = vtk.vtkPlane()
+        limites = self._limites_dibujados()
+        centro = tuple((limites[2 * i] + limites[2 * i + 1]) / 2 for i in range(3))
+        if normal is None:
+            vector = tuple(self.pl.camera.direction)
+            # La arcada es una U: por el centro solo cortaría las muelas. El plano arranca
+            # a un tercio de la profundidad desde el frente, donde están los incisivos.
+            n = np.asarray(vector)
+            tamano = np.array(limites[1::2]) - np.array(limites[0::2])
+            profundidad = float(np.abs(n) @ tamano)
+            centro = tuple(np.asarray(centro) - n * profundidad / 6)
+        else:
+            vector = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1)}.get(normal, normal)
+        self._plano_corte.SetOrigin(*centro)
+        self._plano_corte.SetNormal(*vector)
+
+        def mover(nueva_normal, origen):
+            self._plano_corte.SetNormal(*nueva_normal)
+            self._plano_corte.SetOrigin(*origen)
+
+        self.pl.clear_plane_widgets()
+        self.pl.add_plane_widget(mover, normal=vector, origin=centro, bounds=limites, color="#94a3b8",
+                                 interaction_event="always", outline_translation=False)
+        for nombre in self._actores:
+            self._aplicar_corte(self.pl.actors.get(nombre))
+
+    def desactivar_corte(self):
+        if self._plano_corte is None:
+            return
+        self.pl.clear_plane_widgets()
+        for nombre in self._actores:
+            actor = self.pl.actors.get(nombre)
+            if actor is not None:
+                actor.mapper.RemoveAllClippingPlanes()
+        self._plano_corte = None
+
+    @property
+    def corte_activo(self) -> bool:
+        return self._plano_corte is not None
 
     def captura(self, ruta: str):
         """Guarda una captura de pantalla del render 3D actual."""
         self.pl.screenshot(ruta)
 
-    def _volver_al_frente(self):
+    # --- Internos ----------------------------------------------------------------
+
+    def _limites_dibujados(self):
+        """Caja (xmin, xmax, ymin, ymax, zmin, zmax) de lo que se ve, o del volumen si no hay nada."""
+        cajas = [self.pl.actors[n].GetBounds() for n in self._actores if n in self.pl.actors]
+        if not cajas:
+            return self.malla.bounds if self.malla is not None else (-1, 1, -1, 1, -1, 1)
+        cajas = np.array(cajas)
+        return tuple(float(v) for par in zip(cajas[:, 0::2].min(axis=0), cajas[:, 1::2].max(axis=0)) for v in par)
+
+    def _redibujar(self):
+        accion = self._ultima_accion
+        if accion is None:
+            return
+        if accion[0] == "umbral":
+            self.set_umbral(accion[1])
+        elif accion[0] == "preset":
+            self.aplicar_preset(accion[1])
+        else:
+            self.aplicar_capas(accion[1], corte_sagital=accion[2])
+
+    def _acabar(self, superficie):
+        """Suavizado Taubin opcional (el gaussiano por estructura ya se aplicó al volumen)."""
+        if self.suavizar_malla and superficie.n_points > 0:
+            return superficie.smooth_taubin(n_iter=20, pass_band=0.1)
+        return superficie
+
+    def _medir(self, t0):
+        triangulos = sum(self.pl.actors[n].mapper.dataset.n_cells for n in self._actores
+                         if n in self.pl.actors and self.pl.actors[n].mapper.dataset is not None)
+        self.ultima_medicion = {"triangulos": int(triangulos), "ms": (time.perf_counter() - t0) * 1000}
+
+    def _encuadrar_de_frente(self):
         if self._vista_lateral:
             self.pl.view_xz()
-            self.pl.reset_camera()
             self._vista_lateral = False
+        self.pl.reset_camera()
 
     def _piezas_dentales(self, nombre, umbral):
         """Para "dientes": solo las piezas conectadas que tienen esmalte (src/region.py)."""
@@ -228,6 +370,15 @@ class Render3D:
         z0, z1 = self.arcada
         return piezas_con_esmalte(self.volumen[z0:z1], umbral, esmalte_min, esmalte_max)
 
+    def _color_para_umbral(self, valor):
+        """Color del preset más denso cuyo mínimo no supera `valor` (marfil si no hay ninguno).
+
+        Así la barra libre usa los mismos colores de tejido que los botones y la página.
+        """
+        candidatos = [(minimo, nombre) for nombre, (minimo, _) in self.presets.items()
+                      if nombre not in EXPERIMENTALES and minimo <= valor]
+        return color_para(max(candidatos)[1]) if candidatos else "ivory"
+
     def _rango_z(self, nombre):
         return self.arcada if nombre in EN_ARCADA else None
 
@@ -235,9 +386,18 @@ class Render3D:
     def _acabado(nombre):
         return ACABADO_METAL if nombre == "metal" else {}
 
+    def _aplicar_corte(self, actor):
+        if actor is None or self._plano_corte is None:
+            return
+        actor.mapper.RemoveAllClippingPlanes()
+        actor.mapper.AddClippingPlane(self._plano_corte)
+        actor.backface_prop.color = COLOR_INTERIOR      # pulpa y conductos, vistos por dentro
+
     def _dibujar(self, nombre, superficie, **estilo):
         estilo = {"specular": 0.4, **estilo}
-        self.pl.add_mesh(superficie, name=nombre, smooth_shading=True, **estilo)
+        actor = self.pl.add_mesh(superficie, name=nombre, smooth_shading=True, **estilo)
+        actor.prop.interpolation = "phong" if self.phong else "flat"
+        self._aplicar_corte(actor)
         if nombre not in self._actores:
             self._actores.append(nombre)
 

@@ -12,7 +12,7 @@ Documentos relacionados: [ARCHITECTURE.md](ARCHITECTURE.md) (diseño) ·
 ## 2026-09-28 — Arranque del proyecto
 
 **Qué se hizo**
-- Repositorio privado `69kingDavid69/radiografias-visual-computing`. Es privado porque el proyecto maneja imágenes médicas.
+- Repositorio `69kingDavid69/radiografias-visual-computing`, creado privado porque el proyecto maneja imágenes médicas. Desde octubre es **público** (lo pide GitHub Pages); no expone datos de pacientes porque `data/raw/` nunca se versionó.
 - `.gitignore` que excluye `data/raw/`, `data/processed/`, `*.dcm` y `*.nii*`.
 - Propuesta definida: **explorador de cortes tomográficos (CBCT dental) y renderizado 3D por densidad.**
   - *Pregunta de investigación:* ¿cómo transformar los datos volumétricos de un CBCT en un modelo 3D interactivo que aísle estructuras según su densidad?
@@ -660,6 +660,49 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 
 ---
 
+## 2026-10-23 — Estabilidad del visor y controles 3D para las preguntas del profesor
+
+**Qué se hizo** (revisión de la app completa con el estudio Post real; el informe de fallas está en la entrega de investigación).
+
+| # | Problema | Arreglo |
+|---|---|---|
+| A1 | El panel 3D de la app no tenía la barra de umbral libre que pide la propuesta. | Barra "Umbral" bajo las estructuras. Recalcula al **soltar** (`setTracking(False)`): recalcular en cada paso del arrastre congelaba la app. Se sincroniza al elegir un preset. |
+| A2 | Al cambiar de estructura la cámara no se reencuadraba: "Dientes" quedaba pequeño. | `aplicar_preset` y `aplicar_capas` hacen `reset_camera()` (vista frontal). Con el Post, la distancia baja de 481 (hueso) a 200 (dientes). |
+| A3 | La app se congelaba sin aviso al cargar o al calcular. | `MainWindow._ocupado()`: cursor de espera y "Calculando…" en la barra de estado. Los errores del 3D muestran un aviso en vez de cerrar la app. |
+| A4 | El corte axial arrancaba en la mitad del volumen (corte 165: la nariz). | Arranca en el centro de la arcada (`Render3D.arcada`): corte 97 en el Post. También al cargar otro estudio. |
+| — | "Blandos" armaba una malla de 1,7 M triángulos y **después** la recortaba; con poca RAM libre, VTK abortaba la app entera. | El corte sagital se hace sobre el **volumen** antes de `contour`: misma media cabeza con la mitad de memoria y de tiempo. |
+
+**Controles nuevos (responden en vivo las preguntas de la propuesta):**
+- **Phong / plano** (pregunta 2): `Render3D.set_phong()`. Con sombreado plano se ven los triángulos; con Phong la luz se interpola por píxel.
+- **Taubin** (pregunta 4): `set_suavizar_malla()` aplica `smooth_taubin(n_iter=20, pass_band=0.1)` y redibuja lo que estaba. Quita el escalonado sin encoger la malla (test: el tamaño se conserva ±10 %).
+- **Contador** "N triáng. · ms" (pregunta 3): `Render3D.ultima_medicion`. Post: hueso 280 k triáng. en ~0,2 s; dientes 17 k en ~0,3 s; blandos 880 k en ~0,8 s.
+- **Corte** (pregunta 5): `activar_corte()` pone un plano de recorte (`vtkPlane` en los *mappers*) que se arrastra con el ratón. Sin parámetros mira en la dirección de la cámara y arranca a un tercio de la profundidad, donde están los incisivos. El interior se pinta en **rojo** (`backface_prop`): son la pulpa y los conductos. Se aplica también a lo que se dibuje después.
+- `contour` usa `method="flying_edges"`: la misma superficie que *marching cubes*, multihilo.
+- La barra de estructuras va en un área desplazable (en la vista dividida se cortaba), con la explicación de "Blandos (exp.)" en el *tooltip*.
+
+**Prueba de estabilidad con estudios nuevos** (descargados de STS-3D-Tooth, solo en local): un recorte dental en Hounsfield (`ROI_L_001`, 400×512×512, vóxel 0,15 mm) y dos cabezas completas (`Integrity_L_001` y `_005`, 400×512×512). Se cargaron en la app uno tras otro, junto con el Pre y el Post, y en cada uno se recorrieron todas las estructuras, Phong, Taubin, el corte y la barra de umbral en sus extremos. Ningún cierre; memoria máxima 1,2 GB en la app.
+
+| Estudio | Carga + 3D | Hueso | Dientes | Blandos (exp.) |
+|---|---|---|---|---|
+| Post (330×360×360) | 1,1 s | 280 k triáng. · 0,24 s | 17 k · 0,31 s | 880 k · 0,78 s |
+| ROI_L_001 (Hounsfield) | 1,2 s | 372 k · 0,33 s | 154 k · 1,7 s | — |
+| Integrity_L_001 | 2,7 s | 538 k · 0,35 s | 24 k · 0,38 s | 2,95 M · 2,3 s |
+
+Lo que encontró y se arregló:
+- **Nivel de detalle automático** (`render_3d.reduccion_para`): la malla se calcula sobre a lo sumo ~8 M de vóxeles. El Post sigue en reducción 2; las cabezas de 105 M vóxeles pasan a 3. "Blandos" bajó de 5,9 M triángulos y 4,3 s a 2,95 M y 2,3 s.
+- **Botones superpuestos al cambiar de estudio:** los botones del estudio anterior seguían visibles debajo de los nuevos (se borraban "más tarde"). Ahora se quitan al instante.
+- **Vóxel sospechoso:** los volúmenes *Integrity* declaran 1 × 1 × 1 mm, que no es su tamaño real (problema conocido del dataset, ver [datasets](investigacion/datasets.md)). La forma se ve bien, pero las medidas y la franja de la arcada no. La barra de estado lo avisa (`app_qt.aviso_espaciado`).
+
+**Interfaz (estética):**
+- **Vista 2D sin franjas vacías:** con el panel ancho, los tres cortes van en fila y debajo un **histograma de densidades en vivo**; en la vista dividida, cuadrícula 2 × 2. Los títulos van en dos líneas y ya no se montan (lo que se había anotado para Juan).
+- **Histograma:** marca la ventana de contraste actual (franja azul) y dónde empieza cada estructura del 3D, con su color. Un clic centra la ventana en esa densidad. Responde de forma visual a la pregunta 1: de qué parte del histograma sale cada malla.
+- La barra de umbral libre colorea la malla con el color del tejido de esa densidad (antes, siempre marfil).
+- La caja del plano de corte es gris (antes roja, competía con el interior rojo). El logo dice "EXPLORADOR CBCT".
+
+**Verificación:** 68/68 tests (13 nuevos: reencuadre, Phong, Taubin, plano de corte, contador, reducción automática, color del umbral, y `tests/test_app_qt.py`: la ventana sin pantalla, la barra de umbral, los interruptores, el histograma, el aviso de vóxel y la carga de un segundo estudio sin botones superpuestos).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -675,7 +718,7 @@ Resultados en [results/calibracion_sts.csv](../results/calibracion_sts.csv).
 - [x] Validar los presets en Hounsfield con etiquetas: hecho con 11 pacientes de STS (dientes 1300 → 820 HU; esmalte 2000 HU confirmado). ToothFairy3 queda como segunda validación.
 - [x] Vista de implante: `metal` opaco + `hueso` semitransparente (botón *Implante* en la app; placas de fijación visibles en el estudio Post).
 - [x] Presets en la vista 3D (teclas 1–5 e `i`) y vista frontal: `Render3D.aplicar_preset` / `aplicar_capas` (rama para Emanuel).
-- [x] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel): PR #13, arreglado en el #17.
+- [x] Panel 3D dentro de la app Qt con `QtInteractor` (Juan + Emanuel): PR #13, arreglado en el #17; umbral libre, Phong, Taubin, corte y contador en el PR de estabilidad (23/10).
 - [ ] Implementar el rediseño de la interfaz (propuesta del 21/10) después de la exposición (Juan).
 - [x] Página web publicada con GitHub Pages; el contenido de `web/` lo hace un compañero.
 - [ ] Exposición del 26/10.

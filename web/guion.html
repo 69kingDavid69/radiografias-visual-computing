@@ -13,7 +13,7 @@
   .datos-expo { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 0; }
   .datos-expo span { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--ink-2); }
   .datos-expo b { color: var(--ink); }
-  .indice { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  .indice { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 22px; }
   .indice a { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; color: var(--ink); }
   .indice a:hover { border-color: var(--acento); text-decoration: none; }
   .indice small { display: block; color: var(--ink-2); }
@@ -68,6 +68,7 @@
     <li><a href="#david">David</a></li>
     <li><a href="#juan">Juan</a></li>
     <li><a href="#emanuel">Emanuel</a></li>
+    <li><a href="#equipo">Cierre</a></li>
     <li><a href="#preguntas-extra">Más preguntas</a></li>
   </ul>
 </nav>
@@ -81,16 +82,17 @@
       para los cuatro. La página del proyecto es el apoyo visual: cada parte del guion dice qué sección mostrar.</p>
     <div class="datos-expo">
       <span><b>10 min</b> en total</span>
-      <span><b>~6 min</b> de presentación y demo</span>
-      <span><b>~4 min</b> de preguntas</span>
+      <span><b>4 partes</b> de 2–2,5 min + <b>1 min</b> de demo integrada y cierre</span>
+      <span>Preguntas del profesor: al final</span>
       <span>Página: <b>69kingdavid69.github.io/radiografias-visual-computing</b></span>
       <span>App: <b>python -m src.app_qt</b></span>
     </div>
     <div class="indice">
-      <a href="#nicolas"><b>Nicolás</b><small>0:00–1:00 y 4:30–6:00 · problema, datos, densidad, resultados</small></a>
-      <a href="#david"><b>David</b><small>1:00–1:45 · del archivo al programa</small></a>
-      <a href="#juan"><b>Juan</b><small>1:45–3:00 · demo 2D</small></a>
-      <a href="#emanuel"><b>Emanuel</b><small>3:00–4:30 · demo 3D y preguntas técnicas</small></a>
+      <a href="#nicolas"><b>Nicolás</b><small>0:00–2:00 · contexto, CBCT, densidad e investigación en la página</small></a>
+      <a href="#david"><b>David</b><small>2:00–4:00 · carga DICOM, metadatos y estructura del proyecto</small></a>
+      <a href="#juan"><b>Juan</b><small>4:00–6:30 · visor 2D, ventana/nivel y encuadre</small></a>
+      <a href="#emanuel"><b>Emanuel</b><small>6:30–9:00 · reconstrucción 3D, marching cubes y optimización</small></a>
+      <a href="#equipo"><b>Equipo</b><small>9:00–10:00 · demo integrada y cierre</small></a>
     </div>
   </div>
 </header>
@@ -119,13 +121,13 @@
     <details open><summary>P1 · ¿Cómo se traduce la escala de grises (Hounsfield) en una malla 3D?</summary>
       <p>"El archivo trae números crudos; con la pendiente y el intercepto los pasamos a densidad y los normalizamos. El usuario elige un umbral y marching cubes recorre el volumen de 8 en 8 vóxeles: según qué esquinas quedan por encima, una tabla de 15 casos pone triángulos donde la densidad cruza el umbral, ubicados por interpolación lineal. Las normales salen del gradiente y sirven para iluminar." <b>Mostrar:</b> página §7 y §8.</p></details>
     <details open><summary>P2 · ¿Qué iluminación ayuda a distinguir raíces e irregularidades?</summary>
-      <p>"Phong: color = ambiente + difusa (N·L) + especular (R·V)ⁿ, calculado en cada píxel con normales interpoladas. Los brillos marcan curvas finas como las raíces. Gouraud calcula en los vértices y pierde brillos; el sombreado plano muestra facetas. La oclusión ambiental oscurece los huecos entre raíces." <b>Mostrar:</b> laboratorio → P2 · Luz (cambiar Plano/Phong).</p></details>
+      <p>"Phong: color = ambiente + difusa (N·L) + especular (R·V)ⁿ, calculado en cada píxel con normales interpoladas. Los brillos marcan curvas finas como las raíces. Gouraud calcula en los vértices y pierde brillos; el sombreado plano muestra facetas. La oclusión ambiental oscurece los huecos entre raíces." <b>Mostrar:</b> en la app, botón <b>Phong</b> (apagado se ven los triángulos); en la página, laboratorio → P2 · Luz.</p></details>
     <details open><summary>P3 · ¿Qué impacto tienen miles de polígonos en los FPS y cómo se optimiza?</summary>
-      <p>"Hay dos costos: extraer la superficie depende de los vóxeles y se paga al cambiar el umbral; dibujarla depende de los triángulos y se paga en cada cuadro. Optimizamos tomando 1 de cada 2 vóxeles (4.4× menos triángulos, porque la superficie crece con el área), recalculando al soltar la barra, con flying edges (4–5× más rápido) y simplificando la malla." <b>Mostrar:</b> laboratorio → P3 · FPS y la tabla de resultados.</p></details>
+      <p>"Hay dos costos: extraer la superficie depende de los vóxeles y se paga al cambiar el umbral; dibujarla depende de los triángulos y se paga en cada cuadro. Optimizamos tomando 1 de cada 2 vóxeles (4.4× menos triángulos, porque la superficie crece con el área), recalculando al soltar la barra, con flying edges (4–5× más rápido) y simplificando la malla." <b>Mostrar:</b> en la app, el contador "N triáng. · ms" al cambiar de Hueso a Dientes; en la página, laboratorio → P3 · FPS.</p></details>
     <details open><summary>P4 · ¿Cómo se suaviza para que no se vea escalonado?</summary>
-      <p>"En tres niveles: antes, un filtro gaussiano sobre el volumen (σ = 0.5 mm en hueso y dientes; en el esmalte no, porque es delgado); después, Taubin sobre la malla, que no encoge (−1.3 % frente a −10.4 % del Laplaciano); y al dibujar, Phong da sensación de continuidad. Suavizar de más borra detalle real." <b>Mostrar:</b> laboratorio → P4 · Suavizado (Laplaciano vs. Taubin con 100 iteraciones).</p></details>
+      <p>"En tres niveles: antes, un filtro gaussiano sobre el volumen (σ = 0.5 mm en hueso y dientes; en el esmalte no, porque es delgado); después, Taubin sobre la malla, que no encoge (−1.3 % frente a −10.4 % del Laplaciano); y al dibujar, Phong da sensación de continuidad. Suavizar de más borra detalle real." <b>Mostrar:</b> en la app, botón <b>Taubin</b>; en la página, laboratorio → P4 · Suavizado (Laplaciano vs. Taubin).</p></details>
     <details open><summary>P5 · ¿Se puede implementar un plano de corte?</summary>
-      <p>"Sí. El plano oculta todo lo que queda de un lado; como la superficie es una cáscara, se ve por dentro y la pulpa aparece como una cavidad. En PyVista es <code>clip</code> o <code>add_mesh_clip_plane</code>; en la app, la vista de tejidos blandos usa un corte sagital fijo." <b>Mostrar:</b> laboratorio → P5 · Corte.</p></details>
+      <p>"Sí. El plano oculta todo lo que queda de un lado; como la superficie es una cáscara, se ve por dentro y la pulpa aparece como una cavidad. En PyVista es <code>clip</code> o <code>add_mesh_clip_plane</code>; en la app es un <code>vtkPlane</code> en cada mapper: el botón <b>Corte</b> pone un plano que se arrastra y el interior se pinta de rojo." <b>Mostrar:</b> en la app, Dientes + <b>Corte</b>; en la página, laboratorio → P5 · Corte.</p></details>
   </div>
 
   <h3 style="margin:28px 0 12px;font-size:20px">Reglas para el día</h3>
@@ -133,22 +135,24 @@
     <li>Si el profesor no le pregunta a nadie en particular, responde el dueño del tema (ver cada guion). Si alguien se traba, otro completa <b>mostrando</b> la sección de la página.</li>
     <li>La página se maneja con <kbd>→</kbd> / <kbd>←</kbd> entre secciones. Las tarjetas de preguntas abren directamente la pestaña del laboratorio.</li>
     <li><b>Plan B:</b> si falla internet, la página corre en local con <code>python -m http.server 8000 --directory web</code>; si falla la app, se muestran las capturas de la sección 4.</li>
-    <li>Ensayo cronometrado el viernes 23; código congelado el domingo 25.</li>
+    <li>Reuniones: sábado 24 a las 8 a. m. y en la noche (ensayo cronometrado: cada uno con su reloj). Código congelado el domingo 25.</li>
+    <li>Cada uno cierra su parte con la frase que pasa la palabra al siguiente: así no hay silencios.</li>
   </ul>
 </section>
 
 <!-- ================= NICOLÁS ================= -->
 <section id="nicolas">
 <article class="persona-guion">
-  <header><h2>Nicolás <small>Investigación y datos</small></h2><span class="tiempos">0:00–1:00 · 4:30–6:00 · ≈ 2.5 min</span></header>
+  <header><h2>Nicolás <small>Investigación y datos</small></h2><span class="tiempos">0:00–2:00 · 2 min (+ cierre a las 9:45)</span></header>
 
   <h3>Tu guion</h3>
-  <div class="bloque-guion"><span class="t">0:00</span><div><p class="dice">"Una radiografía es una foto plana: todo se superpone. Estas dos imágenes salen de la misma tomografía: a la izquierda, sumada como en una radiografía; a la derecha, un solo corte. Una tomografía es un cubo 3D de densidades."</p><div class="muestra">Página §1 · Problema</div></div></div>
-  <div class="bloque-guion"><span class="t">0:20</span><div><p class="dice">"Nuestra pregunta es: ¿cómo construir una interfaz que convierta ese cubo en un modelo 3D interactivo, aislando estructuras según su densidad? En odontología se usa el CBCT: un cono de rayos X y una sola vuelta. Es más barato y de menos dosis, pero sus números no están calibrados."</p><div class="muestra">Portada (pregunta) y §2 · CBCT</div></div></div>
-  <div class="bloque-guion"><span class="t">0:40</span><div><p class="dice">"Revisamos nueve conjuntos de datos y elegimos dos: una tomografía dental pública de 3D Slicer para desarrollar y 11 pacientes etiquetados para calibrar. Todo anonimizado; nada médico va a GitHub. David les cuenta cómo el programa los lee."</p><div class="muestra">§3 · Datos</div></div></div>
-  <div class="bloque-guion"><span class="t">4:30</span><div><p class="dice">"Lo que permite aislar estructuras es la densidad. En un CT, el agua vale 0 y el aire −1000; cada tejido tiene su rango. Pero en nuestro CBCT el aire vale 0, y en otro estudio del mismo paciente, −2239. Por eso normalizamos con dos puntos: aire y tejido blando."</p><div class="muestra">§6 · Densidad (escala, diente, recta)</div></div></div>
-  <div class="bloque-guion"><span class="t">5:00</span><div><p class="dice">"Con el umbral se pelan capas: hueso en 700, dientes en 1000, esmalte en 1250, metal en 2000. Calibrando con 11 pacientes, el umbral real de dientes fue 816 HU, no los 1300 que daba la literatura. Y hay límites: el hueso cortical tiene la densidad de la dentina, por eso agregamos la ubicación de la arcada."</p><div class="muestra">§7 · Umbral (mover la barra) y §10 · Resultados</div></div></div>
-  <div class="bloque-guion"><span class="t">5:40</span><div><p class="dice">"En conclusión: un lector que normaliza, un visor multicorte, una isosuperficie por umbral con presets y la arcada, e iluminación y suavizado. Con eso la interfaz responde la pregunta. Quedamos atentos a sus preguntas."</p><div class="muestra">§11 · Conclusión</div></div></div>
+  <div class="bloque-guion"><span class="t">0:00</span><div><p class="dice">"Una radiografía es una foto plana: todo se superpone. Estas dos imágenes salen de la misma tomografía: a la izquierda, sumada como en una radiografía; a la derecha, un solo corte. Una tomografía es un cubo 3D de vóxeles, y cada vóxel guarda una densidad."</p><div class="muestra">Página §1 · Problema</div></div></div>
+  <div class="bloque-guion"><span class="t">0:25</span><div><p class="dice">"Nuestra pregunta: ¿cómo construir una interfaz que convierta ese cubo en un modelo 3D interactivo, aislando estructuras según su densidad? En odontología se usa el CBCT: un cono de rayos X y una sola vuelta. Menos dosis y más barato, pero más ruido y números sin calibrar."</p><div class="muestra">Portada (pregunta) y §2 · CBCT</div></div></div>
+  <div class="bloque-guion"><span class="t">0:50</span><div><p class="dice">"Revisamos nueve conjuntos de datos y elegimos dos: una tomografía dental pública de 3D Slicer para desarrollar y 11 pacientes con los dientes marcados por expertos para calibrar. Todo es público y anonimizado; nada médico se sube a GitHub."</p><div class="muestra">§3 · Datos</div></div></div>
+  <div class="bloque-guion"><span class="t">1:15</span><div><p class="dice">"Lo que permite separar tejidos es la densidad. En un CT de hospital, el aire vale −1000 y el agua 0, y cada tejido tiene su rango: hueso, dentina, esmalte. Pero en nuestro CBCT el aire vale 0, y en otro estudio del mismo paciente, −2239. Por eso el programa normaliza cada estudio con dos puntos: aire y tejido blando."</p><div class="muestra">§6 · Densidad (clic en el menú: escala y diente)</div></div></div>
+  <div class="bloque-guion"><span class="t">1:45</span><div><p class="dice">"Toda esta investigación está en la página del proyecto: marco teórico, datasets y rangos de densidad, con figuras y modelos 3D que se pueden girar. David les cuenta cómo el programa lee estos archivos."</p><div class="muestra">§4 · Programa (volver con el menú)</div></div></div>
+
+  <p class="intro" style="font-size:15px;margin:6px 0 0">A las <b>9:45</b> también cierras la exposición: ver <a href="#equipo">Cierre</a>.</p>
 
   <h3>Qué tienes que aprender</h3>
   <ul class="aprender">
@@ -156,7 +160,7 @@
     <li><b>Hounsfield</b>HU = 1000·(μ − μagua)/(μagua − μaire). Agua 0, aire −1000. Por qué el CBCT no cumple: dispersión, campo pequeño, posición (Pauwels 2013/2015).</li>
     <li><b>Rangos de la literatura</b>Pulpa 184–420 · trabecular 150–850 · cortical &gt; 850 · dentina 1323–1899 · esmalte 2071–2955 HU (Reshetnikov 2024, Misch).</li>
     <li><b>Anatomía</b>Esmalte (~96 % mineral), dentina (~70 %), pulpa (blanda), ligamento, hueso cortical y trabecular.</li>
-    <li><b>Datasets</b>Por qué Slicer (pequeño, real, sin registro) y STS/ToothFairy (etiquetas, Hounsfield). Por qué se descartaron PhysioNet, CTooth y STS "Integrity".</li>
+    <li><b>Datasets</b>Por qué Slicer (pequeño, real, sin registro) y STS/ToothFairy (etiquetas, Hounsfield). Por qué se descartaron PhysioNet, CTooth y STS "Integrity" (lo probamos: declara vóxeles de 1 mm que no son reales, y la app ahora lo avisa).</li>
     <li><b>Normalización y calibración</b>Dos picos → recta. Calibración: umbral óptimo por Dice en 11 pacientes, mediana 816 HU (609–1084); Dice ~0.6 por el hueso alveolar.</li>
     <li><b>Limitaciones</b>Solapamiento cortical–dentina, metal &gt; esmalte y artefactos, volumen parcial, detalle vs. fluidez.</li>
     <li><b>Privacidad</b>DICOM trae nombre y documento; se verifica la anonimización y no se publica la piel (reconstruye la cara).</li>
@@ -175,19 +179,20 @@
 <!-- ================= DAVID ================= -->
 <section id="david">
 <article class="persona-guion">
-  <header><h2>David <small>Datos, pipeline e integración</small></h2><span class="tiempos">1:00–1:45 · ≈ 45 s</span></header>
+  <header><h2>David <small>Datos, pipeline e integración</small></h2><span class="tiempos">2:00–4:00 · 2 min (+ resultados a las 9:35)</span></header>
 
   <h3>Tu guion</h3>
-  <div class="bloque-guion"><span class="t">1:00</span><div><p class="dice">"El programa entra por un solo punto: <code>cargar_estudio</code>. Acepta DICOM, GIPL o NIfTI. En DICOM ordena los cortes por su altura, reescala el valor guardado a densidad y calcula el tamaño del vóxel en milímetros."</p><div class="muestra">Página §4 · diagrama del flujo (o tu diapositiva del pipeline)</div></div></div>
-  <div class="bloque-guion"><span class="t">1:20</span><div><p class="dice">"Como el CBCT no está calibrado, <code>escala.py</code> busca los picos de aire y tejido blando y los lleva a 0 y 410. Sale un <code>Estudio</code> con el volumen y su espaciado, que reciben el visor 2D de Juan y el render 3D de Emanuel. Todo está cubierto por 50 pruebas automáticas."</p><div class="muestra">§4 · flujo y capturas de la app</div></div></div>
-  <div class="bloque-guion"><span class="t">1:40</span><div><p class="dice">"Juan les muestra el visor."</p></div></div>
+  <div class="bloque-guion"><span class="t">2:00</span><div><p class="dice">"El programa entra por un solo punto: <code>cargar_estudio</code>. Acepta una carpeta DICOM o un archivo GIPL, NIfTI o NRRD. En DICOM cada corte es un archivo, y con sus metadatos se arma el cubo."</p><div class="muestra">Página §4 · diagrama del flujo</div></div></div>
+  <div class="bloque-guion"><span class="t">2:25</span><div><p class="dice">"Los metadatos que usamos son tres: la posición de cada corte, para ordenarlos por altura; el tamaño del píxel y la distancia entre cortes, para saber cuánto mide un vóxel en milímetros; y la pendiente y el intercepto, que pasan el número guardado a densidad. Sin el tamaño del vóxel el modelo sale estirado."</p><div class="muestra">§4 · lista de lo que hace la carga</div></div></div>
+  <div class="bloque-guion"><span class="t">2:55</span><div><p class="dice">"La cabecera DICOM también puede traer el nombre y el documento del paciente: un script revisa que vengan anonimizados. Después, <code>escala.py</code> normaliza la densidad, como explicó Nicolás, y sale un <code>Estudio</code>: el volumen con su espaciado, que reciben el visor 2D de Juan y el 3D de Emanuel."</p><div class="muestra">§4 · flujo</div></div></div>
+  <div class="bloque-guion"><span class="t">3:25</span><div><p class="dice">"El proyecto está en GitHub: <code>src</code> con un módulo por paso, <code>tests</code> con 68 pruebas automáticas, <code>docs</code> con la arquitectura y la bitácora, y <code>web</code>, esta página, que se publica sola con GitHub Actions. Lo probamos con cinco estudios distintos, incluidas dos cabezas completas. Juan les muestra el visor."</p><div class="muestra">Repositorio en GitHub (pestaña aparte) o §4</div></div></div>
 
   <h3>Qué tienes que aprender</h3>
   <ul class="aprender">
     <li><b>DICOM</b>Un archivo por corte; ImagePositionPatient (orden por z), PixelSpacing (dy, dx), RescaleSlope/Intercept, multiframe.</li>
     <li><b>Espaciado en z</b><code>calcular_dz</code>: mediana de las diferencias; aviso si faltan cortes; sin espaciado el 3D sale estirado.</li>
     <li><b>Normalización</b>Picos de aire y blando en el histograma → recta a = 410/(blando − aire); capas de relleno excluidas (PR #18).</li>
-    <li><b>Arcada dental</b><code>region.arcada_dental</code>: la franja de z con más esmalte ±25 mm.</li>
+    <li><b>Arcada dental</b><code>region.arcada_dental</code>: la franja de z con más esmalte, unos ±2,5 cm alrededor.</li>
     <li><b>Caché</b>Las series DICOM se guardan en <code>data/processed/*.npz</code>; un GIPL de 24 MB se lee en 0.2 s.</li>
     <li><b>Arquitectura</b>Contratos <code>Estudio</code>, <code>VisorCortes</code>, <code>Render3D</code>; integración en Qt; GitHub Pages con Actions.</li>
     <li><b>Calibración</b>Tu script <code>calibrar_presets.py</code>: Dice máximo por paciente, mediana 816 HU.</li>
@@ -206,12 +211,14 @@
 <!-- ================= JUAN ================= -->
 <section id="juan">
 <article class="persona-guion">
-  <header><h2>Juan Gómez <small>Visor 2D e interfaz</small></h2><span class="tiempos">1:45–3:00 · ≈ 75 s</span></header>
+  <header><h2>Juan Gómez <small>Visor 2D e interfaz</small></h2><span class="tiempos">4:00–6:30 · 2,5 min (+ demo integrada a las 9:00)</span></header>
 
   <h3>Tu guion (demo en la app)</h3>
-  <div class="bloque-guion"><span class="t">1:45</span><div><p class="dice">"Esta es la aplicación. Abrimos el estudio y vemos los tres planos: axial desde arriba, coronal de frente y sagital de lado. Las líneas de colores marcan dónde están los otros cortes; si hago clic en un punto, los otros dos se mueven ahí."</p><div class="muestra">App · Vista 2D (llevar el corte axial a los dientes)</div></div></div>
-  <div class="bloque-guion"><span class="t">2:15</span><div><p class="dice">"Con el deslizador recorro el volumen capa por capa, de la mandíbula a las coronas. Como el vóxel no siempre es igual en z, cada plano se dibuja con su proporción real para que no salga estirado."</p></div></div>
-  <div class="bloque-guion"><span class="t">2:35</span><div><p class="dice">"La pantalla muestra unos 256 grises y el volumen tiene miles de valores: la ventana elige cuáles se ven. Con 'Dientes / Hueso' se separa el esmalte de la dentina; con 'Tejido blando', la encía y la lengua. Las ventanas son las de radiología convertidas a la escala del estudio. Emanuel les muestra el 3D."</p><div class="muestra">Botones de ventana · Vista dividida</div></div></div>
+  <div class="bloque-guion"><span class="t">4:00</span><div><p class="dice">"Esta es la aplicación. Abre el estudio y muestra los tres planos: axial desde arriba, coronal de frente y sagital de lado. Arranca sola en el corte de los dientes. Las líneas de colores marcan dónde están los otros cortes; si hago clic en un punto, los otros dos se mueven ahí."</p><div class="muestra">App · Vista 2D · clic en una muela</div></div></div>
+  <div class="bloque-guion"><span class="t">4:40</span><div><p class="dice">"Con los deslizadores recorro el volumen capa por capa, de la mandíbula a las coronas, y abajo veo la posición en milímetros."</p><div class="muestra">Deslizador de Corte Axial</div></div></div>
+  <div class="bloque-guion"><span class="t">5:00</span><div><p class="dice">"El encuadre: cada plano se dibuja con la proporción real del vóxel, para que la cabeza no salga estirada, y los paneles se acomodan al espacio. Con la pantalla ancha van en fila; en la vista dividida, en una cuadrícula de dos por dos."</p><div class="muestra">Cambiar Vista 2D ↔ Vista dividida</div></div></div>
+  <div class="bloque-guion"><span class="t">5:25</span><div><p class="dice">"La pantalla muestra unos 256 grises y el volumen tiene miles de valores: la ventana elige cuáles se ven. El centro mueve el rango y el ancho lo estira. Con 'Dientes / Hueso' se separa el esmalte de la dentina; con 'Tejido blando', la encía y la lengua."</p><div class="muestra">Botones Dientes / Hueso → Tejido blando → Reset</div></div></div>
+  <div class="bloque-guion"><span class="t">6:00</span><div><p class="dice">"Este histograma muestra todas las densidades del estudio: la franja azul es la ventana actual, y cada línea marca dónde empieza una estructura del 3D. Emanuel les muestra cómo esas líneas se convierten en un modelo."</p><div class="muestra">Histograma · clic en la línea de 'dientes'</div></div></div>
 
   <h3>Qué tienes que aprender</h3>
   <ul class="aprender">
@@ -235,23 +242,26 @@
 <!-- ================= EMANUEL ================= -->
 <section id="emanuel">
 <article class="persona-guion">
-  <header><h2>Emanuel Aristizábal <small>Render 3D</small></h2><span class="tiempos">3:00–4:30 · ≈ 90 s + la mayoría de preguntas técnicas</span></header>
+  <header><h2>Emanuel Aristizábal <small>Render 3D</small></h2><span class="tiempos">6:30–9:00 · 2,5 min + la mayoría de preguntas técnicas</span></header>
 
   <h3>Tu guion (demo en la app)</h3>
-  <div class="bloque-guion"><span class="t">3:00</span><div><p class="dice">"Esta es la segunda herramienta: el modelo 3D. Arranca en hueso: todo lo que supera 700. Lo puedo girar, acercar e iluminar."</p><div class="muestra">App · Vista 3D · Hueso (girar)</div></div></div>
-  <div class="bloque-guion"><span class="t">3:20</span><div><p class="dice">"Si subo a dientes, 1000, quedan los dientes con sus raíces; por densidad sola también saldría el hueso del cráneo, así que lo limitamos a la arcada. En esmalte, 1250, quedan las coronas… y los brackets, porque el metal es aún más denso. Con 'esmalte sin metal' uso una banda de 1250 a 2000 y desaparecen."</p><div class="muestra">Dientes → Esmalte → Esmalte sin metal → Metal</div></div></div>
-  <div class="bloque-guion"><span class="t">3:55</span><div><p class="dice">"La vista de implante deja el hueso casi transparente y el metal sólido. Por dentro, cada botón hace marching cubes: cubos de 8 vóxeles, y triángulos donde la densidad cruza el umbral. Cada cambio tarda menos de 0.3 segundos. Nicolás les explica cómo escogimos esos números."</p><div class="muestra">Implante · si hay tiempo: página §8 (marching squares)</div></div></div>
+  <div class="bloque-guion"><span class="t">6:30</span><div><p class="dice">"Esta es la segunda herramienta: el modelo 3D. Arranca en hueso, todo lo que supera 700. Lo puedo girar y acercar."</p><div class="muestra">App · Vista 3D · Hueso (girar)</div></div></div>
+  <div class="bloque-guion"><span class="t">6:45</span><div><p class="dice">"¿Cómo sale? Con marching cubes: el programa recorre el volumen en cubos de 8 vóxeles y, donde la densidad cruza el umbral, pone triángulos. Hay 256 casos posibles que se reducen a 15 patrones. La barra de umbral hace eso en vivo."</p><div class="muestra">Página §8 (marching squares) o la barra Umbral de la app</div></div></div>
+  <div class="bloque-guion"><span class="t">7:15</span><div><p class="dice">"En dientes, 1000, quedan los dientes con sus raíces; como el hueso del cráneo tiene la misma densidad, los limitamos a la zona de la boca. En esmalte, 1250, quedan las coronas y los brackets; 'Sin metal' los quita."</p><div class="muestra">Dientes → Esmalte → Sin metal</div></div></div>
+  <div class="bloque-guion"><span class="t">7:40</span><div><p class="dice">"La luz: si apago Phong se ven los triángulos; con Phong la luz se calcula en cada píxel y aparecen las raíces. Y Taubin suaviza el escalonado sin encoger la malla."</p><div class="muestra">Phong apagado/encendido · Taubin</div></div></div>
+  <div class="bloque-guion"><span class="t">8:05</span><div><p class="dice">"La optimización: el contador dice cuántos triángulos hay y cuánto tardó. Hueso tiene unos 280 mil y tarda dos décimas. Para lograrlo usamos uno de cada dos vóxeles, que da cuatro veces menos triángulos; flying edges, cinco veces más rápido; recalculamos solo al soltar la barra; y con estudios muy grandes el programa baja la resolución solo."</p><div class="muestra">Contador: Hueso → Dientes</div></div></div>
+  <div class="bloque-guion"><span class="t">8:40</span><div><p class="dice">"Y el plano de corte: lo arrastro y veo el diente por dentro; en rojo está la pulpa."</p><div class="muestra">Dientes · Corte (arrastrar)</div></div></div>
 
   <h3>Qué tienes que aprender</h3>
   <ul class="aprender">
     <li><b>Marching cubes</b>8 esquinas → 256 casos → 15 configuraciones; tabla; interpolación lineal; normales del gradiente; caso ambiguo.</li>
     <li><b>Métodos de PyVista</b><code>contour</code>, <code>marching_cubes</code>, <code>flying_edges</code>: 0.408 / 0.278 / 0.086 s a resolución completa.</li>
-    <li><b>Presets por banda</b><code>superficie_por_banda</code>: sin máximo, isosuperficie; con máximo, máscara 0/1 y superficie en 0.5.</li>
+    <li><b>Presets por banda</b><code>superficie_por_banda</code>: sin máximo, isosuperficie; con máximo, un campo continuo (distancia a la banda) con superficie en 0, que no sale escalonado.</li>
     <li><b>Suavizado</b>Gaussiano σ por estructura (0.5 mm hueso/dientes, 0 en esmalte y metal) y Taubin vs. Laplaciano (−1.3 % vs. −10.4 %).</li>
     <li><b>Iluminación</b>Phong (ambiente + difusa + especular), Gouraud, plano; <code>smooth_shading=True</code>; SSAO y sombras.</li>
     <li><b>Rendimiento</b>Extraer vs. dibujar; reducción 2 → 4.4× menos triángulos; recalcular al soltar; decimate.</li>
-    <li><b>Plano de corte</b><code>clip</code> / <code>add_mesh_clip_plane</code>; la cáscara muestra la pulpa; corte sagital fijo en blandos.</li>
-    <li><b>Página §9</b>Las 5 pestañas del laboratorio: practica cada una antes del lunes.</li>
+    <li><b>Plano de corte</b><code>vtkPlane</code> en los mappers (botón Corte, se arrastra); la cáscara muestra la pulpa en rojo (cara trasera); corte sagital fijo en blandos.</li>
+    <li><b>Página §9</b>Las 5 pestañas del laboratorio y los botones Phong, Taubin, Corte y el contador de la app: practica cada uno antes del lunes.</li>
   </ul>
 
   <h3>Te pueden preguntar</h3>
@@ -259,8 +269,28 @@
     <details><summary>¿Por qué superficie y no renderizado volumétrico?</summary><p>La superficie es nítida, se ilumina bien y se puede exportar a STL; el volumétrico muestra varias densidades semitransparentes pero no da una malla. Son complementarios.</p></details>
     <details><summary>¿Qué es el problema de ambigüedad de marching cubes?</summary><p>Algunas configuraciones admiten dos triangulaciones y pueden dejar agujeros; las variantes posteriores y VTK lo resuelven.</p></details>
     <details><summary>¿Por qué no suavizan el esmalte?</summary><p>Porque es una capa delgada: con σ = 0.5 mm pierde la mitad de su superficie y con 1 mm desaparece.</p></details>
-    <details><summary>¿Cuántos FPS tiene?</summary><p>Mídelo antes del lunes en el computador de la exposición (laboratorio → P3 de la página da el valor en vivo). Con reducción 2 la malla de hueso tiene ~90 mil triángulos.</p></details>
+    <details><summary>¿Cuántos FPS tiene?</summary><p>Mídelo antes del lunes en el computador de la exposición (laboratorio → P3 de la página da el valor en vivo). En la app, el contador da la malla: hueso ~280 mil triángulos (reducción 2), dientes ~17 mil; en la página, la malla simplificada tiene ~90 mil.</p></details>
   </div>
+</article>
+</section>
+
+<!-- ================= EQUIPO ================= -->
+<section id="equipo">
+<article class="persona-guion">
+  <header><h2>Equipo <small>Demo integrada y cierre</small></h2><span class="tiempos">9:00–10:00 · 1 min</span></header>
+
+  <h3>Guion</h3>
+  <div class="bloque-guion"><span class="t">9:00</span><div><p class="dice">"<b>Juan:</b> Todo junto: en la vista dividida, muevo el corte 2D y a la derecha está el modelo del mismo estudio."</p><div class="muestra">App · Vista dividida · mover el corte axial</div></div></div>
+  <div class="bloque-guion"><span class="t">9:15</span><div><p class="dice">"<b>Emanuel:</b> Y la vista de implante: el hueso casi transparente y el metal sólido, para ver dónde quedaron los tornillos."</p><div class="muestra">Botón Implante (girar un poco)</div></div></div>
+  <div class="bloque-guion"><span class="t">9:35</span><div><p class="dice">"<b>David:</b> En números: 68 pruebas automáticas, cinco estudios probados y la calibración con 11 pacientes, que dio el umbral real de los dientes: 816 HU, no los 1300 de la literatura."</p><div class="muestra">Página §10 · Resultados</div></div></div>
+  <div class="bloque-guion"><span class="t">9:45</span><div><p class="dice">"<b>Nicolás:</b> En conclusión, la interfaz responde la pregunta: lee la tomografía, la normaliza, la recorre en 2D y aísla cada estructura en 3D por su densidad. Su límite es que la densidad sola no separa el diente del hueso; el siguiente paso es la segmentación con aprendizaje. Gracias; quedamos atentos a sus preguntas."</p><div class="muestra">Página §11 · Conclusión</div></div></div>
+
+  <h3>Antes de empezar</h3>
+  <ul class="aprender">
+    <li><b>App abierta</b>En Vista 2D, con el estudio Pre cargado (el que abre por defecto) y la ventana maximizada.</li>
+    <li><b>Página abierta</b>En la portada, en otra ventana. Si no hay internet: <code>python -m http.server 8000 --directory web</code>.</li>
+    <li><b>Quién maneja</b>Cada uno maneja la app o la página en su parte; en el cierre, Juan maneja la app.</li>
+  </ul>
 </article>
 </section>
 
@@ -279,7 +309,7 @@
         <tr><td>¿Por qué el CBCT es más ruidoso?</td><td>Haz cónico → más radiación dispersa, menos dosis y reconstrucción aproximada (FDK).</td><td>Nicolás</td></tr>
         <tr><td>¿Por qué Python y PyVista?</td><td>El equipo lo conoce; PyVista envuelve VTK, el estándar de visualización científica, con marching cubes, luz y widgets.</td><td>David</td></tr>
         <tr><td>¿Qué harían con más tiempo?</td><td>Segmentación con aprendizaje automático (las etiquetas de ToothFairy existen para eso), renderizado volumétrico, medición en mm y exportación a STL.</td><td>Nicolás</td></tr>
-        <tr><td>¿Cómo probaron que funciona?</td><td>50 pruebas automáticas, DICOM vs. original idénticos, dos estudios de escalas distintas y la calibración con 11 pacientes.</td><td>David</td></tr>
+        <tr><td>¿Cómo probaron que funciona?</td><td>68 pruebas automáticas, DICOM vs. original idénticos, cinco estudios probados en la app (incluidas dos cabezas completas) y la calibración con 11 pacientes.</td><td>David</td></tr>
       </tbody>
     </table>
   </div>

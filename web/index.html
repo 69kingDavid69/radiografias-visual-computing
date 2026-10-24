@@ -67,12 +67,12 @@
   <div class="contenedor" style="margin-top:36px">
     <h2 class="sr">Ruta de la exposición</h2>
     <ol class="ruta" aria-label="Ruta de la exposición de 10 minutos">
-      <li><a href="#problema"><span class="t">0:00</span><b>Nicolás</b><span>Problema, CBCT, datos y pregunta</span></a></li>
-      <li><a href="#programa"><span class="t">1:00</span><b>David</b><span>Del archivo al programa</span></a></li>
-      <li><a href="#voxel"><span class="t">1:45</span><b>Juan</b><span>Demo 2D: cortes y contraste</span></a></li>
-      <li><a href="#modelo"><span class="t">3:00</span><b>Emanuel</b><span>Demo 3D: estructuras</span></a></li>
-      <li><a href="#densidad"><span class="t">4:30</span><b>Nicolás</b><span>Densidad, umbral, resultados y conclusión</span></a></li>
-      <li><a href="#preguntas"><span class="t">6:00</span><b>Todos</b><span>Preguntas del profesor</span></a></li>
+      <li><a href="#problema"><span class="t">0:00</span><b>Nicolás</b><span>Problema, CBCT, datos y densidad</span></a></li>
+      <li><a href="#programa"><span class="t">2:00</span><b>David</b><span>Carga DICOM, metadatos y estructura</span></a></li>
+      <li><a href="#voxel"><span class="t">4:00</span><b>Juan</b><span>Visor 2D, ventana/nivel y encuadre</span></a></li>
+      <li><a href="#umbral"><span class="t">6:30</span><b>Emanuel</b><span>3D: marching cubes y optimización</span></a></li>
+      <li><a href="#hallazgos"><span class="t">9:00</span><b>Equipo</b><span>Demo integrada, resultados y cierre</span></a></li>
+      <li><a href="#preguntas"><span class="t">10:00</span><b>Todos</b><span>Preguntas del profesor</span></a></li>
     </ol>
   </div>
 </header>
@@ -223,7 +223,7 @@
     <div class="cabecera"><div class="eyebrow">4 · Del archivo al programa</div><span class="expositor">Expone: David</span></div>
     <h2 class="titulo-seccion">El programa: una ventana con 2D y 3D</h2>
     <p class="intro">Es una aplicación de escritorio en Python (PySide6 + PyVista/VTK). Cada módulo hace una sola cosa y se
-      prueba por separado (50 pruebas automáticas).</p>
+      prueba por separado (68 pruebas automáticas) y se probó con cinco estudios distintos.</p>
     <figure class="tarjeta ilustracion">
       <svg viewBox="0 0 760 210" role="img" aria-label="Flujo del programa: archivo, carga, escala, Estudio y luego visor 2D y render 3D">
         <defs><marker id="f2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#38bdf8"/></marker></defs>
@@ -246,16 +246,16 @@
     </figure>
     <div class="galeria">
       <figure class="tarjeta">
-        <img src="img/app_dividida.jpg" alt="Vista dividida de la aplicación: tres cortes a la izquierda y el cráneo semitransparente con el metal a la derecha" loading="lazy" width="1280" height="720">
-        <figcaption><b>Vista dividida.</b> Cortes axial, coronal y sagital con ventana/nivel, y el modelo 3D en la vista de implante: hueso casi transparente y metal sólido.</figcaption>
+        <img src="img/app_dividida.jpg" alt="Vista dividida de la aplicación: tres cortes y el histograma de densidades a la izquierda, y el cráneo semitransparente con el metal a la derecha" loading="lazy" width="1280" height="720">
+        <figcaption><b>Vista dividida.</b> Cortes axial, coronal y sagital, el histograma de densidades con el inicio de cada estructura, y el modelo 3D en la vista de implante: hueso casi transparente y metal sólido.</figcaption>
       </figure>
       <figure class="tarjeta">
-        <img src="img/app_2d.jpg" alt="Vista 2D de la aplicación con los tres cortes y los controles de contraste" loading="lazy" width="1280" height="720">
-        <figcaption><b>Vista 2D.</b> Deslizadores por plano, líneas guía, clic para navegar y botones de contraste ajustados a la escala del estudio.</figcaption>
+        <img src="img/app_2d.jpg" alt="Vista 2D de la aplicación con los tres cortes, el histograma de densidades y los controles de contraste" loading="lazy" width="1280" height="720">
+        <figcaption><b>Vista 2D.</b> Arranca en el corte de los dientes. Deslizadores por plano, líneas guía, clic para navegar, botones de contraste y un histograma: la franja azul es la ventana y cada línea, el inicio de una estructura del 3D.</figcaption>
       </figure>
       <figure class="tarjeta">
-        <img src="img/app_3d.jpg" alt="Vista 3D de la aplicación con el cráneo en el preset de hueso y la barra de estructuras" loading="lazy" width="1280" height="783">
-        <figcaption><b>Vista 3D.</b> Hueso, dientes, esmalte, esmalte sin metal, metal, implante y tejidos blandos (experimental, siempre con corte sagital para no mostrar la cara).</figcaption>
+        <img src="img/app_3d.jpg" alt="Vista 3D de la aplicación: dientes cortados por un plano, con el interior en rojo, y los controles de umbral, Phong, Taubin y corte" loading="lazy" width="1280" height="783">
+        <figcaption><b>Vista 3D.</b> Una barra de estructuras y un control por pregunta: umbral libre (P1), Phong (P2), contador de triángulos y milisegundos (P3), Taubin (P4) y plano de corte (P5), que aquí muestra la pulpa en rojo.</figcaption>
       </figure>
     </div>
     <div class="rejilla-2" style="margin-top:20px">
@@ -740,7 +740,7 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
       </a>
       <a class="tarjeta pregunta" href="#modelo" data-abrir-pestana="corte">
         <span class="q">P5</span><h4>¿Se puede rebanar el modelo con un plano de corte?</h4>
-        <p>Sí: el plano oculta un lado; como la superficie es una cáscara, se ve el interior y la pulpa aparece como cavidad. En la app, la vista de tejidos blandos usa un corte sagital fijo.</p>
+        <p>Sí: el plano oculta un lado; como la superficie es una cáscara, se ve el interior y la pulpa aparece como cavidad. En la app, el botón <b>Corte</b> pone un plano que se arrastra con el ratón y pinta el interior de rojo.</p>
         <span class="ir">Laboratorio → P5 · Corte · Emanuel / Juan</span>
       </a>
       <a class="tarjeta pregunta" href="guion.html">
