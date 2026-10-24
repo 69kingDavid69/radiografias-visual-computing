@@ -62,3 +62,66 @@ def piezas_con_esmalte(volumen, umbral, esmalte_min, esmalte_max=np.inf, minimo_
     grandes = tamano >= fraccion_minima * tamano[con_esmalte].max()
     return np.isin(etiquetas, indices[con_esmalte & grandes])
 
+
+
+def _cuerpo_grueso(volumen, espaciado, umbral_tejido, abertura_mm, malla_mm):
+    """Máscara del cuerpo en una rejilla gruesa y el paso (en vóxeles) de esa rejilla por eje."""
+    paso = tuple(max(1, int(round(malla_mm / e))) for e in espaciado)
+    bajo = volumen[::paso[0], ::paso[1], ::paso[2]] > umbral_tejido
+    for z in range(bajo.shape[0]):
+        bajo[z] = ndimage.binary_fill_holes(bajo[z])
+    pasos = max(1, int(round(abertura_mm / (2 * malla_mm))))
+    piezas, n = ndimage.label(ndimage.binary_opening(bajo, iterations=pasos))
+    if n == 0:
+        return np.zeros(bajo.shape, dtype=bool), paso
+    return piezas == np.bincount(piezas.ravel())[1:].argmax() + 1, paso
+
+
+def _ampliar(mascara_gruesa, paso, forma):
+    """Lleva una máscara de la rejilla gruesa a la resolución del volumen (cada celda se repite)."""
+    for eje, p in enumerate(paso):
+        mascara_gruesa = np.repeat(mascara_gruesa, p, axis=eje)
+    return mascara_gruesa[:forma[0], :forma[1], :forma[2]]
+
+
+def cuerpo(volumen, espaciado, umbral_tejido, abertura_mm=8.0, malla_mm=2.0):
+    """Máscara del cuerpo del paciente: todo lo que no es aire, sin los objetos delgados que lo rodean.
+
+    El soporte de cabeza y la camilla son placas de pocos milímetros, y por densidad no se
+    distinguen del hueso. Lo que sí los distingue es su grosor: se calcula sobre una rejilla
+    gruesa (`malla_mm`) lo que supera `umbral_tejido`, se rellenan los huecos de cada corte
+    (los pulmones), se hace una apertura morfológica de ~`abertura_mm` que borra lo delgado y se
+    queda la pieza más grande. Es una máscara gruesa a propósito (error de ~`malla_mm` en el
+    contorno): solo sirve para decidir qué es del paciente. La apertura no quita una placa
+    pegada a una cara plana del cuerpo; de eso se encarga `hueso_del_paciente` con la profundidad.
+    """
+    gruesa, paso = _cuerpo_grueso(volumen, espaciado, umbral_tejido, abertura_mm, malla_mm)
+    return _ampliar(gruesa, paso, volumen.shape)
+
+
+def hueso_del_paciente(volumen, umbral, espaciado, umbral_tejido, minimo_voxeles=100, profundidad_minima_mm=6.0,
+                       abertura_mm=8.0, malla_mm=2.0):
+    """Máscara del hueso (≥ `umbral`) del paciente, sin el soporte de cabeza ni la camilla.
+
+    Descarta tres cosas: el hueso fuera del cuerpo (`cuerpo`), los trozos de menos de
+    `minimo_voxeles` (ruido) y las piezas que nunca pasan de `profundidad_minima_mm` bajo la
+    superficie del cuerpo: una correa o una placa pegada a la piel no baja de ahí, mientras que
+    cualquier fragmento de hueso, aunque sea chico, tiene piel y grasa encima.
+
+    No se queda con "la pieza más grande": en una fractura conminuta, como las de pelvis, los
+    fragmentos son piezas grandes y separadas, y todas son hueso.
+    """
+    gruesa, paso = _cuerpo_grueso(volumen, espaciado, umbral_tejido, abertura_mm, malla_mm)
+    hueso = (volumen >= umbral) & _ampliar(gruesa, paso, volumen.shape)
+    etiquetas, n = ndimage.label(hueso)
+    if n == 0:
+        return hueso
+    # Profundidad (mm bajo la superficie del cuerpo) en la rejilla gruesa, a 1 byte por vóxel.
+    profundidad = ndimage.distance_transform_edt(gruesa, sampling=[e * p for e, p in zip(espaciado, paso)])
+    profundidad = _ampliar(np.minimum(profundidad, 255).astype(np.uint8), paso, volumen.shape)
+    indices = np.arange(1, n + 1)
+    maxima = ndimage.maximum(profundidad[hueso], etiquetas[hueso], indices)
+    tamanos = np.bincount(etiquetas.ravel(), minlength=n + 1)
+    conservar = np.zeros(n + 1, dtype=bool)
+    conservar[1:] = (tamanos[1:] >= minimo_voxeles) & (maxima >= profundidad_minima_mm)
+    return conservar[etiquetas]

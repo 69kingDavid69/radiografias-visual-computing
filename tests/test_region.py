@@ -62,3 +62,43 @@ def test_piezas_con_esmalte_quita_metal_y_restos_chicos():
     assert keep[26, 20, 20]                # el diente se conserva
     assert not keep[3:7, 3:7, 3:7].any()   # el tornillo y su halo no
     assert not keep[35:37, 35:37, 35:37].any()   # el resto chico no
+
+
+def _cuerpo_con_camilla():
+    """Aire (-1000), una "cabeza" de tejido (0 HU) con hueso (1000) y una placa delgada de 500 HU que la rodea."""
+    v = np.full((40, 60, 60), -1000, dtype=np.float32)
+    v[5:35, 10:50, 10:50] = 0               # cuerpo: 30 × 40 × 40 vóxeles de 1 mm
+    v[10:30, 20:40, 20:40] = 1000           # hueso grande
+    v[12:18, 15:21, 12:18] = 1000           # fragmento suelto, dentro del cuerpo y lejos del hueso grande
+    v[5:35, 52:55, 5:55] = 500              # soporte: placa de 3 mm, separada del cuerpo por aire
+    v[5:35, 8:10, 10:50] = 500              # ...y otra pegada al cuerpo
+    v[20, 5, 5] = 1000                      # ruido suelto de 1 vóxel
+    return v
+
+
+def test_hueso_del_paciente_quita_el_soporte_y_conserva_todos_los_fragmentos():
+    from src.region import hueso_del_paciente
+    v = _cuerpo_con_camilla()
+    keep = hueso_del_paciente(v, 300, (1, 1, 1), umbral_tejido=-400, minimo_voxeles=10)
+    assert keep[20, 30, 30]                  # hueso grande
+    assert keep[14, 18, 14]                  # el fragmento, aunque no toque al hueso grande
+    assert not keep[20, 53, 30]              # soporte separado
+    assert not keep[20, 9, 30]               # soporte pegado a la piel: nunca baja de 6 mm
+    assert not keep[20, 5, 5]                # ruido
+
+
+def test_cuerpo_ignora_el_aire_y_rellena_los_pulmones():
+    from src.region import cuerpo
+    v = np.full((20, 60, 60), -1000, dtype=np.float32)
+    v[:, 10:50, 10:50] = 0
+    v[:, 25:35, 25:35] = -800                # pulmón: aire dentro del cuerpo
+    mascara = cuerpo(v, (1, 1, 1), umbral_tejido=-400)
+    assert mascara[10, 30, 30], "el pulmón es parte del cuerpo"
+    assert not mascara[10, 2, 2], "el aire de afuera no"
+
+
+def test_hueso_del_paciente_sin_hueso():
+    from src.region import hueso_del_paciente
+    v = np.full((10, 20, 20), -1000, dtype=np.float32)
+    v[:, 5:15, 5:15] = 0
+    assert not hueso_del_paciente(v, 300, (1, 1, 1), umbral_tejido=-400).any()

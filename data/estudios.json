@@ -34,5 +34,20 @@
   },
   "CQ500CT397_hueso": {
     "escala": "hounsfield"
+  },
+  "RibFrac127-imagen": {
+    "escala": "hounsfield"
+  },
+  "RibFrac283-imagen": {
+    "escala": "hounsfield"
+  },
+  "RibFrac34-imagen": {
+    "escala": "hounsfield"
+  },
+  "024-imagen": {
+    "escala": "hounsfield"
+  },
+  "049-imagen": {
+    "escala": "hounsfield"
   }
 }

@@ -447,6 +447,7 @@ class MainWindow(QMainWindow):
         self.btn_phong: QPushButton | None = None
         self.btn_taubin: QPushButton | None = None
         self.btn_corte: QPushButton | None = None
+        self.btn_relieve: QPushButton | None = None
         self.lbl_rendimiento: QLabel | None = None
 
         # Botones de navegación y vistas
@@ -794,6 +795,8 @@ class MainWindow(QMainWindow):
                                       False, self._al_cambiar_taubin)
         self.btn_corte = interruptor("Corte", "Plano de corte: arrástralo; el interior se ve en rojo",
                                      False, self._al_cambiar_corte)
+        self.btn_relieve = interruptor("Relieve", "Oclusión ambiental (SSAO): oscurece grietas y huecos; "
+                                       "ayuda a ver las líneas de fractura", False, self._al_cambiar_relieve)
 
         self.lbl_rendimiento = QLabel("")
         self.lbl_rendimiento.setToolTip("Triángulos de la malla y tiempo del último cálculo")
@@ -882,6 +885,13 @@ class MainWindow(QMainWindow):
         self._sincronizar_controles_3d()
         self.statusBar.showMessage("Suavizado Taubin activo" if activo else "Suavizado Taubin desactivado")
 
+    def _al_cambiar_relieve(self, activo: bool):
+        if self.render3d is None:
+            return
+        self.render3d.set_relieve(activo)
+        self.panel_3d.render()
+        self.statusBar.showMessage("Relieve (SSAO) activo" if activo else "Relieve (SSAO) desactivado")
+
     def _al_cambiar_corte(self, activo: bool):
         if self.render3d is None or self.render3d.malla is None:
             return
@@ -944,6 +954,8 @@ class MainWindow(QMainWindow):
             opciones.append(("implante", "Implante"))
         if all(n in presets for n, _ in CAPAS_BLANDAS):
             opciones.append(("blandos", "Blandos (exp.)"))
+        if "hueso" in presets:
+            opciones.append(("fractura", "Fractura"))
         for nombre, texto in opciones:
             boton = QPushButton(texto)
             boton.setProperty("class", "btn-preset")
@@ -951,6 +963,9 @@ class MainWindow(QMainWindow):
             boton.setCursor(Qt.CursorShape.PointingHandCursor)
             if nombre == "blandos":
                 boton.setToolTip("Experimental: músculo y grasa con media cabeza (corte sagital)")
+            elif nombre == "fractura":
+                boton.setToolTip("Hueso a resolución completa y sin suavizar, sin la camilla ni objetos sueltos; "
+                                 "enciende el relieve. Tarda unos segundos")
             boton.setChecked(nombre == self.render3d.preset_actual)
             boton.clicked.connect(lambda _=False, n=nombre: self._aplicar_preset_3d(n))
             self.grupo_presets_3d.addButton(boton)
@@ -967,6 +982,8 @@ class MainWindow(QMainWindow):
                     self.render3d.aplicar_capas()
                 elif nombre == "blandos":
                     self.render3d.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True)
+                elif nombre == "fractura":
+                    self.render3d.aplicar_fractura()
                 else:
                     self.render3d.aplicar_preset(nombre)
                 self.panel_3d.render()
@@ -975,6 +992,9 @@ class MainWindow(QMainWindow):
             self.statusBar.showMessage(f"Error en la vista 3D: {e}")
             return
         self._sincronizar_controles_3d()
+        self.btn_relieve.blockSignals(True)       # la vista de fractura enciende el relieve por su cuenta
+        self.btn_relieve.setChecked(self.render3d.relieve)
+        self.btn_relieve.blockSignals(False)
         self.statusBar.showMessage(f"Estructura 3D: {texto}")
 
     def _abrir_dialogo_cargar_dicom(self):
@@ -1009,7 +1029,7 @@ class MainWindow(QMainWindow):
                 self.escala = estudio.metadatos.get("escala")
 
                 # Actualizar VisorCortes manteniendo relación de aspecto exacta
-                self.visor_cortes.mostrar((volumen, espaciado))
+                self.visor_cortes.mostrar(estudio)    # el Estudio trae la orientación para las letras
                 # Y el modelo 3D con el estudio completo (escala y presets)
                 self._mostrar_en_3d(estudio)
                 self._ir_a_arcada()
@@ -1068,7 +1088,7 @@ class MainWindow(QMainWindow):
 
         # Mostrar el volumen en ambos visores. Al 3D va el Estudio completo, no la tupla:
         # sin su escala Render3D no tiene presets y el umbral de respaldo cae en el metal.
-        self.visor_cortes.mostrar((volumen, espaciado))
+        self.visor_cortes.mostrar(para_3d)
         self._mostrar_en_3d(para_3d)
         self._ir_a_arcada()
         self._marcar_presets_en_histograma()
