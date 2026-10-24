@@ -367,8 +367,9 @@ class Render3D:
             return None
         esmalte_min = self.presets["esmalte"][0]
         esmalte_max = self.presets.get("esmalte_sin_metal", (esmalte_min, np.inf))[1]
+        metal = self.presets["metal"][0] if "metal" in self.presets else None
         z0, z1 = self.arcada
-        return piezas_con_esmalte(self.volumen[z0:z1], umbral, esmalte_min, esmalte_max)
+        return piezas_con_esmalte(self.volumen[z0:z1], umbral, esmalte_min, esmalte_max, metal=metal)
 
     def _color_para_umbral(self, valor):
         """Color del preset más denso cuyo mínimo no supera `valor` (marfil si no hay ninguno).
