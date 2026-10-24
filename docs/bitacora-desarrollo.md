@@ -757,6 +757,18 @@ Lo que encontró y se arregló:
 
 ---
 
+## 2026-10-24 — Figura del clasificador para la exposición
+
+`scripts/figura_clasificador.py` compara en dos cortes de un paciente la máscara del experto, el método de la app y el clasificador. El clasificador se entrena **sin ese paciente**, como en la evaluación dejando uno fuera. Se eligió ROI_L_011 (Dice 0,58 → 0,88). Figura en [results/clasificador_comparacion.png](../results/clasificador_comparacion.png).
+
+- **Corte por las raíces** (donde la app más se equivoca): la app marca **toda la mandíbula** como diente. El clasificador casi no confunde hueso, pero **se le escapan partes de las raíces**, lejos del esmalte: es su punto débil.
+- **Corte con más diente** (coronas): el clasificador acierta casi todo. La app deja huecos dentro de los dientes y marca hueso.
+- Se muestran **los dos cortes** para que la figura sea representativa y no solo favorable al modelo.
+
+`entrenar_clasificador.py` separa el cálculo de características (`volumen_y_caracteristicas`) para que la figura use exactamente el mismo código. Se agregó una diapositiva "Del umbral al modelo" a la presentación de David (0,64 → 0,86, figura y guion de 20 s).
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
