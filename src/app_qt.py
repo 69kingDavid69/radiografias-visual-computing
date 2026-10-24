@@ -10,6 +10,7 @@ import argparse
 import ctypes
 import os
 import sys
+from contextlib import contextmanager
 
 # Ensure the project root is on PYTHONPATH for relative imports
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -49,6 +50,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSlider,
     QSplitter,
@@ -63,7 +65,7 @@ from pathlib import Path
 from src.carga import EXTENSIONES_VOLUMEN, cargar_estudio
 from src.densidades import EXPERIMENTALES
 from src.render_3d import CAPAS_BLANDAS, CAPAS_IMPLANTE, Render3D
-from src.densidades import unidad_de, ventana_para
+from src.densidades import color_para, unidad_de, ventana_para
 from src.visor_cortes import (
     COLOR_ANCHO,
     COLOR_AXIAL,
@@ -382,6 +384,18 @@ def crear_icono_medico() -> QIcon:
     return icono
 
 
+def aviso_espaciado(espaciado, forma) -> str:
+    """Aviso para la barra de estado si el archivo parece no traer el tamaño real del vóxel.
+
+    Exactamente 1 × 1 × 1 mm en un volumen grande suele ser el valor por defecto de un
+    archivo que perdió el espaciado (pasa en parte de STS-3D-Tooth): la forma se ve bien,
+    pero las medidas en mm y el suavizado por estructura no corresponden.
+    """
+    if max(forma) >= 300 and all(abs(float(e) - 1.0) < 1e-6 for e in espaciado):
+        return " | ⚠ Vóxel de 1 × 1 × 1 mm: el archivo quizá no trae el tamaño real; las medidas en mm no son fiables"
+    return ""
+
+
 def generar_volumen_sintetico() -> Tuple[np.ndarray, Tuple[float, float, float]]:
     """Genera un fantoma volumétrico sintético en caso de que no exista el estudio DICOM en disco."""
     z, y, x = np.ogrid[-40:40:80j, -50:50:100j, -50:50:100j]
@@ -427,6 +441,13 @@ class MainWindow(QMainWindow):
         self.contenedor_3d: QWidget | None = None
         self.barra_presets_3d: QHBoxLayout | None = None
         self.grupo_presets_3d: QButtonGroup | None = None
+        # Controles del 3D: umbral libre, luz, suavizado, plano de corte y rendimiento
+        self.slider_umbral_3d: QSlider | None = None
+        self.lbl_umbral_3d: QLabel | None = None
+        self.btn_phong: QPushButton | None = None
+        self.btn_taubin: QPushButton | None = None
+        self.btn_corte: QPushButton | None = None
+        self.lbl_rendimiento: QLabel | None = None
 
         # Botones de navegación y vistas
         self.btn_cargar: QPushButton | None = None
@@ -460,7 +481,7 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
 
-        lbl_logo = QLabel("<b>CBCT MEDICAL VIEWER</b>")
+        lbl_logo = QLabel("<b>EXPLORADOR CBCT</b>")
         lbl_logo.setStyleSheet("color: #38bdf8; font-size: 13px; font-weight: bold; margin-right: 15px;")
         toolbar.addWidget(lbl_logo)
 
@@ -535,10 +556,25 @@ class MainWindow(QMainWindow):
         layout_3d = QVBoxLayout(self.contenedor_3d)
         layout_3d.setContentsMargins(0, 0, 0, 0)
         layout_3d.setSpacing(6)
-        self.barra_presets_3d = QHBoxLayout()
+        # La barra de estructuras va en un área con desplazamiento horizontal: en la
+        # vista dividida el panel es angosto y los botones se cortaban.
+        barra = QWidget()
+        # Sin hoja de estilos propia: una local tapaba el estilo "checked" de los botones
+        barra.setAutoFillBackground(False)
+        self.barra_presets_3d = QHBoxLayout(barra)
         self.barra_presets_3d.setContentsMargins(8, 6, 8, 0)
         self.barra_presets_3d.setSpacing(6)
-        layout_3d.addLayout(self.barra_presets_3d)
+        desplazable = QScrollArea(self.contenedor_3d)
+        desplazable.setWidget(barra)
+        desplazable.setWidgetResizable(True)
+        desplazable.setFrameShape(QFrame.Shape.NoFrame)
+        desplazable.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        desplazable.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        desplazable.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        desplazable.setFixedHeight(barra.sizeHint().height() + 34)
+        desplazable.viewport().setAutoFillBackground(False)
+        layout_3d.addWidget(desplazable)
+        layout_3d.addLayout(self._crear_controles_3d())
         self.panel_3d = self._crear_panel_3d(self.contenedor_3d)
         layout_3d.addWidget(self.panel_3d, stretch=1)
 
@@ -712,6 +748,70 @@ class MainWindow(QMainWindow):
         interactor.set_background("#181818")
         return interactor
 
+    def _crear_controles_3d(self) -> QHBoxLayout:
+        """Fila bajo las estructuras: umbral libre, Phong, Taubin, plano de corte y rendimiento.
+
+        Responde en vivo las preguntas de la propuesta: la barra muestra cómo la densidad
+        elegida se vuelve malla (1), Phong/plano la iluminación (2), el contador el costo
+        (3), Taubin el suavizado (4) y el plano de corte el clipping (5).
+        """
+        fila = QHBoxLayout()
+        fila.setContentsMargins(8, 0, 8, 0)
+        fila.setSpacing(6)
+
+        titulo = QLabel("Umbral:")
+        titulo.setStyleSheet("color: #9aa7b6; font-size: 12px; font-weight: bold;")
+        fila.addWidget(titulo)
+        self.slider_umbral_3d = QSlider(Qt.Orientation.Horizontal)
+        self.slider_umbral_3d.setObjectName("SliderCentro")
+        self.slider_umbral_3d.setMinimumWidth(120)
+        self.slider_umbral_3d.setToolTip("Densidad libre: la malla se recalcula al soltar la barra")
+        # Recalcular en cada paso del arrastre congelaría la app: solo se muestra el valor
+        # mientras se arrastra y se recalcula al soltar (o con las flechas del teclado).
+        self.slider_umbral_3d.setTracking(False)
+        self.slider_umbral_3d.sliderMoved.connect(self._actualizar_etiqueta_umbral_3d)
+        self.slider_umbral_3d.valueChanged.connect(self._al_cambiar_umbral_3d)
+        fila.addWidget(self.slider_umbral_3d, stretch=1)
+        self.lbl_umbral_3d = QLabel("—")
+        self.lbl_umbral_3d.setMinimumWidth(48)
+        self.lbl_umbral_3d.setStyleSheet("color: #e2e8f0; font-size: 12px;")
+        fila.addWidget(self.lbl_umbral_3d)
+
+        def interruptor(texto, ayuda, activo, al_cambiar):
+            boton = QPushButton(texto)
+            boton.setProperty("class", "btn-preset")
+            boton.setCheckable(True)
+            boton.setChecked(activo)
+            boton.setToolTip(ayuda)
+            boton.setCursor(Qt.CursorShape.PointingHandCursor)
+            boton.toggled.connect(al_cambiar)
+            fila.addWidget(boton)
+            return boton
+
+        self.btn_phong = interruptor("Phong", "Sombreado Phong (suave) o plano (se ven los triángulos)",
+                                     True, self._al_cambiar_phong)
+        self.btn_taubin = interruptor("Taubin", "Suavizado Taubin de la malla: quita el escalonado sin encogerla",
+                                      False, self._al_cambiar_taubin)
+        self.btn_corte = interruptor("Corte", "Plano de corte: arrástralo; el interior se ve en rojo",
+                                     False, self._al_cambiar_corte)
+
+        self.lbl_rendimiento = QLabel("")
+        self.lbl_rendimiento.setToolTip("Triángulos de la malla y tiempo del último cálculo")
+        self.lbl_rendimiento.setStyleSheet("color: #9aa7b6; font-size: 11px;")
+        fila.addWidget(self.lbl_rendimiento)
+        return fila
+
+    @contextmanager
+    def _ocupado(self, mensaje: str):
+        """Cursor de espera y aviso en la barra de estado mientras dura un cálculo largo."""
+        self.statusBar.showMessage(mensaje)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QApplication.processEvents()      # que el aviso se pinte antes de bloquear
+        try:
+            yield
+        finally:
+            QApplication.restoreOverrideCursor()
+
     def _mostrar_en_3d(self, estudio_o_tupla):
         """Dibuja el estudio en el panel 3D y arma la barra de estructuras.
 
@@ -722,14 +822,107 @@ class MainWindow(QMainWindow):
             self.render3d = Render3D(self.panel_3d)
         self.render3d.mostrar(estudio_o_tupla)
         self._reconstruir_barra_presets_3d()
+        # El estudio nuevo arranca sin plano de corte (Render3D.mostrar lo quita)
+        self.btn_corte.blockSignals(True)
+        self.btn_corte.setChecked(False)
+        self.btn_corte.blockSignals(False)
+        volumen = self.render3d.volumen
+        self.slider_umbral_3d.blockSignals(True)
+        self.slider_umbral_3d.setRange(int(np.floor(volumen.min())), int(np.ceil(volumen.max())))
+        self.slider_umbral_3d.setSingleStep(10)
+        self.slider_umbral_3d.setPageStep(100)
+        self.slider_umbral_3d.blockSignals(False)
+        self._sincronizar_controles_3d()
         self.panel_3d.render()
+
+    def _sincronizar_controles_3d(self):
+        """Lleva la barra de umbral y el contador de rendimiento al estado de Render3D."""
+        if self.render3d is None or self.render3d.umbral_actual is None:
+            return
+        valor = int(round(self.render3d.umbral_actual))
+        self.slider_umbral_3d.blockSignals(True)
+        self.slider_umbral_3d.setValue(valor)
+        self.slider_umbral_3d.blockSignals(False)
+        self._actualizar_etiqueta_umbral_3d(valor)
+        medicion = self.render3d.ultima_medicion
+        self.lbl_rendimiento.setText(f"{medicion['triangulos']:,} triáng. · {medicion['ms']:.0f} ms"
+                                     .replace(",", "."))
+
+    def _actualizar_etiqueta_umbral_3d(self, valor: int):
+        self.lbl_umbral_3d.setText(f"{valor} {unidad_de(self.escala)}".strip())
+
+    def _al_cambiar_umbral_3d(self, valor: int):
+        if self.render3d is None:
+            return
+        with self._ocupado(f"Calculando la superficie en {valor}…"):
+            self.render3d.set_umbral(valor)
+            self.panel_3d.render()
+        # El umbral libre no corresponde a ningún botón de estructura
+        if self.grupo_presets_3d is not None:
+            self.grupo_presets_3d.setExclusive(False)
+            for boton in self.grupo_presets_3d.buttons():
+                boton.setChecked(False)
+            self.grupo_presets_3d.setExclusive(True)
+        self._sincronizar_controles_3d()
+        self.statusBar.showMessage(f"Umbral libre 3D: {valor} {unidad_de(self.escala)}".strip())
+
+    def _al_cambiar_phong(self, activo: bool):
+        if self.render3d is None:
+            return
+        self.render3d.set_phong(activo)
+        self.panel_3d.render()
+        self.statusBar.showMessage("Sombreado Phong" if activo else "Sombreado plano: un tono por triángulo")
+
+    def _al_cambiar_taubin(self, activo: bool):
+        if self.render3d is None:
+            return
+        with self._ocupado("Suavizando la malla…" if activo else "Quitando el suavizado…"):
+            self.render3d.set_suavizar_malla(activo)
+            self.panel_3d.render()
+        self._sincronizar_controles_3d()
+        self.statusBar.showMessage("Suavizado Taubin activo" if activo else "Suavizado Taubin desactivado")
+
+    def _al_cambiar_corte(self, activo: bool):
+        if self.render3d is None or self.render3d.malla is None:
+            return
+        if activo:
+            self.render3d.activar_corte()
+            self.statusBar.showMessage("Plano de corte: arrastra el plano o su flecha; el interior se ve en rojo")
+        else:
+            self.render3d.desactivar_corte()
+            self.statusBar.showMessage("Plano de corte desactivado")
+        self.panel_3d.render()
+
+    def _marcar_presets_en_histograma(self):
+        """Marca en el histograma 2D dónde empieza cada estructura (los umbrales del 3D)."""
+        if self.render3d is None:
+            return
+        self.visor_cortes.marcar_densidades({
+            nombre.replace("_", " "): (minimo, color_para(nombre))
+            for nombre, (minimo, _) in self.render3d.presets.items()
+            if nombre not in EXPERIMENTALES and nombre != "esmalte_sin_metal"})
+
+    def _ir_a_arcada(self):
+        """Lleva el corte axial al centro de la arcada dental (no a la mitad del volumen).
+
+        La mitad del volumen suele caer en la nariz o los senos; el centro de la arcada
+        es la altura con más esmalte, que Render3D ya calculó para sus presets.
+        """
+        if self.render3d is None or self.render3d.arcada is None:
+            return
+        z0, z1 = self.render3d.arcada
+        self.visor_cortes.ir_a_corte("axial", (z0 + z1) // 2)
 
     def _reconstruir_barra_presets_3d(self):
         """Un botón por preset del estudio cargado, más "Implante" si hay hueso y metal."""
         while self.barra_presets_3d.count():
             item = self.barra_presets_3d.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            widget = item.widget()
+            if widget:
+                # deleteLater solo borra al volver al bucle de eventos: hasta entonces el
+                # botón viejo seguía visible debajo del nuevo. Se saca de la barra ya.
+                widget.setParent(None)
+                widget.deleteLater()
         self.grupo_presets_3d = QButtonGroup(self)
         self.grupo_presets_3d.setExclusive(True)
 
@@ -756,6 +949,8 @@ class MainWindow(QMainWindow):
             boton.setProperty("class", "btn-preset")
             boton.setCheckable(True)
             boton.setCursor(Qt.CursorShape.PointingHandCursor)
+            if nombre == "blandos":
+                boton.setToolTip("Experimental: músculo y grasa con media cabeza (corte sagital)")
             boton.setChecked(nombre == self.render3d.preset_actual)
             boton.clicked.connect(lambda _=False, n=nombre: self._aplicar_preset_3d(n))
             self.grupo_presets_3d.addButton(boton)
@@ -765,14 +960,22 @@ class MainWindow(QMainWindow):
     def _aplicar_preset_3d(self, nombre: str):
         if self.render3d is None:
             return
-        if nombre == "implante":
-            self.render3d.aplicar_capas()
-        elif nombre == "blandos":
-            self.render3d.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True)
-        else:
-            self.render3d.aplicar_preset(nombre)
-        self.panel_3d.render()
-        self.statusBar.showMessage(f"Estructura 3D: {nombre.replace('_', ' ')}")
+        texto = nombre.replace("_", " ")
+        try:
+            with self._ocupado(f"Calculando {texto}…"):
+                if nombre == "implante":
+                    self.render3d.aplicar_capas()
+                elif nombre == "blandos":
+                    self.render3d.aplicar_capas(CAPAS_BLANDAS, corte_sagital=True)
+                else:
+                    self.render3d.aplicar_preset(nombre)
+                self.panel_3d.render()
+        except Exception as e:
+            QMessageBox.warning(self, "Error en la vista 3D", f"No se pudo dibujar '{texto}'.\n\nDetalle: {e}")
+            self.statusBar.showMessage(f"Error en la vista 3D: {e}")
+            return
+        self._sincronizar_controles_3d()
+        self.statusBar.showMessage(f"Estructura 3D: {texto}")
 
     def _abrir_dialogo_cargar_dicom(self):
         """Abre un diálogo para elegir un archivo de volumen o un corte DICOM.
@@ -799,22 +1002,26 @@ class MainWindow(QMainWindow):
     def cargar_nuevo_estudio(self, ruta_carpeta: str):
         """Carga un estudio (carpeta DICOM o archivo de volumen) y actualiza el visor."""
         try:
-            estudio = cargar_estudio(ruta_carpeta)
-            volumen, espaciado = estudio.volumen, estudio.espaciado
-            self.ruta_dicom = ruta_carpeta
-            self.escala = estudio.metadatos.get("escala")
+            with self._ocupado(f"Cargando {Path(ruta_carpeta).name}… (puede tardar unos segundos)"):
+                estudio = cargar_estudio(ruta_carpeta)
+                volumen, espaciado = estudio.volumen, estudio.espaciado
+                self.ruta_dicom = ruta_carpeta
+                self.escala = estudio.metadatos.get("escala")
 
-            # Actualizar VisorCortes manteniendo relación de aspecto exacta
-            self.visor_cortes.mostrar((volumen, espaciado))
-            self._sincronizar_sliders_con_datos()
-            self.visor_cortes.reajustar_tamano()
-            # Y el modelo 3D con el estudio completo (escala y presets)
-            self._mostrar_en_3d(estudio)
+                # Actualizar VisorCortes manteniendo relación de aspecto exacta
+                self.visor_cortes.mostrar((volumen, espaciado))
+                # Y el modelo 3D con el estudio completo (escala y presets)
+                self._mostrar_en_3d(estudio)
+                self._ir_a_arcada()
+                self._marcar_presets_en_histograma()
+                self._sincronizar_sliders_con_datos()
+                self.visor_cortes.reajustar_tamano()
 
             msg_estado = (
                 f"Estudio cargado: {ruta_carpeta} | "
                 f"Volumen: {volumen.shape} (Z, Y, X) | "
                 f"Espaciado: {espaciado[0]:.2f} x {espaciado[1]:.2f} x {espaciado[2]:.2f} mm"
+                + aviso_espaciado(espaciado, volumen.shape)
             )
             self.statusBar.showMessage(msg_estado)
 
@@ -847,6 +1054,7 @@ class MainWindow(QMainWindow):
                 f"Estudio cargado: {self.ruta_dicom} | "
                 f"Volumen: {volumen.shape} (Z, Y, X) | "
                 f"Espaciado: {espaciado[0]:.2f} x {espaciado[1]:.2f} x {espaciado[2]:.2f} mm"
+                + aviso_espaciado(espaciado, volumen.shape)
             )
             self.statusBar.showMessage(msg_estado)
         except Exception as e:
@@ -862,6 +1070,8 @@ class MainWindow(QMainWindow):
         # sin su escala Render3D no tiene presets y el umbral de respaldo cae en el metal.
         self.visor_cortes.mostrar((volumen, espaciado))
         self._mostrar_en_3d(para_3d)
+        self._ir_a_arcada()
+        self._marcar_presets_en_histograma()
         self._sincronizar_sliders_con_datos()
         self.visor_cortes.reajustar_tamano()
 

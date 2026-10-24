@@ -68,6 +68,9 @@ class VisorCortes:
         self.ax_axial = None
         self.ax_coronal = None
         self.ax_sagital = None
+        self.ax_hist = None          # histograma de densidades (solo en la app, sin sliders)
+        self._franja_ventana = None  # zona del histograma que muestra la ventana actual
+        self.marcas: dict = {}       # nombre → (densidad, color): umbrales de los presets
 
         # Objetos imagen (imshow)
         self.im_axial = None
@@ -284,6 +287,12 @@ class VisorCortes:
             self.slider_ancho = None
             self.reajustar_tamano()
 
+        # 5. En la app (sin sliders de matplotlib): histograma de densidades en vivo
+        self.ax_hist = None
+        if not self.crear_sliders:
+            self._crear_histograma()
+            self.reajustar_tamano()
+
         # Navegación interactiva por clic en las vistas
         self.figura.canvas.mpl_connect("button_press_event", self._on_click)
 
@@ -294,8 +303,8 @@ class VisorCortes:
         try:
             if self.crear_sliders:
                 self.figura.tight_layout(rect=[0, 0.22, 1, 0.98])
-            else:
-                self.figura.tight_layout()
+            elif self.ax_axial is not None:
+                self._distribuir_paneles()
         except Exception:
             pass
         if self.figura.canvas:
@@ -432,13 +441,14 @@ class VisorCortes:
         self.im_sagital.set_data(corte_sagital)
         self.im_sagital.set_clim(vmin=vmin, vmax=vmax)
 
+        self._actualizar_franja_ventana()
         self.figura.canvas.draw_idle()
 
     def _actualizar_titulo_axial(self):
         if self.ax_axial is not None:
             pos_mm = float(self.idx_z) * float(self.dz)
             self.ax_axial.set_title(
-                f"Axial (Z: {self.idx_z}/{self.nz - 1}, {pos_mm:.1f} mm)",
+                f"Axial\nZ {self.idx_z} / {self.nz - 1} · {pos_mm:.1f} mm",
                 fontsize=10,
                 fontweight="bold"
             )
@@ -447,7 +457,7 @@ class VisorCortes:
         if self.ax_coronal is not None:
             pos_mm = float(self.idx_y) * float(self.dy)
             self.ax_coronal.set_title(
-                f"Coronal (Y: {self.idx_y}/{self.ny - 1}, {pos_mm:.1f} mm)",
+                f"Coronal\nY {self.idx_y} / {self.ny - 1} · {pos_mm:.1f} mm",
                 fontsize=10,
                 fontweight="bold"
             )
@@ -456,14 +466,94 @@ class VisorCortes:
         if self.ax_sagital is not None:
             pos_mm = float(self.idx_x) * float(self.dx)
             self.ax_sagital.set_title(
-                f"Sagital (X: {self.idx_x}/{self.nx - 1}, {pos_mm:.1f} mm)",
+                f"Sagital\nX {self.idx_x} / {self.nx - 1} · {pos_mm:.1f} mm",
                 fontsize=10,
                 fontweight="bold"
             )
 
+    # --- Histograma y distribución de los paneles (app) ----------------------------
+
+    def _crear_histograma(self):
+        """Histograma de densidades del volumen, con la ventana actual y los umbrales marcados.
+
+        Muestra de dónde sale cada preset: el pico grande es el tejido blando y la cola
+        derecha, hueso, dientes y metal. Se calcula con 1 de cada 8 vóxeles (rápido).
+        """
+        self.ax_hist = self.figura.add_subplot(2, 2, 4)
+        muestra = self.volumen[::2, ::2, ::2].ravel()
+        self.ax_hist.hist(muestra, bins=160, color="#64748b", log=True)
+        self.ax_hist.set_title("Densidades del estudio", fontsize=10, fontweight="bold")
+        self.ax_hist.tick_params(labelsize=7)
+        self.ax_hist.set_yticks([])
+        self.ax_hist.set_yticks([], minor=True)    # la escala log agrega marcas menores
+        for spine in ("top", "right", "left"):
+            self.ax_hist.spines[spine].set_visible(False)
+        # figura.clear() ya borró los artistas del estudio anterior: no hay que quitarlos
+        self._franja_ventana = None
+        self._artistas_marcas = []
+        self._actualizar_franja_ventana()
+        self._dibujar_marcas()
+
+    def marcar_densidades(self, marcas: dict):
+        """Marca en el histograma los umbrales de los presets: {nombre: (densidad, color)}."""
+        self.marcas = dict(marcas)
+        self._dibujar_marcas()
+        self.figura.canvas.draw_idle()
+
+    def _dibujar_marcas(self):
+        if self.ax_hist is None:
+            return
+        for artista in getattr(self, "_artistas_marcas", []):
+            artista.remove()
+        self._artistas_marcas = []
+        x0, x1 = self.ax_hist.get_xlim()
+        for i, (nombre, (valor, color)) in enumerate(sorted(self.marcas.items(), key=lambda m: m[1][0])):
+            if not x0 <= valor <= x1:
+                continue
+            self._artistas_marcas.append(self.ax_hist.axvline(valor, color=color, linewidth=1.4))
+            self._artistas_marcas.append(self.ax_hist.text(
+                valor, 0.97 - 0.13 * (i % 2), f" {nombre}", color=color, fontsize=7,
+                transform=self.ax_hist.get_xaxis_transform(), va="top"))
+
+    def _actualizar_franja_ventana(self):
+        if self.ax_hist is None:
+            return
+        if self._franja_ventana is not None:
+            self._franja_ventana.remove()
+        x0, x1 = self.ax_hist.get_xlim()
+        self._franja_ventana = self.ax_hist.axvspan(
+            self.centro - self.ancho / 2, self.centro + self.ancho / 2, color="#38bdf8", alpha=0.15)
+        self.ax_hist.set_xlim(x0, x1)
+
+    def _distribuir_paneles(self):
+        """Ubica los paneles según la forma del lienzo, sin dejar franjas vacías.
+
+        Ancho (vista 2D sola): los tres cortes en fila y el histograma debajo, en la franja
+        que antes quedaba vacía. Angosto (vista dividida): cuadrícula 2 × 2.
+        """
+        ancho, alto = self.figura.get_size_inches()
+        cortes = (self.ax_axial, self.ax_coronal, self.ax_sagital)
+        if ancho / max(alto, 1e-6) >= 1.9:
+            for i, ax in enumerate(cortes):
+                ax.set_position([0.01 + i / 3, 0.30, 1 / 3 - 0.02, 0.60])
+            if self.ax_hist is not None:
+                self.ax_hist.set_position([0.06, 0.07, 0.88, 0.14])
+        else:
+            cajas = ([0.02, 0.53, 0.46, 0.38], [0.52, 0.53, 0.46, 0.38], [0.02, 0.04, 0.46, 0.38])
+            for ax, caja in zip(cortes, cajas):
+                ax.set_position(caja)
+            if self.ax_hist is not None:
+                self.ax_hist.set_position([0.56, 0.10, 0.40, 0.30])
+
     def _on_click(self, event):
-        """Permite hacer clic sobre cualquier plano para posicionar los otros dos cortes."""
+        """Permite hacer clic sobre cualquier plano para posicionar los otros dos cortes.
+
+        Un clic en el histograma centra la ventana de contraste en esa densidad.
+        """
         if event.inaxes is None or event.xdata is None or event.ydata is None:
+            return
+        if event.inaxes == self.ax_hist:
+            self.set_ventana(event.xdata, self.ancho)
             return
 
         if event.inaxes == self.ax_axial:

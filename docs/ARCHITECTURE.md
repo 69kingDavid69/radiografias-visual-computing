@@ -105,7 +105,7 @@ results/                        capturas y figuras para el informe
 | Interfaz unificada | pyvistaqt + PySide6 (sugerido) | Mete el visor 2D y el 3D en una sola ventana con paneles. |
 | Procesamiento extra | scikit-image (sugerido) | Filtros para reducir ruido antes del umbral (el CBCT es más ruidoso que un CT médico). |
 | Datos de prueba | dataset público CBCT anonimizado (sugerido) | Los busca la persona de investigación; ver decisión abierta #2. |
-| Control de versiones | Git + GitHub privado (decidido) | `69kingDavid69/radiografias-visual-computing`. |
+| Control de versiones | Git + GitHub público (sin datos de pacientes: `data/raw/` no se versiona) | `69kingDavid69/radiografias-visual-computing`. |
 
 ## 6. Plan de construcción por fases
 
