@@ -49,5 +49,14 @@
   },
   "049-imagen": {
     "escala": "hounsfield"
+  },
+  "verse033-imagen": {
+    "escala": "hounsfield"
+  },
+  "verse009-imagen": {
+    "escala": "hounsfield"
+  },
+  "verse111-imagen": {
+    "escala": "hounsfield"
   }
 }

@@ -157,7 +157,7 @@ archivo (DICOM, GIPL, NIfTI…)
 | `benchmark_render.py` | Tiempos y triángulos con reducción 1, 2 y 4 | `python -m scripts.benchmark_render data/raw/PreDentalSurgery.gipl.gz` |
 | `histograma_densidades.py` | Histograma de densidades y umbrales de Otsu | `python scripts/histograma_densidades.py data/raw/PreDentalSurgery.gipl.gz` |
 | `verificar_anonimizacion.py` | Revisa que los DICOM no traigan datos del paciente | `python scripts/verificar_anonimizacion.py data/raw --csv results/estudios.csv` |
-| `probar_fracturas.py` | Vista de fractura en estudios con fractura (pelvis, costillas, cráneo): hueso conservado, fragmentos del experto que se pierden y un montaje por estudio | `python -m scripts.probar_fracturas data/raw/fracturas/pelvis data/raw/fracturas/costillas` |
+| `probar_fracturas.py` | Vista de fractura en estudios con fractura (pelvis, costillas, columna, cráneo): hueso conservado, fragmentos del experto que se pierden y un montaje por estudio | `python -m scripts.probar_fracturas data/raw/fracturas/pelvis data/raw/fracturas/costillas data/raw/fracturas/columna` |
 | `generar_web.py` | Regenera los datos y modelos de `web/` (sobrescribe la página) | `python scripts/generar_web.py data/raw/PreDentalSurgery.gipl.gz` |
 
 ## Pruebas
@@ -166,7 +166,7 @@ archivo (DICOM, GIPL, NIfTI…)
 python -m pytest -q
 ```
 
-90 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
+91 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
 capas de relleno, presets y colores (incluida la sincronía con la página web), región de la
 arcada, suavizado con sigma en mm, el motor 3D sin ventana (Phong, Taubin, plano de corte,
 contador, relieve, cubo de orientación y vista de fractura), la orientación del paciente y una
