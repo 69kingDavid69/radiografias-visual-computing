@@ -92,46 +92,49 @@
     <p class="intro">El <b>CBCT</b> (tomografía de haz cónico) gira una sola vez alrededor de la cabeza. Usa menos radiación
       que un CT de hospital, pero tiene más ruido y sus números de densidad <b>no están calibrados</b>.</p>
     <figure class="tarjeta ilustracion">
-      <svg viewBox="0 0 720 290" role="img" aria-label="Comparación: CT médico con haz en abanico delgado y muchas vueltas; CBCT con haz en cono, panel plano y una sola rotación">
+      <svg viewBox="0 0 760 340" role="img" aria-label="CT de hospital: la fuente gira muchas veces alrededor de la cabeza con un haz delgado en abanico. CBCT dental: una sola vuelta con un haz en cono que cubre toda la cabeza y un panel plano">
         <defs>
-          <linearGradient id="haz" x1="0" x2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity=".55"/><stop offset="1" stop-color="#38bdf8" stop-opacity=".12"/></linearGradient>
-          <marker id="flecha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#a3b0bf"/></marker>
+          <linearGradient id="haz-ct" x1="0" x2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity=".8"/><stop offset="1" stop-color="#38bdf8" stop-opacity=".3"/></linearGradient>
+          <linearGradient id="haz-cbct" x1="0" x2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity=".5"/><stop offset="1" stop-color="#38bdf8" stop-opacity=".1"/></linearGradient>
+          <marker id="giro" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#a3b0bf"/></marker>
+          <g id="cabeza">
+            <path d="M72 2 C 118 -4 154 28 154 72 C 154 106 148 128 134 150 C 127 161 125 172 127 188 L 129 222 L 66 222 L 64 202 C 54 202 45 198 41 190 L 39 182 C 35 180 34 175 37 171 L 34 165 C 31 161 32 157 36 155 L 33 150 C 28 148 28 144 32 142 L 17 136 C 12 134 13 129 18 127 L 31 110 C 31 101 28 95 29 88 C 29 58 42 8 72 2 Z" fill="#1c232c" stroke="#6f7d8c" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M108 92 C 120 86 128 96 123 108 C 120 116 112 117 108 112" fill="none" stroke="#6f7d8c" stroke-width="1.6"/>
+            <path d="M44 162 L 66 162" stroke="#f0e1b7" stroke-width="4.5" stroke-linecap="round"/>
+          </g>
         </defs>
-        <text x="180" y="24" text-anchor="middle" class="svg-titulo">CT médico</text>
-        <polygon points="50,150 300,138 300,162" fill="url(#haz)"/>
-        <ellipse cx="180" cy="150" rx="52" ry="78" fill="#1c232c" stroke="#e8d393" stroke-width="2"/>
-        <rect x="38" y="138" width="16" height="24" rx="3" fill="#e6edf3"/>
-        <rect x="300" y="130" width="10" height="40" fill="#a3b0bf"/>
-        <text x="46" y="186" text-anchor="middle" class="svg-chico">fuente</text>
-        <text x="305" y="190" text-anchor="middle" class="svg-chico">filas de detectores</text>
-        <line x1="180" y1="236" x2="180" y2="272" stroke="#a3b0bf" stroke-width="2" marker-end="url(#flecha)"/>
-        <text x="190" y="262" class="svg-chico">la mesa avanza: muchas vueltas en espiral</text>
-        <text x="180" y="54" text-anchor="middle" class="svg-chico">haz en abanico delgado</text>
-
-        <line x1="360" y1="20" x2="360" y2="270" stroke="#2a3340" stroke-dasharray="4 6"/>
-
-        <text x="540" y="24" text-anchor="middle" class="svg-titulo">CBCT dental</text>
-        <polygon points="420,150 660,55 660,245" fill="url(#haz)"/>
-        <ellipse cx="540" cy="150" rx="52" ry="78" fill="#1c232c" stroke="#e8d393" stroke-width="2"/>
-        <rect x="408" y="138" width="16" height="24" rx="3" fill="#e6edf3"/>
-        <rect x="660" y="55" width="12" height="190" fill="#a3b0bf"/>
-        <text x="416" y="186" text-anchor="middle" class="svg-chico">fuente</text>
-        <text x="666" y="44" text-anchor="middle" class="svg-chico">panel plano</text>
-        <path d="M 470 236 A 95 95 0 0 0 610 236" fill="none" stroke="#a3b0bf" stroke-width="2" marker-end="url(#flecha)"/>
-        <text x="540" y="282" text-anchor="middle" class="svg-chico">una sola rotación: todo el volumen de una vez</text>
-        <text x="520" y="62" text-anchor="middle" class="svg-chico">haz en cono</text>
+        <text x="190" y="24" text-anchor="middle" class="svg-titulo">CT de hospital</text>
+        <text x="190" y="44" text-anchor="middle" class="svg-chico">haz en abanico: una rebanada a la vez</text>
+        <ellipse cx="190" cy="188" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
+        <ellipse cx="190" cy="270" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
+        <use href="#cabeza" x="110" y="66"/>
+        <polygon points="52,229 330,221 330,243" fill="url(#haz-ct)"/>
+        <ellipse cx="190" cy="229" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.6" stroke-dasharray="5 6" opacity=".75"/>
+        <path d="M 112 250 A 160 24 0 0 0 250 251" fill="none" stroke="#a3b0bf" stroke-width="2.2" marker-end="url(#giro)"/>
+        <rect x="30" y="221" width="22" height="16" rx="4" fill="#e6edf3"/>
+        <path d="M330 215 q 8 17 0 34" fill="none" stroke="#a3b0bf" stroke-width="7" stroke-linecap="round"/>
+        <text x="41" y="211" text-anchor="middle" class="svg-chico">fuente</text>
+        <text x="342" y="203" text-anchor="middle" class="svg-chico">detector</text>
+        <text x="190" y="324" text-anchor="middle" class="svg-chico">muchas vueltas mientras avanza</text>
+        <line x1="380" y1="20" x2="380" y2="320" stroke="#2a3340" stroke-dasharray="4 6"/>
+        <text x="570" y="24" text-anchor="middle" class="svg-titulo">CBCT dental</text>
+        <text x="570" y="44" text-anchor="middle" class="svg-chico">haz en cono: toda la cabeza a la vez</text>
+        <use href="#cabeza" x="490" y="66"/>
+        <polygon points="432,177 716,70 716,290" fill="url(#haz-cbct)"/>
+        <ellipse cx="570" cy="177" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.6" stroke-dasharray="5 6" opacity=".75"/>
+        <path d="M 492 198 A 160 24 0 0 0 630 199" fill="none" stroke="#a3b0bf" stroke-width="2.2" marker-end="url(#giro)"/>
+        <rect x="410" y="169" width="22" height="16" rx="4" fill="#e6edf3"/>
+        <rect x="716" y="70" width="10" height="220" rx="2" fill="#a3b0bf"/>
+        <text x="421" y="159" text-anchor="middle" class="svg-chico">fuente</text>
+        <text x="721" y="306" text-anchor="middle" class="svg-chico">panel plano</text>
+        <text x="570" y="324" text-anchor="middle" class="svg-chico">una sola vuelta</text>
       </svg>
     </figure>
-    <div class="tabla-scroll">
-      <table class="tabla-comparativa">
-        <thead><tr><th></th><th>CT médico</th><th>CBCT dental</th><th>Qué implica para el programa</th></tr></thead>
-        <tbody>
-          <tr><td>Vóxel</td><td>Más largo en z</td><td>Igual en los 3 ejes (0,1–0,5 mm)</td><td>Buen detalle para dientes en 3D</td></tr>
-          <tr><td>Dosis</td><td>Más alta</td><td>Más baja</td><td>—</td></tr>
-          <tr><td>Ruido</td><td>Bajo</td><td>Alto (radiación dispersa)</td><td>Hay que suavizar antes de extraer la superficie</td></tr>
-          <tr><td>Valores</td><td>Calibrados en Hounsfield</td><td><b>No calibrados</b>: cambian por equipo</td><td>Hay que normalizar cada estudio</td></tr>
-        </tbody>
-      </table>
+    <div class="rejilla-4 cbct-datos">
+      <div class="tarjeta"><h4>Vóxel</h4><p><span class="et">CT</span>más largo en altura</p><p><span class="et cbct">CBCT</span>cubito de 0,1–0,5 mm</p><p class="implica">Buen detalle de dientes y raíces en 3D</p></div>
+      <div class="tarjeta"><h4>Radiación</h4><p><span class="et">CT</span>más dosis</p><p><span class="et cbct">CBCT</span>menos dosis, más rápido</p><p class="implica">Por eso es el estándar en odontología</p></div>
+      <div class="tarjeta"><h4>Ruido</h4><p><span class="et">CT</span>bajo</p><p><span class="et cbct">CBCT</span>alto (radiación dispersa)</p><p class="implica">El programa suaviza antes de crear la malla</p></div>
+      <div class="tarjeta"><h4>Valores</h4><p><span class="et">CT</span>calibrados en Hounsfield</p><p><span class="et cbct">CBCT</span>cambian según el equipo</p><p class="implica">El programa normaliza cada estudio</p></div>
     </div>
   </div>
 </section>
