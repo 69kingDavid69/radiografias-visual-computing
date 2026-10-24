@@ -52,9 +52,11 @@ p { margin: 0 0 12px; }
 }
 .nav .marca { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .nav .marca img { width: 26px; height: 26px; }
-.nav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
+.nav ul { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
 .nav ul a { display: block; padding: 6px 12px; border-radius: 999px; color: var(--ink-2); font-size: 14px; white-space: nowrap; }
 .nav ul a:hover, .nav ul a.activo { background: var(--acento-suave); color: var(--acento); text-decoration: none; }
+.nav .github { display: flex; align-items: center; gap: 8px; flex: none; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-size: 14px; font-weight: 600; }
+.nav .github:hover { border-color: var(--acento); color: var(--acento); text-decoration: none; }
 
 /* ---------- Estructura ---------- */
 .contenedor { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
@@ -226,7 +228,10 @@ td .mejor { color: var(--acento); font-weight: 700; }
 .dataset .uso { color: var(--acento); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .dataset p { color: var(--ink-2); font-size: 14px; }
 .persona { display: flex; gap: 12px; align-items: center; }
-.persona .avatar { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--acento-suave); color: var(--acento); flex: none; }
+.persona .avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--line); background: var(--panel-2); flex: none; }
+a.persona { color: var(--ink); }
+a.persona:hover { border-color: var(--acento); text-decoration: none; }
+a.persona:hover .avatar { border-color: var(--acento); }
 .persona b { display: block; }
 .persona span { color: var(--ink-2); font-size: 13.5px; }
 .docs a.tarjeta { display: block; color: var(--ink); }
@@ -307,3 +312,5 @@ kbd { font: 600 12px var(--mono); background: var(--panel-2); border: 1px solid 
   .visor-portada { height: 300px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+@media (max-width: 700px) { .nav { gap: 12px; padding: 10px 16px; } .nav .github span { display: none; } }

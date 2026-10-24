@@ -10,7 +10,7 @@ los de la propuesta (Hounsfield → malla, iluminación, rendimiento, suavizado 
 de corte), y puede preguntarle a cualquier integrante. Las respuestas técnicas están
 en [preguntas-clave.md](preguntas-clave.md).
 
-**Guion de cada integrante** (qué dice, qué muestra, qué aprender y preguntas probables): https://69kingdavid69.github.io/radiografias-visual-computing/guion.html
+**Guion de cada integrante:** se reparte al equipo en PDF; no se publica.
 
 **Página web del proyecto:** https://69kingdavid69.github.io/radiografias-visual-computing/
 (código en [`web/`](../../web/README.md)). Muestra la teoría con la tomografía real y
@@ -22,7 +22,7 @@ modelos 3D que se pueden girar. Reemplaza las diapositivas de teoría.
 |---|---|---|
 | Cargar un **CBCT dental real** (muestra de Slicer, ToothFairy3 o DICOM) | `carga.py` — David | ✅ Hecho: `cargar_estudio` con SimpleITK, caché y normalización de escala (PR #4 y #7) |
 | Visor 2D con tres vistas y contraste | `visor_cortes.py`, `app_qt.py` — Juan | ✅ Hecho dentro de la app Qt, con botones de ventana por escala (PR #3 y #8) |
-| Vista 3D con presets de estructura | `render_3d.py`, `app_qt.py` — Emanuel + David | ✅ Dentro de la app Qt desde el 22/10 (PR #17), con barra de estructuras, vista de implante y dientes limitados a la arcada (PR #18). ⚠️ El panel de la app no tiene **barra de umbral libre** (solo botones); la barra está en la ventana aparte (`--modo 3d`). ⚠️ Al elegir "Dientes" la cámara no se reencuadra y el modelo queda pequeño |
+| Vista 3D con presets de estructura | `render_3d.py`, `app_qt.py` — Emanuel + David | ✅ Dentro de la app Qt desde el 22/10 (PR #17), con barra de estructuras, vista de implante y dientes limitados a la arcada (PR #18). Desde el 23/10 también barra de umbral libre, reencuadre, Phong, Taubin, plano de corte y contador de triángulos |
 | Presets hueso / dientes / esmalte / metal | `densidades.py` | ✅ En el código, con los valores de [densidades.md §2.1](densidades.md#21-para-la-muestra-de-3d-slicer-demo-del-2610--medidos) |
 | Plano de corte (pregunta 5) | `render_3d.py` — Emanuel | ⚠️ Falta en la aplicación. Se muestra en la **página web** (pestaña "Corte") |
 | Phong vs. plano y suavizado Taubin (preguntas 2 y 4) | `render_3d.py` — Emanuel | ⚠️ Falta en la aplicación. Se muestra en la **página web** (pestañas "Luz" y "Suavizado") |

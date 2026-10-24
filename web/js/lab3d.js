@@ -81,25 +81,52 @@ function material(color, extra = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Portada: hueso + metal girando solos.
+// Portada: los dientes sólidos dentro del hueso semitransparente, girando solos.
 // ---------------------------------------------------------------------------
 export async function iniciarPortada(contenedor) {
   const e = crearEscena(contenedor, { controles: false });
-  const [hueso, metal] = await Promise.all([cargarMalla("hueso"), cargarMalla("metal")]);
-  e.grupo.add(new THREE.Mesh(hueso, material(COLOR.hueso)));
-  e.grupo.add(new THREE.Mesh(metal, material(COLOR.metal, { shininess: 90, specular: 0xd0d6dc })));
-  encuadrar(e, hueso.boundingSphere, 0.78);
+  const [hueso, dientes, metal] = await Promise.all([cargarMalla("hueso"), cargarMalla("dientes"), cargarMalla("metal")]);
+  // El hueso, casi transparente, da el contexto; los dientes van sólidos: la idea del proyecto en una imagen.
+  e.grupo.add(new THREE.Mesh(hueso, material(COLOR.hueso, { transparent: true, opacity: 0.13, depthWrite: false })));
+  e.grupo.add(new THREE.Mesh(dientes, material(COLOR.esmalte, { shininess: 60 })));
+  // Del metal solo se dibuja lo que está a la altura de los dientes (los brackets).
+  const caja = dientes.boundingBox.clone().expandByScalar(2);
+  const brackets = metal.clone();
+  const p = brackets.attributes.position, punto = new THREE.Vector3();
+  const indices = [];
+  const idx = brackets.index.array;
+  for (let k = 0; k < idx.length; k += 3) {
+    punto.fromBufferAttribute(p, idx[k]);
+    if (caja.containsPoint(punto)) indices.push(idx[k], idx[k + 1], idx[k + 2]);
+  }
+  brackets.setIndex(indices);
+  e.grupo.add(new THREE.Mesh(brackets, material(COLOR.metal, { shininess: 90, specular: 0xd0d6dc })));
+  // Encuadre robusto: percentiles 2–98 % de los vértices, para que un fragmento suelto no aleje la cámara.
+  const pos = dientes.attributes.position, ejes = [[], [], []];
+  for (let k = 0; k < pos.count; k += 3) { ejes[0].push(pos.getX(k)); ejes[1].push(pos.getY(k)); ejes[2].push(pos.getZ(k)); }
+  const rango = ejes.map((v) => { v.sort((a, b) => a - b); return [v[Math.floor(v.length * 0.02)], v[Math.floor(v.length * 0.98)]]; });
+  const centro = new THREE.Vector3(...rango.map(([a, b]) => (a + b) / 2));
+  const esfera = { center: centro, radius: 0.5 * Math.hypot(...rango.map(([a, b]) => b - a)) };
+  e.grupo.position.copy(centro);
+  e.grupo.children.forEach((m) => m.position.sub(centro));
+  // Cámara de frente y 14° por encima, para que se vea la forma de U de la arcada.
+  const vertical = THREE.MathUtils.degToRad(e.camara.fov) / 2;
+  const horizontal = Math.atan(Math.tan(vertical) * e.camara.aspect);
+  const distancia = (1.05 * esfera.radius) / Math.sin(Math.min(vertical, horizontal));
+  const alto = THREE.MathUtils.degToRad(14);
+  e.camara.position.set(centro.x, centro.y - distancia * Math.cos(alto), centro.z + distancia * Math.sin(alto));
+  e.camara.near = esfera.radius / 50;
+  e.camara.far = esfera.radius * 20;
+  e.camara.updateProjectionMatrix();
+  e.camara.lookAt(centro);
   document.getElementById("cargando-portada").remove();
   const reducirMov = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let visible = true;
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(contenedor);
-  const centro = hueso.boundingSphere.center;
-  e.grupo.position.copy(centro);
-  e.grupo.children.forEach((m) => m.position.sub(centro));
   const bucle = () => {
     requestAnimationFrame(bucle);
     if (!visible) return;
-    if (!reducirMov) e.grupo.rotation.z += 0.004;
+    if (!reducirMov) e.grupo.rotation.z += 0.003;
     e.renderer.render(e.escena, e.camara);
   };
   bucle();

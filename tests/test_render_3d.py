@@ -144,3 +144,75 @@ def test_pulido_taubin_no_encoge_la_superficie():
     con = superficie_por_banda(v, (1.0, 1.0, 1.0), 1000, reduccion=1, pulido=20)
     ancho = lambda s: s.bounds[1] - s.bounds[0]
     assert ancho(con) == pytest.approx(ancho(sin), rel=0.03)
+
+
+# --- Opciones de visualización (preguntas 2 a 5 de la propuesta) -----------
+
+def test_cambiar_de_preset_reencuadra_la_camara():
+    r = _render_con(_estudio_slicer())
+    r.pl.camera.zoom(8)                       # el usuario se acercó mucho
+    lejos = r.pl.camera.distance
+    r.aplicar_preset("metal")
+    assert r.pl.camera.distance != pytest.approx(lejos), "la cámara no se reencuadró"
+    x0, x1 = _actor_bounds(r, "estructura")[:2]
+    assert r.pl.camera.focal_point[0] == pytest.approx((x0 + x1) / 2, abs=0.5)
+
+
+def test_phong_y_plano():
+    r = _render_con(_estudio_slicer())
+    assert r.pl.actors["estructura"].prop.interpolation.name.lower() == "phong"
+    r.set_phong(False)
+    assert r.pl.actors["estructura"].prop.interpolation.name.lower() == "flat"
+    r.aplicar_preset("metal")                 # lo nuevo respeta la opción
+    assert r.pl.actors["estructura"].prop.interpolation.name.lower() == "flat"
+
+
+def test_taubin_redibuja_la_misma_estructura():
+    r = _render_con(_estudio_slicer())
+    r.aplicar_preset("metal")
+    antes = r.pl.actors["estructura"].mapper.dataset.points.copy()
+    r.set_suavizar_malla(True)
+    assert r.preset_actual == "metal"
+    despues = r.pl.actors["estructura"].mapper.dataset.points
+    assert despues.shape == antes.shape
+    assert not np.allclose(despues, antes), "Taubin no movió ningún vértice"
+    # Taubin no encoge: el tamaño del bracket se conserva (±10 %)
+    tam = lambda p: p.max(axis=0) - p.min(axis=0)
+    assert tam(despues) == pytest.approx(tam(antes), rel=0.1)
+
+
+def test_plano_de_corte_se_aplica_y_se_quita():
+    r = _render_con(_estudio_slicer())
+    r.activar_corte("x")
+    mapper = r.pl.actors["estructura"].mapper
+    assert r.corte_activo and mapper.GetNumberOfClippingPlanes() == 1
+    r.aplicar_preset("metal")                 # también a lo que se dibuja después
+    assert r.pl.actors["estructura"].mapper.GetNumberOfClippingPlanes() == 1
+    r.desactivar_corte()
+    assert not r.corte_activo
+    assert r.pl.actors["estructura"].mapper.GetNumberOfClippingPlanes() == 0
+
+
+def test_medicion_cuenta_triangulos():
+    r = _render_con(_estudio_slicer())
+    r.aplicar_preset("metal")
+    medicion = r.ultima_medicion
+    assert medicion["triangulos"] == r.pl.actors["estructura"].mapper.dataset.n_cells > 0
+    assert medicion["ms"] >= 0
+    r.set_umbral(5000)                        # por encima de todo: no hay malla
+    assert r.ultima_medicion["triangulos"] == 0
+
+
+def test_reduccion_automatica_segun_el_tamano():
+    from src.render_3d import reduccion_para
+    assert reduccion_para((330, 360, 360)) == 2          # el Post: como siempre
+    assert reduccion_para((400, 512, 512)) == 3          # cabeza completa de STS
+    assert reduccion_para((20, 20, 40), minima=1) == 1   # volúmenes chicos: sin cambio
+
+
+def test_umbral_libre_usa_el_color_del_tejido():
+    from src.densidades import color_para
+    r = _render_con(_estudio_slicer())
+    r.set_umbral(2500)                                   # zona de metal
+    assert r._color_para_umbral(2500) == color_para("metal")
+    assert r._color_para_umbral(-5000) == "ivory"

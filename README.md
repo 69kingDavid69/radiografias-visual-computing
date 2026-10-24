@@ -72,9 +72,21 @@ archivo, o un `.dcm` para cargar toda su carpeta. Arriba se elige la vista **2D*
 **Dividida**:
 
 - **2D:** sliders de corte y de contraste; botones *Dientes / Hueso* y *Tejido blando*.
-- **3D:** barra *Estructura 3D* con *Hueso, Dientes, Esmalte, Esmalte sin metal, Metal,
-  Implante* y *Blandos: denso / graso (exp.)* (este último con corte sagital, para no
-  mostrar la cara). Se rota con el mouse y se acerca con la rueda.
+- **2D:** debajo de los cortes, un **histograma de densidades** con la ventana de contraste
+  y el inicio de cada estructura marcados; un clic en él centra el contraste en esa densidad.
+- **3D:** barra *Estructura 3D* con *Hueso, Dientes, Esmalte, Sin metal, Metal, Implante* y
+  *Blandos (exp.)* (este último con corte sagital, para no mostrar la cara). Se rota con el
+  mouse y se acerca con la rueda. Debajo, un control por cada pregunta de la propuesta:
+
+  | Control | Qué hace | Pregunta |
+  |---|---|---|
+  | Umbral | Densidad libre; la malla se recalcula al soltar la barra | 1. Densidad → malla |
+  | Phong | Sombreado suave o plano (se ven los triángulos) | 2. Iluminación |
+  | N triáng. · ms | Tamaño de la malla y tiempo del cálculo | 3. Rendimiento |
+  | Taubin | Suaviza el escalonado sin encoger la malla | 4. Suavizado |
+  | Corte | Plano de corte que se arrastra; el interior se ve en rojo | 5. Clipping plane |
+
+  Con estudios grandes el 3D baja la resolución solo (nivel de detalle automático).
 
 ### Línea de comandos (sin interfaz)
 
@@ -149,9 +161,10 @@ archivo (DICOM, GIPL, NIfTI…)
 python -m pytest -q
 ```
 
-52 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
+68 pruebas: carga y orden de ejes, caché DICOM, espaciado entre cortes, normalización y
 capas de relleno, presets y colores (incluida la sincronía con la página web), región de la
-arcada, suavizado con sigma en mm y el motor 3D sin ventana.
+arcada, suavizado con sigma en mm, el motor 3D sin ventana (Phong, Taubin, plano de corte,
+contador) y una prueba de humo de la aplicación Qt sin pantalla.
 
 ## Estructura
 
