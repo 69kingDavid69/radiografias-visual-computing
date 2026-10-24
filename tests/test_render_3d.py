@@ -216,3 +216,69 @@ def test_umbral_libre_usa_el_color_del_tejido():
     r.set_umbral(2500)                                   # zona de metal
     assert r._color_para_umbral(2500) == color_para("metal")
     assert r._color_para_umbral(-5000) == "ivory"
+
+
+# --- Vista de fractura, relieve y orientación ---------------------------------------
+
+def _estudio_fractura(orientacion="LPS"):
+    from src.carga import Estudio
+    v = np.full((40, 60, 80), -1000, dtype=np.float32)
+    v[2:38, 5:55, 5:65] = 0                 # cuerpo de tejido (0 HU): 18 × 25 × 30 mm
+    v[10:30, 20:40, 20:40] = 1000           # hueso
+    v[12:18, 22:28, 42:48] = 1000           # fragmento desprendido a 1 mm del hueso, dentro del cuerpo
+    v[2:38, 5:55, 70:73] = 500              # soporte: placa fina separada del cuerpo por aire
+    metadatos = {"escala": "hounsfield"}
+    if orientacion:
+        metadatos["orientacion"] = orientacion
+    return Estudio(id="f", volumen=v, espaciado=ESPACIADO, metadatos=metadatos)
+
+
+def test_fractura_quita_el_soporte_y_conserva_el_fragmento():
+    r = _render_con(_estudio_fractura())
+    r.aplicar_fractura()
+    x1 = _actor_bounds(r, "estructura")[1]
+    assert r.preset_actual == "fractura" and r.relieve
+    assert x1 < 30, f"la superficie llega a x={x1:.1f} mm: incluyó el soporte (x = 35 mm)"
+    assert x1 > 22, "faltó el fragmento desprendido (llega a x = 24 mm)"
+
+
+def test_fractura_va_sin_suavizar_y_a_resolucion_completa():
+    r = _render_con(_estudio_fractura())
+    r.reduccion = 4                            # aunque el estudio use otra reducción en los presets
+    r.aplicar_fractura()
+    caja = _actor_bounds(r, "estructura")
+    assert caja[1] - caja[0] == pytest.approx(14.0, abs=0.6)   # x de 9,75 a 23,75 mm: bordes en su lugar, sin encoger
+
+
+def test_fractura_se_redibuja_igual_al_cambiar_una_opcion():
+    r = _render_con(_estudio_fractura())
+    r.aplicar_fractura()
+    r.set_suavizar_malla(True)
+    assert r.preset_actual == "fractura"
+
+
+def test_fractura_sin_escala_explica_el_problema():
+    r = _render_con((_dos_bloques(), ESPACIADO))
+    with pytest.raises(KeyError, match="hueso"):
+        r.aplicar_fractura()
+
+
+def test_relieve_se_enciende_y_se_apaga():
+    r = _render_con(_estudio_fractura())
+    r.set_relieve(True)
+    assert r.relieve
+    r.set_relieve(False)
+    assert not r.relieve
+
+
+def test_cubo_de_orientacion_solo_si_se_conoce_la_orientacion():
+    assert _render_con(_estudio_fractura("LPS"))._marcador is not None
+    assert _render_con(_estudio_fractura(None))._marcador is None
+    assert _render_con((_dos_bloques(), ESPACIADO))._marcador is None
+
+
+def test_camara_frontal_mira_desde_el_lado_anterior():
+    lps = _render_con(_estudio_fractura("LPS")).pl.camera      # y crece hacia atrás: el frente está en y mínimo
+    las = _render_con(_estudio_fractura("LAS")).pl.camera      # y crece hacia adelante: el frente está en y máximo
+    assert lps.position[1] < lps.focal_point[1]
+    assert las.position[1] > las.focal_point[1]

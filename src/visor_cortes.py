@@ -5,12 +5,15 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.widgets import Slider
 
+from src.orientacion import etiquetas_corte, texto
+
 # Colores distintivos para identificar los tres planos anatómicos y sus líneas guía
 COLOR_AXIAL = "#e74c3c"    # Rojo para corte Axial (Z)
 COLOR_CORONAL = "#2ecc71"  # Verde para corte Coronal (Y)
 COLOR_SAGITAL = "#3498db"  # Azul para corte Sagital (X)
 COLOR_CENTRO = "#9b59b6"   # Púrpura para Centro (Window Level)
 COLOR_ANCHO = "#e67e22"    # Naranja para Ancho (Window Width)
+COLOR_ORIENTACION = "#46C2D9"   # Letras de orientación del paciente en el borde de cada corte
 
 
 def aplicar_ventana(corte: np.ndarray, centro: float, ancho: float) -> np.ndarray:
@@ -48,6 +51,7 @@ class VisorCortes:
         # Datos del volumen y geometría
         self.volumen: np.ndarray | None = None
         self.espaciado: Tuple[float, float, float] | None = None
+        self.orientacion: str | None = None     # "LPS", "RAS"… (ver src/orientacion.py)
         self.dz: float = 1.0
         self.dy: float = 1.0
         self.dx: float = 1.0
@@ -101,9 +105,11 @@ class VisorCortes:
         if aspect is not None:
             self.aspect = aspect
 
+        self.orientacion = None
         if hasattr(estudio, "volumen") and hasattr(estudio, "espaciado"):
             self.volumen = np.asarray(estudio.volumen, dtype=np.float32)
             self.espaciado = tuple(estudio.espaciado)
+            self.orientacion = getattr(estudio, "metadatos", {}).get("orientacion")
         elif isinstance(estudio, (tuple, list)) and len(estudio) >= 2:
             self.volumen = np.asarray(estudio[0], dtype=np.float32)
             self.espaciado = tuple(estudio[1])
@@ -232,6 +238,8 @@ class VisorCortes:
         self.ax_sagital.set_aspect(aspect_sagital)
         self.ax_sagital.axis("off")
         self._actualizar_titulo_sagital()
+
+        self._dibujar_orientacion()
 
         # 3. Líneas guía de intersección (crosshairs)
         # Vista Axial: línea horizontal marca corte Y (Coronal), vertical marca corte X (Sagital)
@@ -443,6 +451,23 @@ class VisorCortes:
 
         self._actualizar_franja_ventana()
         self.figura.canvas.draw_idle()
+
+    def _dibujar_orientacion(self):
+        """Letras en el borde de cada corte: qué lado del paciente queda hacia ese lado de la imagen.
+
+        Sin ellas no hay forma de saber si la izquierda de la pantalla es la derecha del paciente
+        (en radiología lo es: se mira al paciente de frente). Sin orientación conocida no se dibujan.
+        """
+        if not self.orientacion:
+            return
+        for plano, eje in (("axial", self.ax_axial), ("coronal", self.ax_coronal), ("sagital", self.ax_sagital)):
+            izquierda, derecha, arriba, abajo = (texto(l) for l in etiquetas_corte(self.orientacion, plano))
+            estilo = dict(transform=eje.transAxes, color=COLOR_ORIENTACION, fontsize=11, fontweight="bold",
+                          bbox=dict(boxstyle="round,pad=0.15", facecolor="#0E131A", edgecolor="none", alpha=0.55))
+            eje.text(0.015, 0.5, izquierda, ha="left", va="center", **estilo)
+            eje.text(0.985, 0.5, derecha, ha="right", va="center", **estilo)
+            eje.text(0.5, 0.985, arriba, ha="center", va="top", **estilo)
+            eje.text(0.5, 0.015, abajo, ha="center", va="bottom", **estilo)
 
     def _actualizar_titulo_axial(self):
         if self.ax_axial is not None:

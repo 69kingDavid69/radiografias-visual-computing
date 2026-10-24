@@ -91,3 +91,20 @@ def test_cargar_un_segundo_estudio(ventana, tmp_path):
     from PySide6.QtWidgets import QPushButton
     barra = ventana.barra_presets_3d.parentWidget()
     assert len(barra.findChildren(QPushButton)) == len(ventana.grupo_presets_3d.buttons())
+
+
+def test_boton_de_fractura_y_relieve(ventana):
+    import numpy as np
+    from src.carga import Estudio
+    volumen = np.zeros((40, 50, 50), dtype=np.float32)
+    volumen[10:30, 15:35, 15:35] = 1000
+    estudio = Estudio(id="hueso", volumen=volumen, espaciado=(0.4, 0.4, 0.4),
+                      metadatos={"escala": "hounsfield", "orientacion": "LPS"})
+    ventana._mostrar_en_3d(estudio)
+    botones = {b.text(): b for b in ventana.grupo_presets_3d.buttons()}
+    assert "Fractura" in botones, list(botones)
+    botones["Fractura"].click()
+    assert ventana.render3d.preset_actual == "fractura"
+    assert ventana.btn_relieve.isChecked() and ventana.render3d.relieve
+    ventana.btn_relieve.setChecked(False)
+    assert not ventana.render3d.relieve

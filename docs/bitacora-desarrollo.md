@@ -757,6 +757,120 @@ Lo que encontró y se arregló:
 
 ---
 
+## 2026-10-24 — Figura del clasificador para la exposición
+
+`scripts/figura_clasificador.py` compara en dos cortes de un paciente la máscara del experto, el método de la app y el clasificador. El clasificador se entrena **sin ese paciente**, como en la evaluación dejando uno fuera. Se eligió ROI_L_011 (Dice 0,58 → 0,88). Figura en [results/clasificador_comparacion.png](../results/clasificador_comparacion.png).
+
+- **Corte por las raíces** (donde la app más se equivoca): la app marca **toda la mandíbula** como diente. El clasificador casi no confunde hueso, pero **se le escapan partes de las raíces**, lejos del esmalte: es su punto débil.
+- **Corte con más diente** (coronas): el clasificador acierta casi todo. La app deja huecos dentro de los dientes y marca hueso.
+- Se muestran **los dos cortes** para que la figura sea representativa y no solo favorable al modelo.
+
+`entrenar_clasificador.py` separa el cálculo de características (`volumen_y_caracteristicas`) para que la figura use exactamente el mismo código. Se agregó una diapositiva "Del umbral al modelo" a la presentación de David (0,64 → 0,86, figura y guion de 20 s).
+
+---
+
+## 2026-10-24 — Prueba con un caso de fractura (CQ500-CT-397)
+
+**Qué:** se probó si la reconstrucción por umbral deja ver huesos rotos. Como no hay CBCT
+públicas con fractura etiquetada, se usó un TAC de cráneo por trauma de CQ500 (licencia
+CC BY-NC-SA 4.0): el paciente CQ500-CT-397, que 2 de 3 radiólogos leyeron con *fractura
+de calota*, *otra fractura* y hemorragia intraparenquimatosa derecha. Se bajó solo ese
+paciente (95 MB) a `data/raw/cq500/` (fuera de git) y se separó en tres series; la útil es
+`CQ500CT397_hueso` (kernel de hueso, 272 × 512 × 512, vóxel 0,63 × 0,47 × 0,47 mm, cubre
+172 mm, de la mandíbula a la coronilla). La anonimización está bien: `PatientName` y
+`PatientID` son el código del dataset; fecha de nacimiento, sexo y fecha del estudio vacíos.
+
+**Resultado:** **sí se ve.** Con hueso ≥ 300 HU, resolución completa y sin suavizar
+(6 millones de triángulos en 0,8 s), aparece una línea de fractura que cruza el hueso
+frontal en diagonal y baja hasta el reborde de la órbita, del lado derecho del paciente
+(el mismo lado de la hemorragia que reportaron). En los cortes axiales 166–190 se ve como
+una línea oscura que atraviesa la cortical y se va corriendo hacia afuera a medida que se
+sube, que es lo que hace una línea oblicua vista corte a corte.
+
+**Decisiones y hallazgos:**
+- *El soporte de cabeza del tomógrafo tapaba el cráneo.* Es un arco de más de 300 HU que
+  rodea la cabeza. Se quitó quedándose con el componente conectado más grande (2,9 millones
+  de vóxeles; el soporte es el segundo, con 1,0 millón). La app todavía no lo hace.
+- *El suavizado puede borrar la fractura.* Una línea de fractura mide 1–2 vóxeles; el
+  preset normal (reducción 2, σ 0,5 mm) promedia justo a esa escala. Para buscar fracturas
+  conviene resolución completa y sin suavizar.
+- *No todo trazo es fractura.* Cerca de la órbita y del pómulo hay suturas normales (por
+  ejemplo la frontocigomática) que también se ven como líneas. Lo que delata la fractura
+  del frontal es que cruza la frente en un sitio donde un adulto no tiene suturas.
+- Se declaró `CQ500CT397_hueso` como `hounsfield` en `data/estudios.json`: es un TAC
+  calibrado y no debe normalizarse.
+
+**Límite honesto:** es un TAC médico, no una CBCT dental, y los radiólogos de CQ500 no dicen
+dónde está la fractura; la ubicación es lectura nuestra de la imagen, coherente con su
+reporte, no un diagnóstico.
+
+---
+
+## 2026-10-24 — Vista de fractura, relieve y orientación; prueba con pelvis, costillas y cráneo
+
+**Qué:** tres mejoras para interpretar mejor la imagen, pedidas por David después de la prueba
+con el cráneo fracturado, y una prueba con fracturas de otras partes del cuerpo.
+
+1. **Orientación del paciente.** `src/orientacion.py` convierte los cosenos directores del archivo
+   (o el `ImageOrientationPatient` del DICOM) en una cadena como `LPS` (hacia dónde *crece* cada eje).
+   La carga la guarda en `metadatos["orientacion"]`; en GIPL, que no guarda la orientación, se
+   supone `LPS` y se marca `orientacion_supuesta`. El visor 2D dibuja *D / Iz / Ant / Post / Sup / Inf* en el
+   borde de cada corte (convención radiológica: la derecha del paciente queda a la izquierda de la
+   imagen) y el 3D un cubo de orientación con la cara anterior en turquesa. Efecto colateral útil: la
+   cámara "de frente" mira desde el lado anterior también en estudios con el eje y invertido (los
+   NIfTI de STS son `LAS`).
+2. **Relieve (SSAO).** `Render3D.set_relieve` activa la oclusión ambiental en espacio de pantalla,
+   con radio de 2 mm. Medido sobre el cráneo: el efecto es **modesto**; a resolución completa la
+   fractura ya se ve por la geometría y el relieve solo la oscurece un poco. Queda como interruptor
+   (*Relieve*), encendido por la vista de fractura. En modo sin ventana el SSAO tarda un cuadro en
+   aplicarse (hay que renderizar dos veces antes de capturar).
+3. **Vista "Fractura".** `Render3D.aplicar_fractura`: umbral de 300 HU (con 150 el borde del hueso
+   queda difuso), resolución completa (hasta 130 M de vóxeles), sin suavizar, solo hueso del
+   paciente y relieve.
+
+**Decisión que costó dos intentos — qué es "hueso del paciente".** El soporte de cabeza y la camilla
+superan los 300 HU y por densidad no se distinguen del hueso (mediana 392 HU contra 1188 del cráneo,
+pero en la pelvis el hueso esponjoso también anda en 400–700). Primer intento: quedarse con la pieza
+conectada más grande y los fragmentos chicos pegados a ella. Funcionó con el cráneo y **falló con la
+pelvis**: en una fractura conminuta los fragmentos son piezas grandes y separadas, y la regla
+descartaba el 57 % del hueso marcado por los expertos y 6 de 9 fragmentos. Se midió antes de dar por
+buena la regla gracias a las etiquetas de PENGWIN. Regla final (`region.hueso_del_paciente`): hueso
+**dentro del cuerpo** (rejilla gruesa de 2 mm, sin aire, pulmones rellenos, apertura morfológica de
+8 mm que borra lo delgado, pieza mayor), sin trozos de menos de 100 vóxeles y sin piezas que nunca
+bajan de 6 mm bajo la piel (una correa pegada a la frente pasaba la apertura; cualquier fragmento de
+hueso tiene piel y grasa encima). No se asume que la pieza más grande es el paciente.
+
+**Resultados** (`results/fracturas/resumen.csv`, un montaje por estudio en la misma carpeta):
+
+| Estudio | Parte | Hueso ≥ 300 HU conservado | Marcado por el experto conservado | Fragmentos perdidos | Triángulos |
+|---|---|---|---|---|---|
+| PENGWIN 024 | pelvis, 9 fragmentos | 99,1 % | 99,3 % | 0 de 9 | 1,8 M |
+| PENGWIN 049 | pelvis, 8 fragmentos | 83,2 % | 99,6 % | 0 de 8 | 2,4 M |
+| RibFrac 34 | costillas | 65,9 % | 99,9 % | 0 de 15 | 3,6 M |
+| RibFrac 127 | costillas | 81,7 % | 99,8 % | 0 de 26 | 4,5 M |
+| RibFrac 283 | costillas | 58,5 % | 99,7 % | 0 de 25 | 3,7 M |
+| CQ500-CT-397 | cráneo | 72,7 % | (sin etiquetas) | — | 3,7 M |
+
+Lo que se quita (18–41 % en tórax y pelvis) es camilla, cables y objetos fuera del cuerpo; lo que los
+expertos marcaron como fractura queda casi todo (≥ 99,3 %). A simple vista: en la pelvis se ven la
+sínfisis púbica abierta y los fragmentos desplazados; en las costillas, los escalones donde el hueso
+se desplazó; en el cráneo, la línea del frontal. Tiempos: 6–24 s por estudio y 3 GB de RAM como
+máximo (Mac de 8 GB: sin margen para dos a la vez).
+
+**Límites honestos:** (a) "conservado" mide que el filtro no borre hueso marcado, **no** que la
+imagen permita diagnosticar: sin un radiólogo no sabemos si cada escalón es fractura. (b) El umbral de
+300 HU solo está validado en Hounsfield; en la escala "slicer" se usa el del preset "hueso" sin
+medir. (c) En tórax la vista dibuja 3–4,5 M de triángulos: pesada para el panel 3D de un Mac de 8 GB;
+no se midieron los cuadros por segundo dentro de la app. (d) Fracturas sin desplazamiento y huesos
+finos (ala ilíaca) salen con huecos por el efecto de volumen parcial, que no son fracturas.
+
+**Datos:** PENGWIN Task 1 (pelvis, CC BY 4.0, espejo `MedOtter/PENGWIN_Task1`, casos 024 y 049) y
+RibFrac 2020 (costillas, CC BY-NC 4.0, espejo `MedOtter/RibFrac2020`, casos 34, 127 y 283), en
+`data/raw/fracturas/` (fuera de git). Los casos se escogieron por variedad de fragmentos y de tipos de
+fractura según los metadatos de cada dataset.
+
+---
+
 ## Próximas entradas
 - [x] `calcular_dz` implementado y los 13 tests en verde.
 - [x] PR #3 fusionado.
@@ -779,4 +893,6 @@ Lo que encontró y se arregló:
 - [ ] Plan B de la exposición: capturas y video de 60 s de la demo (Emanuel + Juan).
 - [ ] Barra de umbral libre dentro de la app (hoy solo en `--modo 3d`).
 - [ ] Separar diente de hueso alveolar: el clasificador por vóxel sube el Dice de 0,64 a 0,86 (23/10). Falta integrarlo a la app y probar una U-Net 3D en Colab.
+- [x] Vista "fractura" en la app (sin suavizar, resolución completa, sin camilla), relieve y orientación (24/10).
+- [ ] Medir los cuadros por segundo de la vista de fractura en la app (3–4,5 M de triángulos) y probar fracturas de columna y de extremidades.
 - [ ] Documento final detallado del proyecto a partir de esta bitácora.
