@@ -215,6 +215,48 @@ QPushButton.btn-preset:checked {
 }
 
 /* ==========================================================================
+   BOTONES DE ESTRUCTURAS 3D (NEÓN MORADO CYBERPUNK)
+   ========================================================================== */
+QPushButton.btn-estructura-3d,
+QPushButton[class="btn-estructura-3d"],
+QWidget#BarraEstructuras3D QPushButton {
+    background-color: #1a1d24;
+    color: #f3f4f6;
+    border: 1.5px solid #a855f7;
+    border-radius: 10px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton.btn-estructura-3d:hover,
+QPushButton[class="btn-estructura-3d"]:hover,
+QWidget#BarraEstructuras3D QPushButton:hover {
+    background-color: #a855f7;
+    color: #0a0c10;
+    font-weight: bold;
+    border: 1.5px solid #d8b4fe;
+}
+
+QPushButton.btn-estructura-3d:checked,
+QPushButton[class="btn-estructura-3d"]:checked,
+QWidget#BarraEstructuras3D QPushButton:checked {
+    background-color: #a855f7;
+    color: #0a0c10;
+    font-weight: bold;
+    border: 1.5px solid #d8b4fe;
+}
+
+QPushButton.btn-estructura-3d:pressed,
+QPushButton[class="btn-estructura-3d"]:pressed,
+QWidget#BarraEstructuras3D QPushButton:pressed {
+    background-color: #9333ea;
+    color: #0a0c10;
+    font-weight: bold;
+    border: 1.5px solid #d8b4fe;
+}
+
+/* ==========================================================================
    SLIDERS ORGÁNICOS TIPO PÍLDORA (MODERN HEALTHCARE UI)
    ========================================================================== */
 QSlider:horizontal {
@@ -560,6 +602,7 @@ class MainWindow(QMainWindow):
         # La barra de estructuras va en un área con desplazamiento horizontal: en la
         # vista dividida el panel es angosto y los botones se cortaban.
         barra = QWidget()
+        barra.setObjectName("BarraEstructuras3D")
         # Sin hoja de estilos propia: una local tapaba el estilo "checked" de los botones
         barra.setAutoFillBackground(False)
         self.barra_presets_3d = QHBoxLayout(barra)
@@ -958,7 +1001,7 @@ class MainWindow(QMainWindow):
             opciones.append(("fractura", "Fractura"))
         for nombre, texto in opciones:
             boton = QPushButton(texto)
-            boton.setProperty("class", "btn-preset")
+            boton.setProperty("class", "btn-estructura-3d")
             boton.setCheckable(True)
             boton.setCursor(Qt.CursorShape.PointingHandCursor)
             if nombre == "blandos":
@@ -998,26 +1041,19 @@ class MainWindow(QMainWindow):
         self.statusBar.showMessage(f"Estructura 3D: {texto}")
 
     def _abrir_dialogo_cargar_dicom(self):
-        """Abre un diálogo para elegir un archivo de volumen o un corte DICOM.
+        """Abre un diálogo para seleccionar la carpeta del estudio DICOM completo."""
+        dir_inicial = self.ruta_dicom if os.path.isdir(self.ruta_dicom) else os.path.dirname(self.ruta_dicom)
+        if not dir_inicial or not os.path.isdir(dir_inicial):
+            dir_inicial = "data/raw" if os.path.isdir("data/raw") else os.getcwd()
 
-        Si se elige un .dcm se carga la carpeta completa de esa serie.
-        """
-        dir_inicial = os.path.dirname(self.ruta_dicom) or "data/raw"
-        if not os.path.isdir(dir_inicial):
-            dir_inicial = os.getcwd()
-
-        patrones = " ".join(f"*{ext}" for ext in EXTENSIONES_VOLUMEN)
-        ruta, _ = QFileDialog.getOpenFileName(
+        carpeta = QFileDialog.getExistingDirectory(
             self,
-            "Seleccionar estudio (volumen o un corte de la serie DICOM)",
+            "Seleccionar Carpeta de Estudio DICOM",
             dir_inicial,
-            f"Estudios ({patrones} *.dcm);;Volúmenes ({patrones});;Serie DICOM (*.dcm);;Todos (*)",
         )
 
-        if ruta:
-            if ruta.lower().endswith(".dcm"):
-                ruta = str(Path(ruta).parent)
-            self.cargar_nuevo_estudio(ruta)
+        if carpeta:
+            self.cargar_nuevo_estudio(carpeta)
 
     def cargar_nuevo_estudio(self, ruta_carpeta: str):
         """Carga un estudio (carpeta DICOM o archivo de volumen) y actualiza el visor."""
