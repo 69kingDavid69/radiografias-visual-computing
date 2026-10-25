@@ -17,16 +17,15 @@
   <a class="marca" href="#inicio"><img src="img/icono.png" alt=""><span>Explorador CBCT</span></a>
   <ul>
     <li><a href="#problema">1 · Problema</a></li>
-    <li><a href="#cbct">2 · CBCT</a></li>
-    <li><a href="#datos">3 · Datos</a></li>
-    <li><a href="#programa">4 · Programa</a></li>
-    <li><a href="#voxel">5 · Cortes</a></li>
-    <li><a href="#densidad">6 · Densidad</a></li>
-    <li><a href="#umbral">7 · Umbral</a></li>
-    <li><a href="#malla">8 · Malla</a></li>
-    <li><a href="#modelo">9 · 3D</a></li>
-    <li><a href="#hallazgos">10 · Resultados</a></li>
-    <li><a href="#fracturas">11 · Fracturas</a></li>
+    <li><a href="#datos">2 · Datos</a></li>
+    <li><a href="#programa">3 · Programa</a></li>
+    <li><a href="#pipeline">4 · Proceso</a></li>
+    <li><a href="#densidad">5 · Densidad</a></li>
+    <li><a href="#modelo">6 · Modelo 3D</a></li>
+    <li><a href="#hallazgos">7 · Resultados</a></li>
+    <li><a href="#clasificador">8 · Clasificador</a></li>
+    <li><a href="#fracturas">9 · Fractura</a></li>
+    <li><a href="#limites">10 · Límites</a></li>
     <li><a href="#equipo">Equipo</a></li>
   </ul>
   <a class="github" href="https://github.com/69kingDavid69/radiografias-visual-computing" aria-label="Repositorio en GitHub">
@@ -40,17 +39,18 @@
     <div>
       <div class="eyebrow">Visual Computing · UNAL Medellín · 2026-2</div>
       <h1>De la tomografía dental al <span>modelo 3D</span></h1>
-      <p class="lead">Una tomografía dental (CBCT) es un <b>cubo de densidades</b> hecho de cientos de cortes. El programa lo
-        recorre en 2D y lo convierte en un modelo 3D que se gira, se ilumina y se corta, dejando ver solo el hueso, los
-        dientes, el esmalte o el metal.</p>
+      <p class="lead">Una tomografía dental registra la cabeza del paciente como un volumen: cientos de cortes apilados.
+        Nuestro programa recorre ese volumen corte por corte y construye un modelo 3D que muestra solo el hueso,
+        los dientes o el metal.</p>
       <blockquote class="cita-pregunta">
         <small>Pregunta de investigación</small>
         ¿De qué manera podemos desarrollar una interfaz gráfica que transforme los datos volumétricos de una
         tomografía dental (CBCT) en un modelo 3D interactivo, aislando estructuras específicas según su densidad?
       </blockquote>
     </div>
-    <div class="visor-portada" id="visor-portada" aria-label="Modelo 3D del cráneo de la tomografía girando">
+    <div class="visor-portada" id="visor-portada" aria-label="Molar ilustrativo en 3D, construido con marching cubes">
       <div class="cargando" id="cargando-portada">Cargando modelo…</div>
+      <span class="nota-portada">Molar ilustrativo · malla construida con marching cubes</span>
     </div>
   </div>
 </header>
@@ -62,36 +62,29 @@
   <div class="contenedor">
     <div class="eyebrow">1 · El problema</div>
     <h2 class="titulo-seccion">Una radiografía aplana todo; una tomografía lo separa</h2>
-    <p class="intro">Las dos imágenes salen de la <b>misma</b> tomografía. La radiografía es un plano de <b>píxeles</b>: todo
-      queda encimado. La tomografía es un cubo de <b>vóxeles</b>: cada punto tiene su propia densidad y se puede ver por dentro.</p>
+    <p class="intro">Una <b>radiografía</b> es una imagen plana: todo lo que atraviesa el rayo queda superpuesto. Una
+      <b>tomografía</b> es un volumen 3D formado por <b>vóxeles</b>, pequeños cubos que guardan cada uno la densidad de un
+      punto del cuerpo. Por eso se puede recorrer por dentro, capa por capa.</p>
     <div class="comparacion">
       <figure class="tarjeta figura">
         <img src="img/radiografia_pixeles.png" alt="Radiografía lateral simulada con una ampliación de los dientes donde se ve la cuadrícula de píxeles" width="720" height="720">
         <figcaption><b>2D · píxeles.</b> Cada píxel suma todo lo que atravesó el rayo: los dientes de un lado tapan los del otro.</figcaption>
       </figure>
       <figure class="tarjeta figura">
-        <img src="img/tomografia_voxeles.png" alt="La tomografía como un cubo sólido con una esquina cortada: por dentro se ven los cortes sagital, coronal y axial, y una ampliación de un diente muestra los vóxeles como cubitos" width="720" height="720">
-        <figcaption><b>3D · vóxeles.</b> 330 cortes apilados forman un cubo de cubitos de 0,5 mm; cada uno guarda una densidad.</figcaption>
+        <img src="img/tomografia_voxeles.png" alt="La tomografía como un cubo sólido con una esquina cortada: por dentro se ven los cortes sagital, coronal y axial, y una ampliación de un diente muestra los vóxeles como vóxeles" width="720" height="720">
+        <figcaption><b>3D · vóxeles.</b> 330 cortes apilados forman un volumen de vóxeles de 0,5 mm de lado; cada uno guarda una densidad.</figcaption>
       </figure>
       <div class="explicacion">
-        <h3>Lo que hace el programa</h3>
+        <h3>Qué hace el programa con ese volumen</h3>
         <ol>
-          <li><b>Navegación multicorte:</b> recorre el cubo capa por capa en tres planos.</li>
-          <li><b>Reconstrucción 3D por densidad:</b> deja solo una estructura y la convierte en un modelo que se gira, se ilumina y se corta.</li>
+          <li><b>Lo recorre corte por corte</b> en tres planos (vista 2D).</li>
+          <li><b>Aísla una estructura</b> por su densidad y la convierte en un modelo 3D que se puede girar, iluminar y cortar.</li>
         </ol>
-        <p>Se apoya en tres ideas de computación gráfica: <b>vóxeles</b>, <b>extracción de superficies</b> e <b>iluminación</b>.</p>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- ============ 2. CBCT ============ -->
-<section id="cbct">
-  <div class="contenedor">
-    <div class="eyebrow">2 · Cómo se toma</div>
-    <h2 class="titulo-seccion">El CBCT: un cono de rayos X y una sola vuelta</h2>
-    <p class="intro">El <b>CBCT</b> (tomografía de haz cónico) gira una sola vez alrededor de la cabeza. Usa menos radiación
-      que un CT de hospital, pero tiene más ruido y sus números de densidad <b>no están calibrados</b>.</p>
+    <h3 class="subtitulo">Cómo se toma una tomografía dental (CBCT)</h3>
+    <p class="intro" style="margin-bottom:16px"><b>CBCT</b> significa <i>tomografía computarizada de haz cónico</i>: es la
+      tomografía que se usa en odontología. Se diferencia de la de hospital (CT) en la forma del haz de rayos X.</p>
     <figure class="tarjeta ilustracion">
       <svg viewBox="0 0 760 340" role="img" aria-label="CT de hospital: la fuente gira muchas veces alrededor de la cabeza con un haz delgado en abanico. CBCT dental: una sola vuelta con un haz en cono que cubre toda la cabeza y un panel plano">
         <defs>
@@ -99,28 +92,33 @@
           <linearGradient id="haz-cbct" x1="0" x2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity=".5"/><stop offset="1" stop-color="#38bdf8" stop-opacity=".1"/></linearGradient>
           <marker id="giro" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#a3b0bf"/></marker>
           <g id="cabeza">
-            <path d="M72 2 C 118 -4 154 28 154 72 C 154 106 148 128 134 150 C 127 161 125 172 127 188 L 129 222 L 66 222 L 64 202 C 54 202 45 198 41 190 L 39 182 C 35 180 34 175 37 171 L 34 165 C 31 161 32 157 36 155 L 33 150 C 28 148 28 144 32 142 L 17 136 C 12 134 13 129 18 127 L 31 110 C 31 101 28 95 29 88 C 29 58 42 8 72 2 Z" fill="#1c232c" stroke="#6f7d8c" stroke-width="1.6" stroke-linejoin="round"/>
-            <path d="M108 92 C 120 86 128 96 123 108 C 120 116 112 117 108 112" fill="none" stroke="#6f7d8c" stroke-width="1.6"/>
-            <path d="M44 162 L 66 162" stroke="#f0e1b7" stroke-width="4.5" stroke-linecap="round"/>
+            <g transform="scale(0.92)">
+              <path d="M112 8 C 162 8 196 44 196 98 C 196 132 184 152 166 168 C 156 177 152 188 152 202 L 152 240 L 86 240 L 86 214 C 70 214 58 211 51 205 C 45 200 43 194 44 189 C 45 185 45 182 43 179 C 40 175 40 171 42 168 C 44 165 44 162 42 159 C 40 157 38 156 34 155 C 26 154 18 151 15 147 C 13 143 15 139 20 136 C 28 127 34 118 34 110 C 34 102 30 96 30 88 C 30 40 66 8 112 8 Z" fill="url(#piel)" stroke="#7d8b99" stroke-width="1.8" stroke-linejoin="round"/>
+              <g fill="#f0e1b7" opacity=".9">
+                <rect x="52" y="160" width="5" height="6.5" rx="1.8"/><rect x="58.5" y="159.5" width="5" height="7" rx="1.8"/><rect x="65" y="159.5" width="5" height="7" rx="1.8"/><rect x="71.5" y="160" width="5" height="6.5" rx="1.8"/><rect x="78" y="160.8" width="5" height="5.8" rx="1.8"/>
+                <rect x="53" y="168" width="5" height="6" rx="1.8"/><rect x="59.5" y="168" width="5" height="6.5" rx="1.8"/><rect x="66" y="168" width="5" height="6.5" rx="1.8"/><rect x="72.5" y="168" width="5" height="6" rx="1.8"/><rect x="79" y="168" width="5" height="5.4" rx="1.8"/>
+              </g>
+            </g>
           </g>
+          <linearGradient id="piel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232c37"/><stop offset="1" stop-color="#1a2129"/></linearGradient>
         </defs>
         <text x="190" y="24" text-anchor="middle" class="svg-titulo">CT de hospital</text>
         <text x="190" y="44" text-anchor="middle" class="svg-chico">haz en abanico: una rebanada a la vez</text>
-        <ellipse cx="190" cy="188" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
-        <ellipse cx="190" cy="270" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
-        <use href="#cabeza" x="110" y="66"/>
-        <polygon points="52,229 330,221 330,243" fill="url(#haz-ct)"/>
-        <ellipse cx="190" cy="229" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.6" stroke-dasharray="5 6" opacity=".75"/>
-        <path d="M 112 250 A 160 24 0 0 0 250 251" fill="none" stroke="#a3b0bf" stroke-width="2.2" marker-end="url(#giro)"/>
-        <rect x="30" y="221" width="22" height="16" rx="4" fill="#e6edf3"/>
-        <path d="M330 215 q 8 17 0 34" fill="none" stroke="#a3b0bf" stroke-width="7" stroke-linecap="round"/>
-        <text x="41" y="211" text-anchor="middle" class="svg-chico">fuente</text>
-        <text x="342" y="203" text-anchor="middle" class="svg-chico">detector</text>
+        <ellipse cx="190" cy="172" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
+        <ellipse cx="190" cy="254" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.2" stroke-dasharray="4 6" opacity=".35"/>
+        <use href="#cabeza" x="87" y="58"/>
+        <polygon points="52,213 330,205 330,227" fill="url(#haz-ct)"/>
+        <ellipse cx="190" cy="213" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.6" stroke-dasharray="5 6" opacity=".75"/>
+        <path d="M 112 234 A 160 24 0 0 0 250 235" fill="none" stroke="#a3b0bf" stroke-width="2.2" marker-end="url(#giro)"/>
+        <rect x="30" y="205" width="22" height="16" rx="4" fill="#e6edf3"/>
+        <path d="M330 199 q 8 17 0 34" fill="none" stroke="#a3b0bf" stroke-width="7" stroke-linecap="round"/>
+        <text x="41" y="195" text-anchor="middle" class="svg-chico">fuente</text>
+        <text x="342" y="187" text-anchor="middle" class="svg-chico">detector</text>
         <text x="190" y="324" text-anchor="middle" class="svg-chico">muchas vueltas mientras avanza</text>
         <line x1="380" y1="20" x2="380" y2="320" stroke="#2a3340" stroke-dasharray="4 6"/>
         <text x="570" y="24" text-anchor="middle" class="svg-titulo">CBCT dental</text>
         <text x="570" y="44" text-anchor="middle" class="svg-chico">haz en cono: toda la cabeza a la vez</text>
-        <use href="#cabeza" x="490" y="66"/>
+        <use href="#cabeza" x="467" y="58"/>
         <polygon points="432,177 716,70 716,290" fill="url(#haz-cbct)"/>
         <ellipse cx="570" cy="177" rx="160" ry="24" fill="none" stroke="#a3b0bf" stroke-width="1.6" stroke-dasharray="5 6" opacity=".75"/>
         <path d="M 492 198 A 160 24 0 0 0 630 199" fill="none" stroke="#a3b0bf" stroke-width="2.2" marker-end="url(#giro)"/>
@@ -131,83 +129,137 @@
         <text x="570" y="324" text-anchor="middle" class="svg-chico">una sola vuelta</text>
       </svg>
     </figure>
+    <p class="intro" style="margin:12px 0 0">El CBCT da <b>una sola vuelta</b> con un cono de rayos X: es rápido y usa poca
+      radiación. Pero cada vóxel guarda un número de densidad que <b>no está calibrado</b>: en un CT de hospital esos
+      números siguen la escala <b>Hounsfield (HU)</b>, donde el agua vale 0 y el aire −1000; en el CBCT cambian de un
+      equipo a otro.</p>
     <div class="rejilla-4 cbct-datos">
-      <div class="tarjeta"><h4>Vóxel</h4><p><span class="et">CT</span>más largo en altura</p><p><span class="et cbct">CBCT</span>cubito de 0,1–0,5 mm</p><p class="implica">Buen detalle de dientes y raíces en 3D</p></div>
-      <div class="tarjeta"><h4>Radiación</h4><p><span class="et">CT</span>más dosis</p><p><span class="et cbct">CBCT</span>menos dosis, más rápido</p><p class="implica">Por eso es el estándar en odontología</p></div>
-      <div class="tarjeta"><h4>Ruido</h4><p><span class="et">CT</span>bajo</p><p><span class="et cbct">CBCT</span>alto (radiación dispersa)</p><p class="implica">El programa suaviza antes de crear la malla</p></div>
+      <div class="tarjeta"><h4>Vóxel</h4><p><span class="et">CT</span>suele ser más alto que ancho</p><p><span class="et cbct">CBCT</span>cúbico, de 0,1 a 0,5 mm</p><p class="implica">Buen detalle de dientes y raíces en 3D</p></div>
+      <div class="tarjeta"><h4>Radiación</h4><p><span class="et">CT</span>dosis mayor</p><p><span class="et cbct">CBCT</span>dosis menor, toma más rápida</p><p class="implica">Por eso es el estándar en odontología</p></div>
+      <div class="tarjeta"><h4>Ruido</h4><p><span class="et">CT</span>bajo</p><p><span class="et cbct">CBCT</span>alto, por la radiación dispersa</p><p class="implica">El programa suaviza la superficie</p></div>
       <div class="tarjeta"><h4>Valores</h4><p><span class="et">CT</span>calibrados en Hounsfield</p><p><span class="et cbct">CBCT</span>cambian según el equipo</p><p class="implica">El programa normaliza cada estudio</p></div>
     </div>
   </div>
 </section>
 
-<!-- ============ 3. DATOS ============ -->
+<!-- ============ 2. DATOS ============ -->
 <section id="datos">
   <div class="contenedor">
-    <div class="eyebrow">3 · Los datos</div>
-    <h2 class="titulo-seccion">Qué tomografías usamos y cómo vienen</h2>
+    <div class="eyebrow">2 · Los datos</div>
+    <h2 class="titulo-seccion">Tomografías públicas y anónimas</h2>
     <p class="intro">Tomografías <b>públicas</b> y <b>anonimizadas</b>, con el tamaño del vóxel en mm.
       Para los dientes se revisaron nueve conjuntos y se usan dos: la <b>muestra de 3D Slicer</b> y <b>STS-3D-Tooth</b>.
       Para probar huesos rotos se suman cuatro conjuntos médicos de otras partes del cuerpo (ver la
-      <a href="#fracturas">sección 11</a>).</p>
+      <a href="#fracturas">sección 9</a>).</p>
     <div class="rejilla-3">
-      <div class="tarjeta dataset"><h4>Muestra CBCT de 3D Slicer</h4><div class="uso">Desarrollo y esta página</div><p>360×360×330 vóxeles de 0,5 mm, con brackets. Dos estudios del mismo paciente, antes y después de una cirugía.</p></div>
-      <div class="tarjeta dataset"><h4>STS-3D-Tooth</h4><div class="uso">Calibración</div><p>Tomografías con cada diente marcado por expertos. Con 11 pacientes se midió qué umbral separa mejor los dientes.</p></div>
-      <div class="tarjeta dataset"><h4>Descartados</h4><div class="uso">Y por qué</div><p>PhysioNet: acceso restringido. CTooth: sin descarga verificable. STS "Integrity": el tamaño del vóxel no es el real.</p></div>
+      <div class="tarjeta dataset"><div class="uso">Desarrollo y página</div><h4>Muestra CBCT de 3D Slicer</h4><p>Un paciente con brackets, antes y después de una cirugía. 360 × 360 × 330 vóxeles de 0,5 mm.</p></div>
+      <div class="tarjeta dataset"><div class="uso">Calibración</div><h4>STS-3D-Tooth</h4><p>11 pacientes con cada diente marcado por expertos. Con ellos medimos el umbral real de los dientes.</p></div>
+      <div class="tarjeta dataset"><div class="uso">Prueba de fracturas</div><h4>TAC de hospital</h4><p>9 estudios de cráneo, pelvis, costillas y columna. Solo para comprobar que el programa distingue bien el hueso.</p></div>
     </div>
     <div class="rejilla-2" style="margin-top:20px">
       <figure class="tarjeta ilustracion" style="margin:0">
-        <svg viewBox="0 0 600 290" role="img" aria-label="Una serie DICOM: un archivo por corte; la cabecera de cada uno dice su altura, el tamaño del vóxel y cómo pasar el valor a densidad">
+        <svg viewBox="0 0 600 340" role="img" aria-label="Una serie DICOM: un archivo por corte. La cabecera de cada archivo dice a qué altura está el corte, cuánto mide cada vóxel, cómo pasar el valor guardado a densidad, y debe venir sin datos del paciente">
           <defs>
             <linearGradient id="placa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b3644"/><stop offset="1" stop-color="#18202a"/></linearGradient>
             <marker id="f4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#a3b0bf"/></marker>
           </defs>
           <!-- pila de cortes, del de atrás al de adelante -->
-          <g>
+          <g transform="translate(0,22)">
             <g transform="translate(0,34)"><polygon points="20,74 180,74 230,34 70,34" fill="url(#placa)" stroke="#38bdf8" stroke-opacity=".5" stroke-width="1.4"/><ellipse cx="125" cy="54" rx="48" ry="12" fill="#56616e" opacity=".7"/></g>
             <g transform="translate(0,72)"><polygon points="20,74 180,74 230,34 70,34" fill="url(#placa)" stroke="#38bdf8" stroke-opacity=".7" stroke-width="1.4"/><ellipse cx="125" cy="54" rx="50" ry="12.5" fill="#5f6b78" opacity=".75"/></g>
             <g transform="translate(0,110)"><polygon points="20,74 180,74 230,34 70,34" fill="url(#placa)" stroke="#38bdf8" stroke-opacity=".85" stroke-width="1.4"/><ellipse cx="125" cy="54" rx="52" ry="13" fill="#6a7683" opacity=".8"/></g>
             <g transform="translate(0,148)"><polygon points="20,74 180,74 230,34 70,34" fill="url(#placa)" stroke="#38bdf8" stroke-width="1.6"/><ellipse cx="125" cy="54" rx="53" ry="13.5" fill="#76828f" opacity=".85"/><path d="M98 57 q27 -12 54 0" fill="none" stroke="#f6eed5" stroke-width="2.4" stroke-linecap="round"/></g>
+            <g class="svg-chico" text-anchor="start">
+              <text x="240" y="92">z = 83,5 mm</text>
+              <text x="240" y="130">z = 83,0 mm</text>
+              <text x="240" y="168">z = 82,5 mm</text>
+              <text x="240" y="206">z = 82,0 mm</text>
+            </g>
+            <line x1="318" y1="78" x2="318" y2="214" stroke="#a3b0bf" stroke-width="1.6" marker-end="url(#f4)" marker-start="url(#f4)"/>
+            <text x="240" y="62" class="svg-chico" style="fill:#e6edf3">altura (z)</text>
           </g>
-          <g class="svg-chico" text-anchor="start">
-            <text x="240" y="92">z = 83,5 mm</text>
-            <text x="240" y="130">z = 83,0 mm</text>
-            <text x="240" y="168">z = 82,5 mm</text>
-            <text x="240" y="206">z = 82,0 mm</text>
-          </g>
-          <line x1="318" y1="78" x2="318" y2="214" stroke="#a3b0bf" stroke-width="1.6" marker-end="url(#f4)" marker-start="url(#f4)"/>
-          <text x="125" y="262" text-anchor="middle" class="svg-chico">un archivo .dcm por corte, apilados por altura</text>
-          <!-- cabecera -->
-          <g transform="translate(338,34)">
-            <rect width="252" height="216" rx="12" fill="#161b22" stroke="#2a3340"/>
-            <text x="18" y="30" class="svg-titulo" style="font-size:14.5px">Cabecera de cada corte</text>
-            <text x="18" y="64" class="svg-mono" style="font-size:12.5px">ImagePositionPatient</text><text x="18" y="82" class="svg-chico">altura del corte → orden</text>
-            <text x="18" y="110" class="svg-mono" style="font-size:12.5px">PixelSpacing</text><text x="18" y="128" class="svg-chico">tamaño del vóxel en mm</text>
-            <text x="18" y="156" class="svg-mono" style="font-size:12.5px">RescaleSlope/Intercept</text><text x="18" y="174" class="svg-chico">valor guardado → densidad</text>
-            <text x="18" y="198" class="svg-mono" style="font-size:12.5px;fill:#e5484d">PatientName · PatientID</text><text x="196" y="198" class="svg-chico" style="font-size:11.5px">vacíos</text>
+          <text x="125" y="300" text-anchor="middle" class="svg-chico">un archivo .dcm por corte</text>
+          <!-- cabecera: primero qué significa, debajo el nombre técnico -->
+          <g transform="translate(338,12)">
+            <rect width="254" height="316" rx="12" fill="#161b22" stroke="#2a3340"/>
+            <text x="18" y="30" class="svg-titulo" style="font-size:14.5px">Qué dice cada archivo</text>
+            <text x="18" y="64" class="svg-titulo" style="font-size:13.5px">A qué altura está el corte</text>
+            <text x="18" y="82" class="svg-chico">sirve para ordenar la pila</text>
+            <text x="18" y="98" class="svg-mono" style="font-size:10.5px;fill:#6f7d8c">ImagePositionPatient</text>
+            <text x="18" y="128" class="svg-titulo" style="font-size:13.5px">Cuánto mide cada vóxel</text>
+            <text x="18" y="146" class="svg-chico">en milímetros, para no deformar</text>
+            <text x="18" y="162" class="svg-mono" style="font-size:10.5px;fill:#6f7d8c">PixelSpacing · SliceThickness</text>
+            <text x="18" y="192" class="svg-titulo" style="font-size:13.5px">Cómo pasar a densidad</text>
+            <text x="18" y="210" class="svg-chico">valor × pendiente + desplazamiento</text>
+            <text x="18" y="226" class="svg-mono" style="font-size:10.5px;fill:#6f7d8c">RescaleSlope · RescaleIntercept</text>
+            <text x="18" y="256" class="svg-titulo" style="font-size:13.5px;fill:#e5484d">Datos del paciente</text>
+            <text x="18" y="274" class="svg-chico">deben venir vacíos (anónimo)</text>
+            <text x="18" y="290" class="svg-mono" style="font-size:10.5px;fill:#6f7d8c">PatientName · PatientID</text>
           </g>
         </svg>
       </figure>
       <div class="explicacion">
         <h3>Del archivo al volumen</h3>
         <ul>
-          <li><b>DICOM</b>, el formato de los equipos: un archivo por corte, con una cabecera de datos y la imagen.</li>
-          <li>Los cortes se <b>ordenan por altura</b> y se apilan en un cubo <code>(z, y, x)</code>.</li>
-          <li>El número guardado se pasa a densidad: <code>valor × pendiente + intercepto</code>.</li>
-          <li>Sin el <b>tamaño del vóxel</b> el 3D sale estirado.</li>
-          <li><b>Privacidad:</b> los estudios nunca se suben al repositorio, y un script revisa que la cabecera venga anónima.</li>
+          <li><b>DICOM</b> es el formato de los equipos médicos: un archivo por corte.</li>
+          <li>Los cortes se <b>ordenan por altura</b> y se apilan en un volumen.</li>
+          <li>El número guardado se convierte en <b>densidad</b>.</li>
+          <li>Sin el <b>tamaño del vóxel</b>, el modelo sale estirado.</li>
+          <li><b>Privacidad:</b> ningún estudio se sube al repositorio, y un script revisa que no traiga el nombre del paciente.</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 4. EL PROGRAMA ============ -->
+<!-- ============ 3. EL PROGRAMA ============ -->
 <section id="programa">
   <div class="contenedor">
-    <div class="eyebrow">4 · Del archivo al programa</div>
-    <h2 class="titulo-seccion">El programa: una ventana con 2D y 3D</h2>
-    <p class="intro">Una aplicación de escritorio en Python (PySide6 + PyVista/VTK). Cada módulo hace una sola cosa y tiene
-      sus pruebas automáticas.</p>
+    <div class="eyebrow">3 · El programa</div>
+    <h2 class="titulo-seccion">Una ventana con 2D y 3D</h2>
+    <p class="intro">Un programa de escritorio en Python (PySide6 + PyVista/VTK): a la izquierda, los cortes en 2D;
+      a la derecha, el modelo en 3D. Las dos vistas trabajan sobre el mismo estudio.</p>
+    <div class="galeria">
+      <figure class="tarjeta">
+        <img src="img/app_dividida.jpg" alt="Vista dividida del programa: tres cortes y el histograma de densidades a la izquierda, y el cráneo semitransparente con el metal a la derecha" loading="lazy" width="1280" height="720">
+        <figcaption><b>Vista dividida.</b> Los tres cortes con su histograma de densidades y, a la derecha, la vista de implante: hueso casi transparente y metal sólido.</figcaption>
+      </figure>
+      <figure class="tarjeta">
+        <img src="img/app_2d.jpg" alt="Vista 2D del programa con los tres cortes, el histograma de densidades y los controles de contraste" loading="lazy" width="1280" height="720">
+        <figcaption><b>Vista 2D.</b> Cortes axial, coronal y sagital. Se navega con deslizadores o con un clic, y se ajusta el contraste sobre el histograma.</figcaption>
+      </figure>
+      <figure class="tarjeta">
+        <img src="img/app_3d.jpg" alt="Vista 3D del programa: dientes cortados por un plano, con el interior en rojo, y los controles de umbral, Phong, Taubin y corte" loading="lazy" width="1280" height="783">
+        <figcaption><b>Vista 3D.</b> Estructuras predefinidas, umbral libre, sombreado Phong, suavizado Taubin, contador de triángulos y plano de corte.</figcaption>
+      </figure>
+    </div>
+    <div class="rejilla-2" style="margin-top:20px">
+      <div class="explicacion">
+        <h3>Decisiones de diseño</h3>
+        <ul>
+          <li><b>Módulos independientes</b> (<code>Estudio</code>, <code>VisorCortes</code>, <code>Render3D</code>): cada uno tiene una tarea y una interfaz fija, así que se desarrollaron por separado y se unieron en una sola ventana.</li>
+          <li><b>Una sola escala de densidad:</b> todo estudio se normaliza al cargarse, de modo que los mismos umbrales sirven para cualquier archivo (sección 4).</li>
+          <li><b>Nivel de detalle automático:</b> con estudios grandes, el 3D reduce la resolución para seguir respondiendo con fluidez.</li>
+          <li><b>91 pruebas automáticas</b> comprueban la carga, la escala, las densidades, el motor 3D y la ventana.</li>
+        </ul>
+      </div>
+      <div class="tarjeta">
+        <h3 style="font-size:17px;margin-bottom:8px">Abrir el programa</h3>
+        <pre class="comando"><code>pip install -r requirements.txt
+python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
+        <p class="nota" style="margin-top:10px">Los estudios van en <code>data/raw/</code> y nunca se suben al repositorio. Los modelos del laboratorio 3D de esta página salen de <code>scripts/generar_web.py</code>, con los mismos rangos del programa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. PIPELINE ============ -->
+<section id="pipeline">
+  <div class="contenedor">
+    <div class="eyebrow">4 · Del archivo al modelo</div>
+    <h2 class="titulo-seccion">Del archivo del equipo al modelo 3D</h2>
+    <p class="intro">El archivo pasa por una cadena de pasos y termina en un <b>Estudio</b>: el volumen con sus medidas reales.
+      Ese mismo Estudio alimenta las dos vistas.</p>
     <figure class="tarjeta ilustracion">
       <svg viewBox="0 0 920 250" role="img" aria-label="Flujo del programa: archivo, carga, escala y Estudio; de ahí el visor 2D y el render 3D, que usa los rangos de densidad y la arcada">
         <defs><marker id="f2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#38bdf8"/></marker></defs>
@@ -225,188 +277,78 @@
         </g>
       </svg>
     </figure>
-    <div class="galeria">
-      <figure class="tarjeta">
-        <img src="img/app_dividida.jpg" alt="Vista dividida de la aplicación: tres cortes y el histograma de densidades a la izquierda, y el cráneo semitransparente con el metal a la derecha" loading="lazy" width="1280" height="720">
-        <figcaption><b>Vista dividida.</b> Los tres cortes con su histograma de densidades y, a la derecha, la vista de implante: hueso casi transparente y metal sólido.</figcaption>
-      </figure>
-      <figure class="tarjeta">
-        <img src="img/app_2d.jpg" alt="Vista 2D de la aplicación con los tres cortes, el histograma de densidades y los controles de contraste" loading="lazy" width="1280" height="720">
-        <figcaption><b>Vista 2D.</b> Arranca en los dientes. Deslizadores, clic para navegar, contraste e histograma.</figcaption>
-      </figure>
-      <figure class="tarjeta">
-        <img src="img/app_3d.jpg" alt="Vista 3D de la aplicación: dientes cortados por un plano, con el interior en rojo, y los controles de umbral, Phong, Taubin y corte" loading="lazy" width="1280" height="783">
-        <figcaption><b>Vista 3D.</b> Estructuras, umbral libre, sombreado Phong, suavizado Taubin, contador de triángulos y plano de corte.</figcaption>
-      </figure>
-    </div>
-    <div class="rejilla-2" style="margin-top:20px">
-      <div class="explicacion">
-        <h3>Decisiones de diseño</h3>
-        <ul>
-          <li><b>Módulos con contratos</b> (<code>Estudio</code>, <code>VisorCortes</code>, <code>Render3D</code>): se desarrollaron por separado y se unieron en una ventana.</li>
-          <li><b>Normalización por picos:</b> cualquier estudio queda en la misma escala (ver <a href="#densidad">densidad</a>).</li>
-          <li><b>Nivel de detalle automático:</b> con estudios grandes el 3D baja la resolución para seguir fluido.</li>
-        </ul>
-      </div>
-      <div class="tarjeta">
-        <h3 style="font-size:16px;margin-bottom:8px">Abrir la aplicación</h3>
-        <pre class="comando"><code>pip install -r requirements.txt
-python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
-        <p class="nota" style="margin-top:10px">Los estudios van en <code>data/raw/</code> y no se versionan. Los modelos de esta página salen de <code>scripts/generar_web.py</code>, con los mismos rangos de la aplicación.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ 5. CORTES / VÓXELES ============ -->
-<section id="voxel">
-  <div class="contenedor">
-    <div class="eyebrow">5 · Navegación multicorte</div>
-    <h2 class="titulo-seccion">Un cubo de vóxeles, visto en tres planos</h2>
-    <p class="intro">Cada vóxel guarda cuánto frena los rayos X el material que hay ahí: su <b>densidad</b>. Pasa el ratón para
-      leer un vóxel; haz clic para mover los otros dos cortes.</p>
-
-    <div class="tarjeta">
-      <div class="chips" role="group" aria-label="Contraste">
-        <button class="chip" data-ventana="completo" aria-pressed="true">Rango completo</button>
-        <button class="chip" data-ventana="dientes_hueso" aria-pressed="false">Dientes y hueso</button>
-        <button class="chip" data-ventana="tejido_blando" aria-pressed="false">Tejido blando</button>
-        <button class="chip" id="btn-voxeles" aria-pressed="true">Ver los vóxeles</button>
-      </div>
-      <div class="planos" id="planos">
-        <div class="plano" data-plano="axial">
-          <span class="etiqueta" style="color:var(--axial)">AXIAL · desde arriba</span>
-          <canvas width="180" height="180"></canvas>
-          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--axial)" aria-label="Corte axial"></div></div>
-        </div>
-        <div class="plano" data-plano="coronal">
-          <span class="etiqueta" style="color:var(--coronal)">CORONAL · de frente</span>
-          <canvas width="180" height="180"></canvas>
-          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--coronal)" aria-label="Corte coronal"></div></div>
-        </div>
-        <div class="plano" data-plano="sagital">
-          <span class="etiqueta" style="color:var(--sagital)">SAGITAL · de lado</span>
-          <canvas width="180" height="180"></canvas>
-          <div class="pie"><div class="control"><label>Corte <output></output></label><input type="range" style="--color-barra:var(--sagital)" aria-label="Corte sagital"></div></div>
-        </div>
-      </div>
-      <div class="rejilla-2" style="margin-top:16px">
-        <div>
-          <div class="control"><label>Centro de la ventana (nivel) <output id="out-centro"></output></label><input type="range" id="centro" min="0" max="3000" step="10"></div>
-          <div class="control"><label>Ancho de la ventana <output id="out-ancho"></output></label><input type="range" id="ancho" min="50" max="4000" step="10"></div>
-          <div class="lectura" id="lectura-voxel">Pasa el ratón por un corte para leer un vóxel.</div>
-        </div>
-        <div class="explicacion">
-          <p><strong>Ventana / nivel.</strong> La pantalla muestra ~256 grises y el volumen tiene miles de valores. La
-            ventana elige qué rango se ve; lo de abajo sale negro y lo de arriba, blanco.</p>
-          <div class="formula">mínimo = centro − ancho/2 · máximo = centro + ancho/2</div>
-          <p class="nota">Cada plano se dibuja con la proporción real de su vóxel, para que no salga estirado. Esta vista usa
-            1 de cada 2 vóxeles para que la página sea liviana.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ 6. DENSIDAD ============ -->
-<section id="densidad">
-  <div class="contenedor">
-    <div class="eyebrow">6 · Densidad</div>
-    <h2 class="titulo-seccion">Hounsfield, anatomía y por qué hay que normalizar</h2>
-    <p class="intro">Cada tejido tiene un rango de densidad. En ese orden se pueden "pelar" las capas del volumen.</p>
-
-    <figure class="tarjeta ilustracion">
-      <svg viewBox="0 0 760 230" role="img" aria-label="Escala Hounsfield de −1000 a 3000 con los rangos de cada tejido dental">
-        <defs><linearGradient id="gris" x1="0" x2="1"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>
-        <text x="380" y="22" text-anchor="middle" class="svg-titulo">Escala Hounsfield (CT calibrado) y rangos de la literatura</text>
-        <rect x="40" y="100" width="680" height="22" rx="4" fill="url(#gris)" stroke="#2a3340"/>
-        <!-- x = 40 + (HU + 1000) * 0.17 -->
-        <g class="svg-chico">
-          <line x1="40" x2="40" y1="122" y2="132" stroke="#6f7d8c"/><text x="40" y="146" text-anchor="middle">−1000</text>
-          <line x1="210" x2="210" y1="122" y2="132" stroke="#6f7d8c"/><text x="210" y="146" text-anchor="middle">0</text>
-          <line x1="380" x2="380" y1="122" y2="132" stroke="#6f7d8c"/><text x="380" y="146" text-anchor="middle">1000</text>
-          <line x1="550" x2="550" y1="122" y2="132" stroke="#6f7d8c"/><text x="550" y="146" text-anchor="middle">2000</text>
-          <line x1="720" x2="720" y1="122" y2="132" stroke="#6f7d8c"/><text x="720" y="146" text-anchor="middle">3000+</text>
-        </g>
-        <g class="rango-tejido">
-          <line x1="40" x2="40" y1="72" y2="100"/><text x="44" y="68">aire −1000</text>
-          <line x1="210" x2="210" y1="50" y2="100"/><text x="200" y="46" text-anchor="end">agua 0</text>
-          <rect x="235" y="82" width="114" height="8" rx="4" fill="#e8d393"/><text x="236" y="76">hueso trabecular 150–850</text>
-          <rect x="435" y="52" width="97" height="8" rx="4" fill="#f0e1b7"/><text x="435" y="46">dentina 1323–1899</text>
-          <rect x="542" y="82" width="152" height="8" rx="4" fill="#f6eed5"/><text x="546" y="76">esmalte 2071–2955</text>
-        </g>
-        <g class="rango-tejido">
-          <rect x="193" y="160" width="24" height="8" rx="4" fill="#BB454F"/><text x="160" y="186">tejido blando ≈ 40</text>
-          <rect x="241" y="160" width="40" height="8" rx="4" fill="#d94a3d"/><text x="241" y="204">pulpa 184–420</text>
-          <rect x="354" y="160" width="140" height="8" rx="4" fill="#e9d497"/><text x="370" y="186">hueso cortical &gt; 850</text>
-          <rect x="690" y="160" width="30" height="8" rx="4" fill="#c9d1d9"/><text x="716" y="186" text-anchor="end">metal &gt; 3000</text>
-        </g>
-        <text x="380" y="224" text-anchor="middle" class="svg-chico">Fuentes: Reshetnikov et al. 2024 (dientes), clasificación de Misch (hueso). Los rangos se cruzan: cortical denso ≈ dentina.</text>
-      </svg>
-    </figure>
-
-    <div class="rejilla-2" style="margin-top:20px">
-      <figure class="tarjeta ilustracion" style="margin:0">
-        <svg viewBox="0 0 520 400" role="img" aria-label="Corte de un diente en el hueso: esmalte, dentina, pulpa, ligamento, hueso cortical y trabecular">
-          <defs>
-            <pattern id="trabecular" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#6b6046"/><circle cx="4" cy="4" r="2.6" fill="#3d3627"/><circle cx="11" cy="10" r="2" fill="#3d3627"/></pattern>
-          </defs>
-          <path d="M40 170 Q 210 150 380 170 L380 200 L40 200 Z" fill="#BB454F" opacity=".75"/>
-          <rect x="40" y="190" width="340" height="190" rx="6" fill="url(#trabecular)"/>
-          <rect x="40" y="190" width="340" height="190" rx="6" fill="none" stroke="#e9d497" stroke-width="9"/>
-          <path d="M180 196 C 176 260, 190 330, 214 362 C 226 366, 236 352, 240 320 L 262 320 C 268 352, 280 366, 294 362 C 318 330, 336 260, 334 196 Z" fill="#0e1116"/>
-          <path d="M170 200 C 160 160, 162 112, 182 92 C 196 80, 214 96, 226 90 C 240 82, 262 82, 278 90 C 292 96, 312 80, 330 92 C 350 112, 352 160, 342 200 Z" fill="#f6eed5"/>
-          <path d="M186 198 C 180 160, 184 124, 198 110 C 214 104, 236 104, 256 106 C 278 104, 300 104, 314 110 C 328 124, 332 160, 326 198 C 324 260, 312 326, 292 356 C 280 360, 272 348, 268 318 L 246 318 C 242 348, 234 360, 220 356 C 200 326, 188 260, 186 198 Z" fill="#f0e1b7"/>
-          <path d="M226 150 C 234 136, 278 136, 286 150 L 284 200 C 282 250, 276 300, 270 336 L 266 336 C 262 300, 262 250, 258 214 L 254 214 C 250 250, 250 300, 246 336 L 242 336 C 236 300, 230 250, 228 200 Z" fill="#d94a3d"/>
-          <g class="etiqueta-anat">
-            <line x1="330" y1="100" x2="400" y2="60"/><text x="404" y="56">Esmalte</text><text x="404" y="72" class="svg-chico">el más denso</text>
-            <line x1="318" y1="170" x2="400" y2="120"/><text x="404" y="118">Dentina</text>
-            <line x1="270" y1="170" x2="400" y2="170"/><text x="404" y="168">Pulpa</text><text x="404" y="184" class="svg-chico">tejido blando</text>
-            <line x1="334" y1="250" x2="400" y2="232"/><text x="404" y="230">Ligamento</text>
-            <text x="60" y="160" class="svg-chico" style="fill:#e6edf3">Encía</text>
-            <text x="60" y="226" style="fill:#0e1116;font-weight:700">Hueso cortical</text>
-            <text x="60" y="330" style="fill:#e6edf3;font-weight:700">Hueso trabecular</text>
-          </g>
-        </svg>
-      </figure>
-      <div class="explicacion">
-        <h3>El orden que aprovecha el umbral</h3>
-        <p class="formula" style="font-size:12.5px">aire &lt; tejido blando ≈ pulpa &lt; hueso &lt; dentina &lt; esmalte &lt; metal</p>
-        <ul>
-          <li>El <b>esmalte</b> es el tejido más mineralizado del cuerpo; la <b>pulpa</b> es blanda, por eso en el modelo aparece como un hueco.</li>
-          <li><b>Se cruzan:</b> el hueso cortical denso vale lo mismo que la dentina. Ningún umbral los separa, así que el programa limita los dientes a la zona de la boca.</li>
-        </ul>
-        <h3 style="margin-top:16px">Hounsfield (HU)</h3>
-        <div class="formula">HU = 1000 × (μ − μ<sub>agua</sub>) / (μ<sub>agua</sub> − μ<sub>aire</sub>)</div>
-        <p>En un CT calibrado el agua vale 0 y el aire −1000. En el CBCT no: los números cambian con el equipo y la posición.</p>
-      </div>
-    </div>
-
     <div class="rejilla-normalizacion" style="margin-top:20px">
       <div class="explicacion">
-        <h3>El CBCT no está en Hounsfield</h3>
-        <p>En la muestra el aire vale <b>0</b>, y en otro estudio del <i>mismo paciente</i>, <b>−2239</b>. Con números así, un
-          umbral fijo aislaría cosas distintas.</p>
-        <p><b>Solución</b> (<code>escala.py</code>): buscar los picos de <b>aire</b> y <b>tejido blando</b> en el histograma y
-          llevarlos a 0 y 410 con una recta, como calibrar un termómetro con dos puntos fijos.</p>
+        <h3>El paso clave: la escala</h3>
+        <p>El CBCT no está calibrado: en dos estudios del mismo paciente el aire valía <b>0</b> y <b>−2239</b>.</p>
+        <p>El programa busca dos cosas que toda tomografía tiene, <b>el aire y el tejido blando</b>, y las lleva siempre
+          a los mismos números, como calibrar un termómetro con dos puntos fijos.</p>
       </div>
       <figure class="tarjeta ilustracion" style="margin:0">
-        <img src="img/normalizacion.svg" alt="Dos estudios con escalas distintas se llevan a la misma escala con una recta que pasa por el aire y el tejido blando" width="720" height="300">
-        <figcaption>Los puntos son los picos reales de aire y tejido blando de cada estudio.</figcaption>
+        <svg viewBox="0 0 600 310" role="img" aria-label="Tres reglas. Estudio Pre: aire 0, tejido blando cerca de 400. Estudio Post: aire −2239, tejido blando cerca de −150. Flechas llevan ambos a la escala común: aire 0 y tejido blando 410">
+          <defs><marker id="f-norma" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#38bdf8"/></marker></defs>
+          <g class="regla-norma">
+            <text x="0" y="56" style="fill:#e8d393">Estudio Pre</text>
+            <line x1="130" y1="51" x2="590" y2="51" stroke="#e8d393"/>
+            <circle cx="260" cy="51" r="7" class="pt-aire"/><circle cx="410" cy="51" r="7" class="pt-blando"/>
+            <text x="260" y="34" text-anchor="middle" class="et">aire 0</text>
+            <text x="410" y="34" text-anchor="middle" class="et">tejido blando ≈ 400</text>
+
+            <text x="0" y="161" style="fill:#38bdf8">Escala común</text>
+            <line x1="130" y1="156" x2="590" y2="156" stroke="#38bdf8" stroke-width="3.5"/>
+
+            <g stroke="#38bdf8" stroke-width="1.8" fill="none" stroke-dasharray="5 4" marker-end="url(#f-norma)">
+              <path d="M260 60 L260 143"/><path d="M410 60 L410 143"/>
+              <path d="M155 252 C 155 200, 256 210, 259 169"/><path d="M320 252 C 320 200, 406 210, 409 169"/>
+            </g>
+            <circle cx="260" cy="156" r="8" class="pt-aire"/><circle cx="410" cy="156" r="8" class="pt-blando"/>
+            <text x="274" y="145" class="et fuerte">aire → 0</text>
+            <text x="424" y="145" class="et fuerte">tejido blando → 410</text>
+
+            <text x="0" y="266" style="fill:#a3b0bf">Estudio Post</text>
+            <line x1="130" y1="261" x2="590" y2="261" stroke="#a3b0bf"/>
+            <circle cx="155" cy="261" r="7" class="pt-aire"/><circle cx="320" cy="261" r="7" class="pt-blando"/>
+            <text x="155" y="291" text-anchor="middle" class="et">aire −2239</text>
+            <text x="320" y="291" text-anchor="middle" class="et">tejido blando ≈ −150</text>
+          </g>
+        </svg>
+        <figcaption>Cada estudio trae su propia "regla". El programa encuentra el aire y el tejido blando en cada uno y los lleva a los mismos números (esquema, no a escala).</figcaption>
       </figure>
     </div>
   </div>
 </section>
 
-<!-- ============ 7. UMBRAL ============ -->
-<section id="umbral">
+<!-- ============ 5. DENSIDAD ============ -->
+<section id="densidad">
   <div class="contenedor">
-    <div class="eyebrow">7 · Aislar por densidad</div>
-    <h2 class="titulo-seccion">La barra de umbral: qué es hueso, qué es diente</h2>
-    <p class="intro">Todo vóxel con densidad mayor o igual al <b>umbral</b> forma parte de la estructura. Subir el umbral va
-      quitando capas: tejido blando → hueso → dientes → esmalte → metal.</p>
+    <div class="eyebrow">5 · Densidad</div>
+    <h2 class="titulo-seccion">La densidad decide qué es hueso, diente y metal</h2>
+    <p class="intro">Cada vóxel guarda un número: cuánto frenó los rayos X ese punto del cuerpo. A ese número le
+      llamamos <b>densidad</b>. El aire casi no frena los rayos; el hueso, bastante; el esmalte y el metal, mucho más.
+      Por eso cada tejido ocupa su propio tramo de la escala.</p>
+    <div class="escala-tejidos" role="img" aria-label="Escala de densidad del programa, de menor a mayor: aire 0, tejido blando 410, hueso desde 700, dientes desde 1000, esmalte desde 1250 y metal desde 2000">
+      <div style="--c:#222a33"><b>Aire</b><span>0</span></div>
+      <div style="--c:#3a4552"><b>Tejido blando</b><span>≈ 410</span></div>
+      <div style="--c:#e8d393"><b>Hueso</b><span>desde 700</span></div>
+      <div style="--c:#f0e1b7"><b>Dientes</b><span>desde 1000</span></div>
+      <div style="--c:#f6eed5"><b>Esmalte</b><span>desde 1250</span></div>
+      <div style="--c:#c9d1d9"><b>Metal</b><span>desde 2000</span></div>
+    </div>
+    <p class="nota" style="margin:8px 0 24px">Escala normalizada del programa (sección 4), de menor a mayor densidad.</p>
 
     <div class="rejilla-2">
+      <div class="explicacion">
+        <h3>Qué es un umbral</h3>
+        <p>Un <b>umbral</b> es un valor de corte. El programa lo compara con cada vóxel del volumen:</p>
+        <ol class="pasos-ms">
+          <li>Si la densidad del vóxel es <b>mayor o igual</b> al umbral, el vóxel <b>se conserva</b>.</li>
+          <li>Si es menor, <b>se descarta</b>.</li>
+          <li>Lo que se conserva es la estructura: con umbral 1000 quedan los dientes; con 2000, solo el metal.</li>
+        </ol>
+        <p>Subir el umbral quita capas, de la menos densa a la más densa:
+          tejido blando → hueso → dientes → esmalte → metal.</p>
+        <p class="nota">Pruébalo: mueve la barra o elige una estructura. En celeste, los vóxeles de ese corte que pasan el umbral.</p>
+      </div>
       <div class="tarjeta">
         <div class="chips" role="group" aria-label="Presets de densidad" id="chips-umbral"></div>
         <div class="control"><label>Umbral de densidad <output id="out-umbral"></output></label><input type="range" id="umbral-barra" min="0" max="3000" step="10" value="1000"></div>
@@ -417,32 +359,47 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
           <span>En todo el volumen: <b id="pct-total">—</b></span>
         </div>
       </div>
-      <div>
-        <div class="tarjeta histograma">
-          <h3 style="font-size:16px;margin-bottom:4px">Histograma de densidades</h3>
-          <p class="nota" style="margin-bottom:8px">Cuántos vóxeles hay de cada densidad (escala logarítmica). En celeste, lo que pasa el umbral; clic para fijarlo.</p>
-          <div id="histograma"></div>
-        </div>
-        <div class="explicacion" style="margin-top:16px">
-          <ul>
-            <li>Pico en <b>0</b>: el aire. Pico cerca de <b>410</b>: el tejido blando.</li>
-            <li>De 600 a ~1300, <b>hueso</b> y <b>dientes</b>; por encima de ~2000, solo <b>metal</b>.</li>
-          </ul>
-          <p class="nota">Los rangos (700, 1000, 1250, 2000) se midieron en esta tomografía y coinciden con los percentiles
-            más altos del volumen: los dientes son menos del 1 % de los vóxeles.</p>
-        </div>
+    </div>
+
+    <div class="rejilla-2" style="margin-top:20px">
+      <div class="tarjeta histograma">
+        <h3 style="font-size:18px;margin-bottom:4px">Cuántos vóxeles hay de cada densidad</h3>
+        <p class="nota" style="margin-bottom:8px">Histograma del estudio, en escala logarítmica. En celeste, lo que pasa el umbral; clic para fijarlo. El pico grande de la izquierda es el aire y el tejido blando.</p>
+        <div id="histograma"></div>
       </div>
+      <div class="tarjeta">
+        <h3 style="font-size:18px;margin-bottom:6px">El umbral de cada estructura, en dos escalas</h3>
+        <p class="nota" style="margin-bottom:10px">El programa trabaja en su escala normalizada. Para comparar con la literatura médica se traduce a
+          <b>unidades Hounsfield (HU)</b>, la escala de los tomógrafos de hospital: aire −1000, agua 0.</p>
+        <table class="tabla-umbrales">
+          <thead><tr><th>Estructura</th><th class="num">Programa</th><th class="num">Hounsfield (HU)</th></tr></thead>
+          <tbody>
+            <tr><td><i style="background:#e8d393"></i>Hueso</td><td class="num">700</td><td class="num">150</td></tr>
+            <tr><td><i style="background:#f0e1b7"></i>Dientes</td><td class="num">1000</td><td class="num">820</td></tr>
+            <tr><td><i style="background:#f6eed5"></i>Esmalte</td><td class="num">1250</td><td class="num">2000</td></tr>
+            <tr><td><i style="background:#c9d1d9"></i>Metal</td><td class="num">2000</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rejilla-3" style="margin-top:20px">
+      <div class="cifra"><div class="valor">≈ 820 <small>HU</small></div><div class="que">Umbral real de los dientes</div><p>En unidades Hounsfield, desde ≈ 820 un vóxel es diente. Lo medimos en 11 pacientes con los dientes marcados por expertos; la literatura sugería 1300.</p></div>
+      <div class="cifra"><div class="valor">0,64</div><div class="que">La densidad sola no basta</div><p>Índice de Dice entre el umbral y el experto. El hueso que rodea al diente tiene casi su misma densidad, y el umbral los confunde.</p></div>
+      <div class="tarjeta definicion"><h4>Índice de Dice</h4><p>Compara dos marcas del mismo diente: la del programa y la del experto.</p>
+        <p class="formula">2 × vóxeles en común ÷ (vóxeles de una + vóxeles de la otra)</p>
+        <p><b>0</b> = no comparten nada · <b>1</b> = idénticas.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ============ 8. MARCHING ============ -->
-<section id="malla">
+<!-- ============ 6. EL MODELO 3D ============ -->
+<section id="modelo">
   <div class="contenedor">
-    <div class="eyebrow">8 · De vóxeles a triángulos</div>
-    <h2 class="titulo-seccion">Marching cubes: del gris a la malla 3D</h2>
-    <p class="intro">El algoritmo <i>marching cubes</i> (Lorensen y Cline, 1987) pone triángulos donde la densidad cruza el
-      umbral. Abajo, su versión 2D sobre un pedazo real de un diente, y el cubo que usa en 3D.</p>
+    <div class="eyebrow">6 · El modelo 3D</div>
+    <h2 class="titulo-seccion">Del gris al modelo 3D</h2>
+    <p class="intro">Para mostrar una estructura en 3D se necesita su <b>superficie</b>: el límite entre los vóxeles que
+      superan el umbral y los que no. El algoritmo <b>marching cubes</b> construye esa superficie con triángulos.</p>
 
     <div class="rejilla-2">
       <div class="tarjeta ms">
@@ -456,7 +413,15 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
         <div class="caso" id="caso-ms">Pasa el ratón por una celda para ver su caso.</div>
       </div>
       <div class="explicacion">
-        <figure class="tarjeta ilustracion" style="margin:0 0 14px">
+        <h3>Cómo funciona marching cubes</h3>
+        <ol class="pasos-ms">
+          <li>Recorre el volumen en <b>cubos de 8 vóxeles vecinos</b>.</li>
+          <li>Marca cada esquina como <b>dentro</b> (densidad ≥ umbral) o <b>fuera</b>.</li>
+          <li>Si un cubo tiene esquinas dentro y fuera, la superficie lo atraviesa: una <b>tabla de 15 casos</b> indica qué triángulos poner.</li>
+          <li>Cada vértice se ubica donde la densidad cruza exactamente el umbral. La unión de todos los triángulos es la <b>malla 3D</b>.</li>
+        </ol>
+        <p class="nota">A la izquierda, la misma idea en 2D sobre un corte real: puntos celestes dentro, grises fuera y la línea blanca es el borde calculado.</p>
+        <figure class="tarjeta ilustracion" style="margin:8px 0 0">
           <svg viewBox="0 0 360 250" role="img" aria-label="Un cubo de 8 vóxeles con una esquina dentro del umbral: un triángulo corta esa esquina">
             <g stroke="#6f7d8c" stroke-width="1.5" fill="none">
               <polygon points="150,40 290,40 290,170 150,170" stroke-dasharray="4 4"/>
@@ -475,254 +440,123 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
             <text x="20" y="246" class="svg-chico">8 esquinas → 256 casos → 15 configuraciones</text>
           </svg>
         </figure>
-        <ol>
-          <li>El volumen se recorre en <b>cubos de 8 vóxeles</b> (en 2D, celdas de 4).</li>
-          <li>Cada esquina queda <b>dentro</b> o <b>fuera</b> del umbral, y una <b>tabla</b> dice qué triángulos poner.</li>
-          <li>Cada vértice se ubica por <b>interpolación lineal</b> (puntos blancos): la superficie pasa <i>entre</i> los vóxeles, sin escalones.</li>
-          <li>La <b>normal</b> sale del gradiente de la densidad y se usa para iluminar.</li>
-        </ol>
-        <p class="nota">En el programa: <code>contour(..., method="flying_edges")</code> de VTK, una versión multihilo 4–5 veces más rápida.</p>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- ============ 9. MODELO 3D ============ -->
-<section id="modelo">
-  <div class="contenedor">
-    <div class="eyebrow">9 · Laboratorio 3D</div>
-    <h2 class="titulo-seccion">El modelo 3D: estructuras, luz, suavizado, corte y rendimiento</h2>
-    <p class="intro">Mallas calculadas con el código del programa sobre la tomografía real. Arrastra para girar y usa la rueda
-      para acercar.</p>
+    <h3 class="subtitulo">Cinco preguntas, cinco controles del programa</h3>
+    <div class="cinco-controles">
+      <div class="tarjeta"><span class="n">1</span><h4>Del gris a la malla</h4><p>Marching cubes (flying edges, 4–5× más rápido). La barra de <b>Umbral</b> recalcula la superficie.</p></div>
+      <div class="tarjeta"><span class="n">2</span><h4>Iluminación</h4><p><b>Phong</b> calcula la luz en cada píxel y resalta las raíces finas.</p></div>
+      <div class="tarjeta"><span class="n">3</span><h4>Rendimiento</h4><p>Con estudios grandes usa 1 de cada 2 vóxeles: 4,4× menos triángulos. Un <b>contador</b> lo muestra.</p></div>
+      <div class="tarjeta"><span class="n">4</span><h4>Suavizado</h4><p><b>Taubin</b> quita el aspecto de escalera sin encoger el modelo.</p></div>
+      <div class="tarjeta"><span class="n">5</span><h4>Plano de corte</h4><p>Un plano que se arrastra: el <b>interior</b> del diente se ve en rojo.</p></div>
+    </div>
 
+    <h3 class="subtitulo">El modelo real</h3>
+    <p class="intro" style="margin-bottom:16px">Mallas calculadas con el código del programa a partir de la tomografía de muestra de 3D Slicer:
+      un paciente real con brackets. Se ven las coronas, las raíces y los brackets sobre los dientes.</p>
     <div class="laboratorio">
       <div class="escena" id="escena-lab">
         <div class="cargando" id="cargando-lab">Cargando modelo…</div>
-        <div class="ayuda-raton">🖱 arrastrar: girar · rueda: zoom · derecho: mover</div>
+        <div class="ayuda-raton">🖱 arrastrar: girar · rueda: zoom</div>
         <div class="hud" id="hud-lab"></div>
       </div>
       <div class="panel-lab">
-        <div class="pestanas" role="tablist" aria-label="Temas del laboratorio">
+        <div class="pestanas" role="tablist" aria-label="Laboratorio">
           <button role="tab" aria-selected="true" data-pestana="estructuras">Estructuras</button>
-          <button role="tab" aria-selected="false" data-pestana="luz">Luz</button>
-          <button role="tab" aria-selected="false" data-pestana="rendimiento">FPS</button>
-          <button role="tab" aria-selected="false" data-pestana="suavizado">Suavizado</button>
-          <button role="tab" aria-selected="false" data-pestana="corte">Corte</button>
+          <button role="tab" aria-selected="false" data-pestana="corte">Plano de corte</button>
         </div>
-
         <div class="contenido-pestana" data-contenido="estructuras" role="tabpanel">
-          <h3>Aislar estructuras por densidad</h3>
           <div class="chips" role="group" aria-label="Estructura" id="chips-estructura"></div>
           <p id="texto-estructura"></p>
-          <p class="nota">Rangos en <code>src/densidades.py</code>; dientes y esmalte limitados a la zona de la boca. La piel no se
-            publica porque reconstruye la cara del paciente.</p>
         </div>
-
-        <div class="contenido-pestana" data-contenido="luz" role="tabpanel" hidden>
-          <h3>Iluminación: plano, Gouraud o Phong</h3>
-          <div class="interruptor" role="group" aria-label="Sombreado">
-            <button data-sombreado="plano" aria-pressed="false">Plano</button>
-            <button data-sombreado="phong" aria-pressed="true">Phong</button>
-          </div>
-          <div class="control"><label>Brillo especular (exponente n) <output id="out-brillo"></output></label><input type="range" id="brillo" min="1" max="120" value="40"></div>
-          <div class="chips"><button class="chip" id="btn-triangulos" aria-pressed="false">Ver triángulos</button></div>
-          <svg class="mini-ilustracion" viewBox="0 0 320 150" role="img" aria-label="Vectores del modelo de Phong: normal N, luz L, reflejo R y vista V sobre una superficie">
-            <defs><marker id="f3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker></defs>
-            <path d="M10 130 Q 160 95 310 130" fill="none" stroke="#e8d393" stroke-width="3"/>
-            <circle cx="160" cy="112" r="4" fill="#e6edf3"/>
-            <line x1="160" y1="112" x2="160" y2="30" stroke="#e6edf3" stroke-width="2.2" marker-end="url(#f3)"/><text x="166" y="36" class="svg-mono">N</text>
-            <line x1="160" y1="112" x2="92" y2="44" stroke="#f5c451" stroke-width="2.2" marker-end="url(#f3)"/><text x="78" y="42" class="svg-mono" style="fill:#f5c451">L</text>
-            <line x1="160" y1="112" x2="228" y2="44" stroke="#38bdf8" stroke-width="2.2" marker-end="url(#f3)"/><text x="232" y="42" class="svg-mono" style="fill:#38bdf8">R</text>
-            <line x1="160" y1="112" x2="268" y2="80" stroke="#a3b0bf" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#f3)"/><text x="272" y="82" class="svg-mono" style="fill:#a3b0bf">V</text>
-          </svg>
-          <div class="formula">color = ambiente + difusa·(N·L) + especular·(R·V)ⁿ</div>
-          <ul>
-            <li><b>Plano:</b> una normal por triángulo; se ven las facetas.</li>
-            <li><b>Gouraud:</b> luz en los vértices; se pierden los brillos pequeños.</li>
-            <li><b>Phong:</b> luz en cada píxel; los brillos marcan curvas finas como las raíces. Es el que usa el programa.</li>
-          </ul>
-        </div>
-
-        <div class="contenido-pestana" data-contenido="rendimiento" role="tabpanel" hidden>
-          <h3>Cuánto cuestan los triángulos</h3>
-          <div class="dato-vivo">
-            <div><small>Triángulos en pantalla</small><b id="tri-vivo">—</b></div>
-            <div><small>Cuadros por segundo</small><b id="fps-vivo">—</b></div>
-          </div>
-          <div class="chips"><button class="chip" id="btn-girar" aria-pressed="false">Girar solo</button></div>
-          <ul>
-            <li><b>Extraer</b> la superficie depende de los vóxeles: se paga al cambiar el umbral.</li>
-            <li><b>Dibujarla</b> depende de los triángulos: se paga en cada cuadro al girar.</li>
-          </ul>
-          <p>El programa usa 1 de cada 2 vóxeles (4,4× menos triángulos), <i>flying edges</i>, recalcula al soltar la barra y,
-            con estudios grandes, baja la resolución solo. Ver <a href="#hallazgos">resultados</a>.</p>
-        </div>
-
-        <div class="contenido-pestana" data-contenido="suavizado" role="tabpanel" hidden>
-          <h3>Suavizar sin perder la forma</h3>
-          <div class="chips" role="group" aria-label="Suavizado" id="chips-suavizado">
-            <button class="chip" data-suavizado="ninguno" aria-pressed="true">Sin suavizar</button>
-            <button class="chip" data-suavizado="laplaciano" aria-pressed="false">Laplaciano</button>
-            <button class="chip" data-suavizado="taubin" aria-pressed="false">Taubin</button>
-          </div>
-          <div class="control"><label>Iteraciones <output id="out-iter"></output></label><input type="range" id="iteraciones" min="5" max="100" step="5" value="30"></div>
-          <div class="dato-vivo">
-            <div><small>Volumen respecto al original</small><b id="vol-cambio">100 %</b></div>
-            <div><small>Triángulos</small><b id="tri-suav">—</b></div>
-          </div>
-          <img class="mini-ilustracion" src="img/suavizado_2d.svg" alt="Un contorno ruidoso: el Laplaciano lo encoge, Taubin conserva su tamaño" width="720" height="260">
-          <ul>
-            <li><b>Antes de la malla:</b> filtro gaussiano sobre el volumen (0,5 mm en hueso y dientes; el esmalte no, porque es delgado).</li>
-            <li><b>Laplaciano:</b> cada vértice va al promedio de sus vecinos; suaviza, pero <b>encoge</b>.</li>
-            <li><b>Taubin:</b> alterna un paso que encoge y otro que infla: <b>no encoge</b>.</li>
-          </ul>
-        </div>
-
         <div class="contenido-pestana" data-contenido="corte" role="tabpanel" hidden>
-          <h3>Plano de corte: ver por dentro</h3>
           <div class="interruptor" role="group" aria-label="Eje del plano">
             <button data-eje="x" aria-pressed="true">Lado a lado</button>
             <button data-eje="y" aria-pressed="false">Adelante-atrás</button>
             <button data-eje="z" aria-pressed="false">Arriba-abajo</button>
           </div>
           <div class="control"><label>Posición del plano <output id="out-corte"></output></label><input type="range" id="pos-corte" min="0" max="1000" value="500"></div>
-          <p>Lo que queda de un lado del plano se oculta. La superficie es una cáscara: al cortarla, el interior se ve en
-            <b style="color:var(--pulpa)">rojo</b> y aparecen la pulpa y los conductos.</p>
-          <p class="nota">En la aplicación, el botón <b>Corte</b> pone un plano que se arrastra con el ratón.</p>
+          <p>El modelo es una cáscara: al cortarla se ve por dentro, en <b style="color:var(--pulpa)">rojo</b>, la pulpa del diente.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 10. RESULTADOS ============ -->
+<!-- ============ 7. RESULTADOS ============ -->
 <section id="hallazgos">
   <div class="contenedor">
-    <div class="eyebrow">10 · Resultados</div>
-    <h2 class="titulo-seccion">Lo que encontramos</h2>
-    <div class="rejilla-4">
-      <div class="cifra"><div class="valor">0 – 3874</div><div class="que">El CBCT no está en Hounsfield</div><p>El aire vale 0 en un estudio y −2239 en otro del mismo paciente: hay que normalizar.</p></div>
-      <div class="cifra"><div class="valor">816 <small>HU</small></div><div class="que">Umbral real de "dientes"</div><p>Medido en 11 pacientes; la literatura sugería 1300 HU.</p></div>
-      <div class="cifra"><div class="valor">4–5<small>×</small></div><div class="que">Más rápido con flying edges</div><p>0,086 s contra 0,408 s a resolución completa.</p></div>
-      <div class="cifra"><div class="valor">5 <small>estudios</small></div><div class="que">Probado y estable</div><p>Incluidas dos cabezas completas, con 68 pruebas automáticas.</p></div>
-    </div>
-
-    <div class="rejilla-2" style="margin-top:24px">
-      <figure class="tarjeta ilustracion" style="margin:0">
-        <h3 style="font-size:16px;margin-bottom:6px">Calibración con 11 pacientes (STS-3D-Tooth)</h3>
-        <img src="img/calibracion.svg" alt="Umbral óptimo de dientes en 11 pacientes: entre 609 y 1084 HU, mediana 816 HU, frente a 1300 HU de la literatura" width="720" height="180">
-        <figcaption>Umbral que mejor coincide con los dientes marcados por expertos (Dice), paciente por paciente. Mediana 816 HU (609–1084). La coincidencia llega a ~0,6 porque el hueso alrededor del diente tiene su misma densidad.</figcaption>
-      </figure>
-      <div class="tarjeta">
-        <h3 style="font-size:16px;margin-bottom:10px">Tiempo para extraer la superficie (umbral 1000)</h3>
-        <div class="tabla-scroll">
-        <table>
-          <thead><tr><th>Reducción</th><th class="num">contour</th><th class="num">marching_cubes</th><th class="num">flying_edges</th><th class="num">Triángulos</th></tr></thead>
-          <tbody>
-            <tr><td>1 (0,5 mm)</td><td class="num">0,408 s</td><td class="num">0,278 s</td><td class="num"><span class="mejor">0,086 s</span></td><td class="num">≈ 423 000</td></tr>
-            <tr><td>2 (1 mm)</td><td class="num">0,053 s</td><td class="num">0,047 s</td><td class="num"><span class="mejor">0,013 s</span></td><td class="num">≈ 96 000</td></tr>
-            <tr><td>4 (2 mm)</td><td class="num">0,007 s</td><td class="num">0,008 s</td><td class="num"><span class="mejor">0,002 s</span></td><td class="num">≈ 19 500</td></tr>
-          </tbody>
-        </table>
-        </div>
-        <p class="nota" style="margin-top:10px">Volumen de 330×360×360 vóxeles. Con Taubin el volumen de los dientes cambia −1,3 %; con el Laplaciano, −10 %.</p>
-      </div>
-    </div>
-
-    <h3 style="margin:28px 0 12px;font-size:19px">Limitaciones</h3>
-    <div class="lista-limites cuatro">
-      <div class="tarjeta"><h4>Densidades que se cruzan</h4><p>El hueso denso vale lo mismo que la dentina; un umbral no los separa.</p></div>
-      <div class="tarjeta"><h4>El metal</h4><p>Brackets e implantes superan al esmalte y dejan rayas que crean superficies falsas.</p></div>
-      <div class="tarjeta"><h4>Volumen parcial</h4><p>En los bordes un vóxel mezcla dos tejidos: el esmalte delgado puede caer como dentina.</p></div>
-      <div class="tarjeta"><h4>Detalle vs. fluidez</h4><p>Bajar la resolución hace todo fluido, pero borra raíces delgadas.</p></div>
+    <div class="eyebrow">7 · Resultados</div>
+    <h2 class="titulo-seccion">Lo que medimos</h2>
+    <div class="rejilla-3">
+      <div class="cifra"><div class="valor">0 – 3874</div><div class="que">El CBCT no está en Hounsfield</div><p>Rango de valores de la muestra. En Hounsfield el aire valdría −1000; aquí vale 0, y en otro estudio del mismo paciente −2239. Por eso cada estudio se normaliza.</p></div>
+      <div class="cifra"><div class="valor">≈ 820 <small>HU</small></div><div class="que">Umbral real de los dientes</div><p>En unidades Hounsfield (HU), la escala de los tomógrafos de hospital, un vóxel desde 820 es diente. Medido en 11 pacientes; la literatura sugería 1300.</p></div>
+      <div class="cifra"><div class="valor">4–5<small>×</small></div><div class="que">Más rápido con flying edges</div><p>La superficie se construye en 0,086 s en vez de 0,408 s: cambiar de estructura es casi instantáneo.</p></div>
+      <div class="cifra"><div class="valor">0,64 → 0,86</div><div class="que">Índice de Dice con el experto</div><p>Cuánto coincide lo que marca el programa con lo que marcó un experto (0 = nada, 1 = idéntico; ver sección 5). Con el modelo entrenado de la sección 8 pasa de 0,64 a 0,86.</p></div>
+      <div class="cifra"><div class="valor">0 <small>de 83</small></div><div class="que">Fragmentos de hueso perdidos</div><p>De 83 fragmentos de hueso roto marcados por expertos, ninguno desapareció; se conserva al menos el 99,3 % del hueso (sección 9).</p></div>
+      <div class="cifra"><div class="valor">91</div><div class="que">Pruebas automáticas</div><p>Programas que verifican solos que cada parte siga funcionando después de cada cambio.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ============ 11. FRACTURAS ============ -->
+<!-- ============ 8. CLASIFICADOR ============ -->
+<section id="clasificador">
+  <div class="contenedor">
+    <div class="eyebrow">8 · Del umbral al modelo</div>
+    <h2 class="titulo-seccion">Un modelo que mira el contexto</h2>
+    <div class="rejilla-2" style="align-items:center">
+      <figure class="tarjeta ilustracion" style="margin:0">
+        <img src="img/clasificador.jpg" alt="Dos cortes de un paciente: la máscara del experto, el umbral del programa y el clasificador" width="1600" height="1131" loading="lazy">
+        <figcaption><b style="color:#f0e1b7">Beige</b>: diente bien marcado · <b style="color:#f5a33b">naranja</b>: hueso marcado como diente · <b style="color:#5aa9f0">azul</b>: diente que faltó.</figcaption>
+      </figure>
+      <div class="explicacion">
+        <p class="grande">Con un umbral, el programa marca parte de la mandíbula como si fuera diente. Entrenamos un modelo que, además de la
+          densidad, mira el <b>contexto</b> de cada vóxel: su altura, los bordes y qué tan lejos está del esmalte.</p>
+        <div class="cifra" style="margin:14px 0"><div class="valor">0,64 → 0,86</div><div class="que">Índice de Dice con el experto (de 0 a 1)</div><p>Mejora en los 11 pacientes, cada uno evaluado sin haberlo visto al entrenar.</p></div>
+        <p>La densidad sola pesa el <b>7 %</b> de la decisión; la distancia al esmalte, el <b>38 %</b>. Todavía no está integrado en el programa.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. FRACTURA ============ -->
 <section id="fracturas">
   <div class="contenedor">
-    <div class="eyebrow">11 · Fracturas</div>
-    <h2 class="titulo-seccion">¿Se ve un hueso roto? Lo probamos con cráneo, pelvis, costillas y columna</h2>
-    <p class="lead">El programa nació para CBCT dental, pero un hueso roto es la mejor prueba de si el 3D sirve de verdad:
-      una fractura mide uno o dos vóxeles y desaparece con cualquier suavizado. Probamos la vista <b>Fractura</b> con
-      tomografías médicas públicas con fracturas, fuera de la boca. Muestra solo hueso: nunca piel ni cara.</p>
-
-    <div class="rejilla-4">
-      <div class="cifra"><div class="valor">300 <small>HU</small></div><div class="que">Hueso sin suavizar</div><p>Resolución completa: el gaussiano de los otros presets promedia la grieta con el hueso de al lado y la borra.</p></div>
-      <div class="cifra"><div class="valor">9 <small>estudios</small></div><div class="que">Cuatro partes del cuerpo</div><p>Cráneo, pelvis, costillas y columna, de cuatro conjuntos públicos.</p></div>
-      <div class="cifra"><div class="valor">≥ 99,3 <small>%</small></div><div class="que">Del hueso marcado se conserva</div><p>En pelvis y costillas (99,3 a 99,9 %), medido contra las fracturas que marcaron los expertos.</p></div>
-      <div class="cifra"><div class="valor">0 <small>de 83</small></div><div class="que">Fragmentos perdidos</div><p>Ninguno de los fragmentos de pelvis y costillas desaparece al quitar la camilla.</p></div>
-    </div>
-
-    <figure class="tarjeta figura" style="margin-top:24px">
-      <img src="img/fractura_craneo.jpg" alt="Reconstrucción 3D de un cráneo con una línea de fractura que cruza el hueso frontal en diagonal: a la izquierda el cráneo completo con la fractura marcada con un círculo, a la derecha un acercamiento" width="1600" height="897" loading="lazy">
-      <figcaption><b>Cráneo (CQ500-CT-397, TAC de trauma).</b> Dos de tres radiólogos del conjunto marcaron fractura de calota en este paciente.
-        La línea cruza el hueso frontal en diagonal; su ubicación exacta es lectura nuestra de la imagen, no un diagnóstico.
-        En la esquina, el cubo de orientación: cada cara dice hacia qué lado del paciente queda (la cara <b>Ant</b> es el frente).</figcaption>
+    <div class="eyebrow">9 · Prueba con fracturas</div>
+    <h2 class="titulo-seccion">El hueso roto se ve en 3D</h2>
+    <p class="intro">Probamos el programa con un TAC de hospital de un paciente con trauma. El círculo marca la fractura:
+      una línea que cruza la frente en diagonal.</p>
+    <figure class="tarjeta figura" style="margin:0">
+      <img style="max-height:440px;object-fit:contain" src="img/fractura_craneo.jpg" alt="Cráneo reconstruido en 3D con una línea de fractura en el hueso frontal, marcada con un círculo, y un acercamiento" width="1600" height="897" loading="lazy">
     </figure>
-
-    <div style="display:grid;gap:16px;margin-top:16px">
-      <figure class="tarjeta figura" style="margin:0">
-        <img src="img/fractura_pelvis.jpg" alt="Pelvis con fractura vista por delante y por detrás" width="1500" height="334" loading="lazy">
-        <figcaption><b>Pelvis (PENGWIN 024).</b> Nueve fragmentos: se ve la sínfisis púbica abierta y los huesos desplazados.</figcaption>
-      </figure>
-      <figure class="tarjeta figura" style="margin:0">
-        <img src="img/fractura_costillas.jpg" alt="Caja torácica con costillas fracturadas vista por delante, por detrás y en un acercamiento" width="1500" height="334" loading="lazy">
-        <figcaption><b>Costillas (RibFrac 34).</b> En el acercamiento se ven los escalones donde el hueso se desplazó.</figcaption>
-      </figure>
-      <figure class="tarjeta figura" style="margin:0">
-        <img src="img/fractura_columna.jpg" alt="Columna con fracturas vertebrales vista por delante, por detrás y en un corte sagital" width="1500" height="334" loading="lazy">
-        <figcaption><b>Columna (VerSe 033).</b> En 3D no se aprecia la compresión; el corte sagital sí (ver limitaciones).</figcaption>
-      </figure>
+    <div class="rejilla-3" style="margin-top:16px">
+      <div class="cifra"><div class="valor">300 <small>HU</small></div><div class="que">Umbral del hueso, sin suavizar</div><p>Una fractura mide uno o dos vóxeles: el suavizado la borraría.</p></div>
+      <div class="cifra"><div class="valor">3,7 <small>M</small></div><div class="que">Triángulos</div><p>El modelo del cráneo, a resolución completa: más triángulos, más detalle.</p></div>
+      <div class="cifra"><div class="valor">≈ 6 <small>s</small></div><div class="que">Para calcularlo</div><p>En un portátil. La camilla se quita sin perder fragmentos.</p></div>
     </div>
-
-    <h3 style="margin:28px 0 12px;font-size:19px">Cómo lo medimos</h3>
-    <div class="rejilla-2">
-      <div class="tarjeta">
-        <h3 style="font-size:16px;margin-bottom:10px">Hueso marcado por los expertos que sigue en pantalla</h3>
-        <div class="tabla-scroll">
-        <table>
-          <thead><tr><th>Estudio</th><th>Parte</th><th class="num">Hueso marcado conservado</th><th class="num">Perdidos</th><th class="num">Triángulos</th></tr></thead>
-          <tbody>
-            <tr><td>CQ500-CT-397</td><td>Cráneo</td><td class="num">—</td><td class="num">—</td><td class="num">3,7 M</td></tr>
-            <tr><td>PENGWIN 024</td><td>Pelvis</td><td class="num"><span class="mejor">99,3 %</span></td><td class="num">0 de 9</td><td class="num">1,8 M</td></tr>
-            <tr><td>PENGWIN 049</td><td>Pelvis</td><td class="num"><span class="mejor">99,6 %</span></td><td class="num">0 de 8</td><td class="num">2,4 M</td></tr>
-            <tr><td>RibFrac 34</td><td>Costillas</td><td class="num"><span class="mejor">99,9 %</span></td><td class="num">0 de 15</td><td class="num">3,6 M</td></tr>
-            <tr><td>RibFrac 127</td><td>Costillas</td><td class="num"><span class="mejor">99,8 %</span></td><td class="num">0 de 26</td><td class="num">4,5 M</td></tr>
-            <tr><td>RibFrac 283</td><td>Costillas</td><td class="num"><span class="mejor">99,7 %</span></td><td class="num">0 de 25</td><td class="num">3,7 M</td></tr>
-            <tr><td>VerSe 009</td><td>Columna</td><td class="num">94,8 %</td><td class="num">0 de 8</td><td class="num">0,7 M</td></tr>
-            <tr><td>VerSe 033</td><td>Columna</td><td class="num">91,6 %</td><td class="num">0 de 9</td><td class="num">1,0 M</td></tr>
-            <tr><td>VerSe 111</td><td>Columna</td><td class="num">87,8 %</td><td class="num">0 de 3</td><td class="num">1,2 M</td></tr>
-          </tbody>
-        </table>
-        </div>
-        <p class="nota" style="margin-top:10px">En columna la tomografía es ruidosa y los vóxeles aislados se descartan a propósito: "perdido" es un fragmento con menos de la mitad de su hueso en pantalla. Cada estudio tarda entre 1 y 25 s en calcularse.</p>
-      </div>
-      <div class="tarjeta">
-        <h3 style="font-size:16px;margin-bottom:6px">El soporte de la camilla</h3>
-        <p style="margin:0 0 10px;color:var(--ink-2);font-size:14.5px">El soporte de cabeza y la camilla pasan de 300 HU, así que por densidad no se distinguen del hueso.</p>
-        <ul style="margin:0;padding-left:18px;color:var(--ink-2);font-size:14.5px">
-          <li><b>Primer intento:</b> quedarse con la pieza más grande y los fragmentos chicos pegados. Funcionó con el cráneo y <b>falló con la pelvis</b>: sus fragmentos son piezas grandes y separadas, y se perdían 6 de 9.</li>
-          <li><b>Regla final:</b> hueso dentro del cuerpo (sin aire, con los pulmones rellenos y una apertura morfológica que borra lo delgado), sin trozos de menos de 100 vóxeles y sin piezas que nunca bajan de 6 mm bajo la piel.</li>
-        </ul>
-        <p class="nota" style="margin-top:10px">El <b>Relieve</b> (oclusión ambiental) oscurece los huecos para que la grieta se vea como una raya; en estas pruebas su efecto es modesto.</p>
-      </div>
-    </div>
-
-    <h3 style="margin:28px 0 12px;font-size:19px">Limitaciones</h3>
-    <div class="lista-limites cuatro">
-      <div class="tarjeta"><h4>Compresión de columna</h4><p>Es pérdida de altura, no una línea: el hueso osteoporótico sale poroso y las costillas tapan. Se lee en el corte sagital, que la app ya tiene.</p></div>
-      <div class="tarjeta"><h4>Extremidades</h4><p>No encontramos un conjunto abierto en 3D con fracturas de miembros: lo más cercano son radiografías.</p></div>
-      <div class="tarjeta"><h4>No es un diagnóstico</h4><p>"Conservado" mide que el filtro no borre hueso marcado, no que cada escalón sea una fractura.</p></div>
-      <div class="tarjeta"><h4>Solo en Hounsfield</h4><p>El umbral de 300 HU se validó en tomografías calibradas. En CBCT, cada equipo necesita su propia calibración.</p></div>
-    </div>
-    <p class="nota" style="margin-top:14px">Datos públicos: CQ500 (CC BY-NC-SA 4.0), PENGWIN (CC BY 4.0), RibFrac 2020 (CC BY-NC 4.0) y VerSe 2019 (CC BY-SA 4.0), con los
-      grados de fractura vertebral de Löffler et al. (2020). Créditos completos en <code>results/fracturas/CREDITOS.md</code>.</p>
+    <p class="nota" style="margin-top:12px">Ver la fractura no es diagnosticarla. Datos: CQ500-CT-397 (CC BY-NC-SA 4.0). También se probó con pelvis, costillas y columna (<code>results/fracturas/</code>).</p>
   </div>
 </section>
 
-<!-- ============ EQUIPO, DOCUMENTOS Y REFERENCIAS ============ -->
+<!-- ============ 10. LÍMITES ============ -->
+<section id="limites">
+  <div class="contenedor">
+    <div class="eyebrow">10 · Límites</div>
+    <h2 class="titulo-seccion">Qué no resuelve todavía</h2>
+    <p class="intro">Límites del programa con tomografías dentales (CBCT) y, en particular, con los dientes.</p>
+    <div class="lista-limites tres">
+      <div class="tarjeta"><h4>Densidades que se cruzan</h4><p>El hueso denso de la mandíbula tiene casi la misma densidad que la dentina: un umbral no los separa (coincidencia de 0,64).</p></div>
+      <div class="tarjeta"><h4>Dientes unidos</h4><p>Con un umbral, los dientes vecinos y el hueso que los rodea salen como una sola pieza: no se aísla diente por diente.</p></div>
+      <div class="tarjeta"><h4>El metal</h4><p>Brackets, coronas e implantes generan rayas en la imagen que crean superficies falsas alrededor de los dientes.</p></div>
+      <div class="tarjeta"><h4>Volumen parcial</h4><p>En los bordes un vóxel mezcla dos tejidos: el esmalte, que es delgado, puede quedar con densidad de dentina.</p></div>
+      <div class="tarjeta"><h4>Ruido del CBCT</h4><p>El suavizado limpia la superficie, pero también redondea detalles finos como las puntas de las raíces.</p></div>
+      <div class="tarjeta"><h4>Calibración por equipo</h4><p>La normalización ajusta el aire y el tejido blando, no las densidades altas: otro equipo puede requerir otros umbrales.</p></div>
+    </div>
+    <p class="nota" style="margin-top:12px">El clasificador de la sección 8 resuelve buena parte de los dos primeros límites (0,64 → 0,86), pero todavía no está integrado en el programa.</p>
+  </div>
+</section>
+
 <section id="equipo">
   <div class="contenedor">
     <div class="eyebrow">Equipo</div>
@@ -730,7 +564,7 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
     <div class="rejilla-4">
       <a class="tarjeta persona" href="https://github.com/NothingLogic"><img class="avatar" src="img/equipo/nicolas.png" alt="" width="160" height="160"><div><b>Nicolás Quintana</b><span>Investigación y datos: datasets, rangos de densidad, marco teórico y página</span></div></a>
       <a class="tarjeta persona" href="https://github.com/69kingDavid69"><img class="avatar" src="img/equipo/david.png" alt="" width="160" height="160"><div><b>David</b><span>Datos y pipeline: carga, escala, arcada, integración y calibración</span></div></a>
-      <a class="tarjeta persona" href="https://github.com/juanj-g"><img class="avatar" src="img/equipo/juan.png" alt="" width="160" height="160"><div><b>Juan Gómez</b><span>Visor 2D e interfaz: tres planos, ventana/nivel y aplicación Qt</span></div></a>
+      <a class="tarjeta persona" href="https://github.com/juanj-g"><img class="avatar" src="img/equipo/juan.png" alt="" width="160" height="160"><div><b>Juan Gómez</b><span>Visor 2D e interfaz: tres planos, ventana/nivel y la ventana principal en Qt</span></div></a>
       <a class="tarjeta persona" href="https://github.com/emanuel02ss"><img class="avatar" src="img/equipo/emanuel.png" alt="" width="160" height="160"><div><b>Emanuel Aristizábal</b><span>Render 3D: superficies, presets, iluminación y rendimiento</span></div></a>
     </div>
 
@@ -765,7 +599,7 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
 <footer>
   <div class="contenedor">
     <p>Explorador CBCT · Visual Computing, Universidad Nacional de Colombia, Sede Medellín, 2026-2 · Profesor Marco Paluszny.</p>
-    <p>Datos: muestra <i>CBCTDentalSurgery</i> de 3D Slicer. Modelos e imágenes generados con el código del proyecto. Gráficos 3D con three.js.</p>
+    <p>Datos: muestra <i>CBCTDentalSurgery</i> de 3D Slicer. Modelos e imágenes generados con el código del proyecto; el molar de la portada es un modelo ilustrativo. Gráficos 3D con three.js.</p>
   </div>
 </footer>
 

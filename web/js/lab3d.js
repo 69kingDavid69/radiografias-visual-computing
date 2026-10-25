@@ -86,7 +86,9 @@ function material(color, extra = {}) {
 export async function iniciarPortada(contenedor) {
   const e = crearEscena(contenedor, { controles: false });
   const molar = await cargarMalla("molar");
-  e.grupo.add(new THREE.Mesh(molar, material(COLOR.esmalte, { shininess: 70, specular: 0x5a5a5a })));
+  // Colores por vértice (esmalte en la corona, raíz más amarilla) si la malla los trae.
+  const conColor = Boolean(molar.attributes.color);
+  e.grupo.add(new THREE.Mesh(molar, material(conColor ? 0xffffff : 0xeee7d8, { shininess: 30, specular: 0x2c2c2c, vertexColors: conColor })));
   const esfera = molar.boundingSphere;
   e.grupo.position.copy(esfera.center);
   e.grupo.children.forEach((m) => m.position.sub(esfera.center));
@@ -94,7 +96,7 @@ export async function iniciarPortada(contenedor) {
   const vertical = THREE.MathUtils.degToRad(e.camara.fov) / 2;
   const horizontal = Math.atan(Math.tan(vertical) * e.camara.aspect);
   const distancia = (1.15 * esfera.radius) / Math.sin(Math.min(vertical, horizontal));
-  const alto = THREE.MathUtils.degToRad(12);
+  const alto = THREE.MathUtils.degToRad(32);
   const c = esfera.center;
   e.camara.position.set(c.x, c.y - distancia * Math.cos(alto), c.z + distancia * Math.sin(alto));
   e.camara.near = esfera.radius / 50;
@@ -108,8 +110,8 @@ export async function iniciarPortada(contenedor) {
   const bucle = () => {
     requestAnimationFrame(bucle);
     if (!visible) return;
-    // Se balancea ±35° alrededor de la vista en que se ven las dos raíces.
-    e.grupo.rotation.z = -Math.PI / 2 + (reducirMov ? 0 : 0.6 * Math.sin(performance.now() / 2600));
+    // Gira despacio sobre su eje: una vuelta cada ~35 s, visto un poco desde arriba.
+    e.grupo.rotation.z = 0.5 + (reducirMov ? 0 : performance.now() / 5600);
     e.renderer.render(e.escena, e.camara);
   };
   bucle();
@@ -166,8 +168,10 @@ export function iniciarLaboratorio(meta) {
   const contenedor = document.getElementById("escena-lab");
   const e = crearEscena(contenedor);
   const hud = document.getElementById("hud-lab");
-  const estado = { pestana: "estructuras", estructura: "dientes", sombreado: "phong", brillo: 40, triangulos: false,
-                   suavizado: "ninguno", iteraciones: 40, eje: "x", corte: 500, girar: false, fps: 0, modelo: null };
+  const estado = { pestana: "estructuras", estructura: "hueso", sombreado: "phong", brillo: 40, triangulos: false,
+                   suavizado: "ninguno", iteraciones: 40, eje: "x", corte: 500, girar: true, fps: 0, modelo: null };
+  // Los controles de luz, suavizado y rendimiento son opcionales: si la página no los tiene, se omiten.
+  const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
   let mallas = [];                 // [{mesh, interior, alambre}]
   let detalle = null;              // datos del modelo de detalle para suavizar
   let token = 0;
@@ -181,12 +185,12 @@ export function iniciarLaboratorio(meta) {
     implante: { texto: "Hueso + metal", capas: [["hueso", 0.18], ["metal", 1]] },
   };
   const DESCRIPCION = {
-    hueso: "Todo lo que supera 700: cráneo, maxilares y dientes. El programa le aplica un suavizado gaussiano de 0.5 mm antes de marching cubes para quitar pedacitos sueltos.",
-    dientes: "Desde 1000 quedan los dientes con sus raíces. Por densidad sola también aparecería el hueso denso del cráneo (es tan denso como la dentina), así que el programa limita este preset a la arcada dental: la franja donde se concentra el esmalte.",
-    esmalte: "Desde 1250 quedan las coronas (el esmalte) y también los brackets, porque el metal es todavía más denso. Se limita a la arcada dental igual que los dientes.",
-    esmalte_sin_metal: "La misma banda pero con tope en 2000: se quita el metal y quedan huecos donde estaban los brackets. Es una banda de densidad (mínimo y máximo), no un umbral simple.",
-    metal: "Desde 2000 solo queda metal: aquí, los brackets de ortodoncia. El metal es más denso que cualquier tejido.",
-    implante: "Vista de implante (idea del equipo): hueso casi transparente y metal sólido, para ver el metal dentro del hueso.",
+    hueso: "Todo lo que supera 700: el cráneo, los maxilares y los dientes.",
+    dientes: "Desde 1000 quedan los dientes con sus raíces. El programa busca solo en la zona de la boca, porque parte del cráneo es igual de densa.",
+    esmalte: "Desde 1250 quedan las coronas… y los brackets, porque el metal es aún más denso.",
+    esmalte_sin_metal: "Lo mismo, pero con un tope en 2000: el metal desaparece.",
+    metal: "Desde 2000 solo queda el metal: los brackets.",
+    implante: "El hueso casi transparente y el metal sólido, para ver el metal dentro del hueso.",
   };
 
   const chips = document.getElementById("chips-estructura");
@@ -212,7 +216,7 @@ export function iniciarLaboratorio(meta) {
     const f = estado.corte / 1000;
     const pos = caja.min[eje] + f * (caja.max[eje] - caja.min[eje]);
     const normal = new THREE.Vector3(eje === "x" ? -1 : 0, eje === "y" ? -1 : 0, eje === "z" ? -1 : 0);
-    document.getElementById("out-corte").textContent = `${Math.round(f * 100)} %`;
+    poner("out-corte", `${Math.round(f * 100)} %`);
     return new THREE.Plane(normal, pos);
   }
 
@@ -273,7 +277,7 @@ export function iniciarLaboratorio(meta) {
     });
     const nuevoModelo = geos[0];
     if (estado.modelo !== nuevoModelo) { estado.modelo = nuevoModelo; encuadrar(e, nuevoModelo.boundingSphere, usarDetalle ? 0.8 : 0.95); }
-    document.getElementById("texto-estructura").textContent = DESCRIPCION[estado.estructura];
+    poner("texto-estructura", DESCRIPCION[estado.estructura]);
     aplicarEstilo();
   }
 
@@ -281,7 +285,7 @@ export function iniciarLaboratorio(meta) {
     if (!detalle) {
       detalle = { geo: g, original: Float32Array.from(g.attributes.position.array), aux: new Float32Array(g.attributes.position.count * 3), vec: vecindad(g) };
       detalle.vol0 = volumenMalla(detalle.original, g.index.array);
-      document.getElementById("tri-suav").textContent = (g.index.count / 3).toLocaleString("es-CO");
+      poner("tri-suav", (g.index.count / 3).toLocaleString("es-CO"));
     }
     return detalle.geo;
   }
@@ -299,7 +303,7 @@ export function iniciarLaboratorio(meta) {
     detalle.geo.attributes.position.needsUpdate = true;
     detalle.geo.computeVertexNormals();
     const pct = (100 * volumenMalla(pos, detalle.geo.index.array)) / detalle.vol0;
-    document.getElementById("vol-cambio").textContent = `${pct.toFixed(1)} %`;
+    poner("vol-cambio", `${pct.toFixed(1)} %`);
   }
 
   // Pestañas
@@ -320,26 +324,26 @@ export function iniciarLaboratorio(meta) {
     aplicarEstilo();
   }));
   const brillo = document.getElementById("brillo");
-  const outBrillo = document.getElementById("out-brillo");
-  outBrillo.textContent = brillo.value;
-  brillo.addEventListener("input", () => { estado.brillo = +brillo.value; outBrillo.textContent = brillo.value; aplicarEstilo(); });
+  if (brillo) {
+    poner("out-brillo", brillo.value);
+    brillo.addEventListener("input", () => { estado.brillo = +brillo.value; poner("out-brillo", brillo.value); aplicarEstilo(); });
+  }
   const btnTri = document.getElementById("btn-triangulos");
-  btnTri.addEventListener("click", () => { estado.triangulos = !estado.triangulos; btnTri.setAttribute("aria-pressed", String(estado.triangulos)); aplicarEstilo(); });
+  btnTri?.addEventListener("click", () => { estado.triangulos = !estado.triangulos; btnTri.setAttribute("aria-pressed", String(estado.triangulos)); aplicarEstilo(); });
 
   // Suavizado
   const chipsSuav = document.getElementById("chips-suavizado");
-  chipsSuav.querySelectorAll("[data-suavizado]").forEach((b) => b.addEventListener("click", () => {
+  chipsSuav?.querySelectorAll("[data-suavizado]").forEach((b) => b.addEventListener("click", () => {
     estado.suavizado = b.dataset.suavizado;
     marcar(chipsSuav, "suavizado", estado.suavizado);
     suavizar();
   }));
   const iter = document.getElementById("iteraciones");
-  const outIter = document.getElementById("out-iter");
-  outIter.textContent = iter.value;
+  if (iter) poner("out-iter", iter.value);
   let pendiente = 0;
-  iter.addEventListener("input", () => {
+  iter?.addEventListener("input", () => {
     estado.iteraciones = +iter.value;
-    outIter.textContent = iter.value;
+    poner("out-iter", iter.value);
     cancelAnimationFrame(pendiente);
     pendiente = requestAnimationFrame(suavizar);
   });
@@ -351,12 +355,12 @@ export function iniciarLaboratorio(meta) {
     aplicarEstilo();
     vistaCorte();
   }));
-  document.getElementById("pos-corte").addEventListener("input", (ev) => { estado.corte = +ev.target.value; aplicarEstilo(); });
+  document.getElementById("pos-corte")?.addEventListener("input", (ev) => { estado.corte = +ev.target.value; aplicarEstilo(); });
 
   // Rendimiento
   const btnGirar = document.getElementById("btn-girar");
-  btnGirar.addEventListener("click", () => { estado.girar = !estado.girar; btnGirar.setAttribute("aria-pressed", String(estado.girar)); });
-  if (e.orbit) e.orbit.autoRotateSpeed = 4;
+  btnGirar?.addEventListener("click", () => { estado.girar = !estado.girar; btnGirar.setAttribute("aria-pressed", String(estado.girar)); });
+  if (e.orbit) e.orbit.autoRotateSpeed = 1.6;   // gira solo, despacio, desde el inicio
 
   // Bucle de dibujo con medición de FPS (solo mientras la sección está visible).
   let visible = false;
@@ -365,7 +369,7 @@ export function iniciarLaboratorio(meta) {
   const bucle = () => {
     requestAnimationFrame(bucle);
     if (!visible) return;
-    if (e.orbit) { e.orbit.autoRotate = estado.girar; e.orbit.update(); }
+    if (e.orbit) { e.orbit.autoRotate = estado.girar && estado.pestana !== "corte"; e.orbit.update(); }
     e.renderer.render(e.escena, e.camara);
     cuadros++;
     const ahora = performance.now();
@@ -373,8 +377,8 @@ export function iniciarLaboratorio(meta) {
       estado.fps = Math.round((cuadros * 1000) / (ahora - t0));
       cuadros = 0; t0 = ahora;
       const tri = mallas.reduce((s, m) => s + (m.mesh.geometry.index ? m.mesh.geometry.index.count / 3 : 0), 0);
-      document.getElementById("tri-vivo").textContent = tri.toLocaleString("es-CO");
-      document.getElementById("fps-vivo").textContent = estado.fps;
+      poner("tri-vivo", tri.toLocaleString("es-CO"));
+      poner("fps-vivo", estado.fps);
       hud.innerHTML = `Triángulos <b>${tri.toLocaleString("es-CO")}</b> · FPS <b>${estado.fps}</b>`;
     }
   };

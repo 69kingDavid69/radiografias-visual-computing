@@ -62,17 +62,18 @@ function navegarConTeclado() {
 async function arrancar() {
   resaltarNavegacion();
   navegarConTeclado();
-  // Las tarjetas de preguntas abren su pestaña del laboratorio 3D.
   document.querySelectorAll("[data-abrir-pestana]").forEach((a) => a.addEventListener("click", () => {
     document.querySelector(`[data-pestana="${a.dataset.abrirPestana}"]`)?.click();
   }));
   const meta = await (await fetch("datos/meta.json")).json();
   iniciarPortada(document.getElementById("visor-portada")).catch((e) => console.error("portada", e));
-  iniciarLaboratorio(meta);
+  // Si el navegador no tiene WebGL, el 3D no carga pero el resto de la página sigue funcionando.
+  try { iniciarLaboratorio(meta); } catch (e) { console.error("laboratorio", e); }
   const vol = crearVolumen(meta, await cargarAtlas(meta));
-  iniciarPlanos(vol, meta, tooltip);
-  iniciarUmbral(vol, meta, tooltip);
-  iniciarMarching(vol, meta);
+  // Cada parte arranca solo si su sección está en la página.
+  if (document.getElementById("planos")) iniciarPlanos(vol, meta, tooltip);
+  if (document.getElementById("lienzo-umbral")) iniciarUmbral(vol, meta, tooltip);
+  if (document.getElementById("lienzo-ms")) iniciarMarching(vol, meta);
 }
 
 arrancar().catch((e) => {
