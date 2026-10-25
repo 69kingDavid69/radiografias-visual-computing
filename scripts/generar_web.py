@@ -3,12 +3,14 @@
 Uso (desde la raíz del repositorio, con la muestra en data/raw/):
     python scripts/generar_web.py
     python scripts/generar_web.py data/raw/PreDentalSurgery.gipl.gz
+    python scripts/pulir_modelos.py      # dientes a resolución completa
+    python scripts/generar_molar.py      # molar ilustrativo de la portada
 
 Produce:
   - web/datos/cortes.png: los cortes axiales del volumen (1 de cada 2 vóxeles, valor/16)
     en una sola imagen, para el visor 2D, la barra de umbral y marching squares;
   - web/datos/meta.json: forma, espaciado, histograma, presets, arcada y datos de los modelos;
-  - web/modelos/*.ply: una malla por preset, hecha igual que en la app (Render3D):
+  - web/modelos/*.ply: una malla por preset, hecha igual que en el programa (Render3D):
     render_3d.superficie_por_banda con el suavizado de densidades.py y, para los presets
     de EN_ARCADA, limitada a la arcada dental de region.arcada_dental; además, una malla
     de detalle de los dientes sin suavizar para las pestañas de luz, suavizado y corte.
@@ -37,16 +39,6 @@ MAX_TRIANGULOS_DETALLE = 120_000
 PRESETS_WEB = ("hueso", "dientes", "esmalte", "esmalte_sin_metal", "metal")
 
 
-def elegir_molar(superficie):
-    """La pieza conectada más grande que tiene forma de un solo diente, o None."""
-    mejor = None
-    for pieza in superficie.connectivity("all").split_bodies():
-        x0, x1, y0, y1, z0, z1 = pieza.bounds
-        if z1 - z0 > 15 and max(x1 - x0, y1 - y0) < 20 and (mejor is None or pieza.n_cells > mejor.n_cells):
-            mejor = pieza
-    return None if mejor is None else mejor.extract_surface(algorithm="dataset_surface")
-
-
 def guardar_malla(superficie, ruta, centro, maximo):
     superficie = superficie.triangulate()
     original = superficie.n_cells
@@ -68,7 +60,8 @@ def main():
     (WEB / "datos").mkdir(parents=True, exist_ok=True)
     (WEB / "modelos").mkdir(parents=True, exist_ok=True)
     for viejo in (WEB / "modelos").glob("*.ply"):
-        viejo.unlink()
+        if viejo.name != "molar.ply":      # el molar lo genera scripts/generar_molar.py
+            viejo.unlink()
 
     # Cortes axiales en una sola imagen (atlas), 8 bits.
     r = REDUCCION_CORTES
@@ -113,14 +106,6 @@ def main():
     modelos["dientes_detalle"] = {"min": presets["dientes"][0], "en_arcada": True,
                                   "triangulos_original": int(original), "triangulos_web": int(final)}
     print(f"dientes_detalle: {original} → {final} triángulos")
-
-    # Portada: un molar real. Es la pieza suelta más grande con forma de diente (más de 15 mm de
-    # alto y menos de 20 mm de ancho); los demás dientes salen unidos entre sí por el volumen parcial.
-    molar = elegir_molar(detalle)
-    if molar is not None:
-        original, final = guardar_malla(molar.smooth_taubin(n_iter=40, pass_band=0.05),
-                                        WEB / "modelos" / "molar.ply", centro, MAX_TRIANGULOS)
-        print(f"molar: {original} → {final} triángulos")
 
     meta = {
         "estudio": estudio.id,

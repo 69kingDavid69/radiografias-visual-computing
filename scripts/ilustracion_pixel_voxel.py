@@ -73,7 +73,7 @@ for s in zoom.spines.values():
     s.set_edgecolor(ACENTO); s.set_linewidth(2)
 fig.add_artist(ConnectionPatch((col + n - 0.5, fila - 0.5), (-0.5, -0.5), "data", "data", axesA=ax, axesB=zoom, color=ACENTO, lw=1.2))
 fig.add_artist(ConnectionPatch((col + n - 0.5, fila + n - 0.5), (-0.5, n - 0.5), "data", "data", axesA=ax, axesB=zoom, color=ACENTO, lw=1.2))
-fig.text(0.775, 0.29, "1 píxel =\n1 cuadrito plano", color=TINTA, fontsize=21, ha="center", va="top", linespacing=1.3)
+fig.text(0.775, 0.29, "1 píxel:\nun cuadrado plano", color=TINTA, fontsize=21, ha="center", va="top", linespacing=1.3)
 fig.savefig(os.path.join(salida, "radiografia_pixeles.png"), facecolor="black")
 plt.close(fig)
 
@@ -147,7 +147,7 @@ for s in zoom.spines.values():
 n_img = img_vox.shape[0]
 for esquina in ((0, 0), (0, n_img)):
     fig.add_artist(ConnectionPatch(punto_img, esquina, "data", "data", axesA=ax, axesB=zoom, color=ACENTO, lw=1.2))
-fig.text(0.775, 0.29, f"1 vóxel =\n1 cubito de {dx:.1f} mm".replace(".", ","), color=TINTA, fontsize=21, ha="center", va="top", linespacing=1.3)
+fig.text(0.775, 0.29, f"1 vóxel:\nun cubo de {dx:.1f} mm".replace(".", ","), color=TINTA, fontsize=21, ha="center", va="top", linespacing=1.3)
 fig.savefig(os.path.join(salida, "tomografia_voxeles.png"), facecolor="black")
 plt.close(fig)
 print("radiografía:", (zc, yc), "vóxel:", (zs, int(yv), int(xv)), "arcada:", (z0, z1))
