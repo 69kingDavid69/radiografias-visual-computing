@@ -30,6 +30,7 @@ Las flechas → / ← del teclado pasan de sección; el botón **Código** de la
 | 8 · Malla | Marching squares en vivo y el cubo de marching cubes |
 | 9 · 3D | Laboratorio: estructuras, luz, FPS, suavizado y plano de corte |
 | 10 · Resultados | Cifras, calibración con 11 pacientes, tiempos y limitaciones |
+| 11 · Fracturas | Vista de fractura en cráneo, pelvis, costillas y columna; cómo se midió y qué no se ve |
 | Equipo | Quién hizo qué, documentos de investigación y referencias |
 
 ## Estructura
