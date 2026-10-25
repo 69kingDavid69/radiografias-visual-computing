@@ -26,6 +26,7 @@
     <li><a href="#malla">8 · Malla</a></li>
     <li><a href="#modelo">9 · 3D</a></li>
     <li><a href="#hallazgos">10 · Resultados</a></li>
+    <li><a href="#fracturas">11 · Fracturas</a></li>
     <li><a href="#equipo">Equipo</a></li>
   </ul>
   <a class="github" href="https://github.com/69kingDavid69/radiografias-visual-computing" aria-label="Repositorio en GitHub">
@@ -633,6 +634,89 @@ python -m src.app_qt data/raw/PreDentalSurgery.gipl.gz</code></pre>
       <div class="tarjeta"><h4>Volumen parcial</h4><p>En los bordes un vóxel mezcla dos tejidos: el esmalte delgado puede caer como dentina.</p></div>
       <div class="tarjeta"><h4>Detalle vs. fluidez</h4><p>Bajar la resolución hace todo fluido, pero borra raíces delgadas.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- ============ 11. FRACTURAS ============ -->
+<section id="fracturas">
+  <div class="contenedor">
+    <div class="eyebrow">11 · Fracturas</div>
+    <h2 class="titulo-seccion">¿Se ve un hueso roto? Lo probamos con cráneo, pelvis, costillas y columna</h2>
+    <p class="lead">El programa nació para CBCT dental, pero un hueso roto es la mejor prueba de si el 3D sirve de verdad:
+      una fractura mide uno o dos vóxeles y desaparece con cualquier suavizado. Probamos la vista <b>Fractura</b> con
+      tomografías médicas públicas con fracturas, fuera de la boca. Muestra solo hueso: nunca piel ni cara.</p>
+
+    <div class="rejilla-4">
+      <div class="cifra"><div class="valor">300 <small>HU</small></div><div class="que">Hueso sin suavizar</div><p>Resolución completa: el gaussiano de los otros presets promedia la grieta con el hueso de al lado y la borra.</p></div>
+      <div class="cifra"><div class="valor">9 <small>estudios</small></div><div class="que">Cuatro partes del cuerpo</div><p>Cráneo, pelvis, costillas y columna, de cuatro conjuntos públicos.</p></div>
+      <div class="cifra"><div class="valor">≥ 99,3 <small>%</small></div><div class="que">Del hueso marcado se conserva</div><p>En pelvis y costillas (99,3 a 99,9 %), medido contra las fracturas que marcaron los expertos.</p></div>
+      <div class="cifra"><div class="valor">0 <small>de 83</small></div><div class="que">Fragmentos perdidos</div><p>Ninguno de los fragmentos de pelvis y costillas desaparece al quitar la camilla.</p></div>
+    </div>
+
+    <figure class="tarjeta figura" style="margin-top:24px">
+      <img src="img/fractura_craneo.jpg" alt="Reconstrucción 3D de un cráneo con una línea de fractura que cruza el hueso frontal en diagonal: a la izquierda el cráneo completo con la fractura marcada con un círculo, a la derecha un acercamiento" width="1600" height="897" loading="lazy">
+      <figcaption><b>Cráneo (CQ500-CT-397, TAC de trauma).</b> Dos de tres radiólogos del conjunto marcaron fractura de calota en este paciente.
+        La línea cruza el hueso frontal en diagonal; su ubicación exacta es lectura nuestra de la imagen, no un diagnóstico.
+        En la esquina, el cubo de orientación: cada cara dice hacia qué lado del paciente queda (la cara <b>Ant</b> es el frente).</figcaption>
+    </figure>
+
+    <div style="display:grid;gap:16px;margin-top:16px">
+      <figure class="tarjeta figura" style="margin:0">
+        <img src="img/fractura_pelvis.jpg" alt="Pelvis con fractura vista por delante y por detrás" width="1500" height="334" loading="lazy">
+        <figcaption><b>Pelvis (PENGWIN 024).</b> Nueve fragmentos: se ve la sínfisis púbica abierta y los huesos desplazados.</figcaption>
+      </figure>
+      <figure class="tarjeta figura" style="margin:0">
+        <img src="img/fractura_costillas.jpg" alt="Caja torácica con costillas fracturadas vista por delante, por detrás y en un acercamiento" width="1500" height="334" loading="lazy">
+        <figcaption><b>Costillas (RibFrac 34).</b> En el acercamiento se ven los escalones donde el hueso se desplazó.</figcaption>
+      </figure>
+      <figure class="tarjeta figura" style="margin:0">
+        <img src="img/fractura_columna.jpg" alt="Columna con fracturas vertebrales vista por delante, por detrás y en un corte sagital" width="1500" height="334" loading="lazy">
+        <figcaption><b>Columna (VerSe 033).</b> En 3D no se aprecia la compresión; el corte sagital sí (ver limitaciones).</figcaption>
+      </figure>
+    </div>
+
+    <h3 style="margin:28px 0 12px;font-size:19px">Cómo lo medimos</h3>
+    <div class="rejilla-2">
+      <div class="tarjeta">
+        <h3 style="font-size:16px;margin-bottom:10px">Hueso marcado por los expertos que sigue en pantalla</h3>
+        <div class="tabla-scroll">
+        <table>
+          <thead><tr><th>Estudio</th><th>Parte</th><th class="num">Hueso marcado conservado</th><th class="num">Perdidos</th><th class="num">Triángulos</th></tr></thead>
+          <tbody>
+            <tr><td>CQ500-CT-397</td><td>Cráneo</td><td class="num">—</td><td class="num">—</td><td class="num">3,7 M</td></tr>
+            <tr><td>PENGWIN 024</td><td>Pelvis</td><td class="num"><span class="mejor">99,3 %</span></td><td class="num">0 de 9</td><td class="num">1,8 M</td></tr>
+            <tr><td>PENGWIN 049</td><td>Pelvis</td><td class="num"><span class="mejor">99,6 %</span></td><td class="num">0 de 8</td><td class="num">2,4 M</td></tr>
+            <tr><td>RibFrac 34</td><td>Costillas</td><td class="num"><span class="mejor">99,9 %</span></td><td class="num">0 de 15</td><td class="num">3,6 M</td></tr>
+            <tr><td>RibFrac 127</td><td>Costillas</td><td class="num"><span class="mejor">99,8 %</span></td><td class="num">0 de 26</td><td class="num">4,5 M</td></tr>
+            <tr><td>RibFrac 283</td><td>Costillas</td><td class="num"><span class="mejor">99,7 %</span></td><td class="num">0 de 25</td><td class="num">3,7 M</td></tr>
+            <tr><td>VerSe 009</td><td>Columna</td><td class="num">94,8 %</td><td class="num">0 de 8</td><td class="num">0,7 M</td></tr>
+            <tr><td>VerSe 033</td><td>Columna</td><td class="num">91,6 %</td><td class="num">0 de 9</td><td class="num">1,0 M</td></tr>
+            <tr><td>VerSe 111</td><td>Columna</td><td class="num">87,8 %</td><td class="num">0 de 3</td><td class="num">1,2 M</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="nota" style="margin-top:10px">En columna la tomografía es ruidosa y los vóxeles aislados se descartan a propósito: "perdido" es un fragmento con menos de la mitad de su hueso en pantalla. Cada estudio tarda entre 1 y 25 s en calcularse.</p>
+      </div>
+      <div class="tarjeta">
+        <h3 style="font-size:16px;margin-bottom:6px">El soporte de la camilla</h3>
+        <p style="margin:0 0 10px;color:var(--ink-2);font-size:14.5px">El soporte de cabeza y la camilla pasan de 300 HU, así que por densidad no se distinguen del hueso.</p>
+        <ul style="margin:0;padding-left:18px;color:var(--ink-2);font-size:14.5px">
+          <li><b>Primer intento:</b> quedarse con la pieza más grande y los fragmentos chicos pegados. Funcionó con el cráneo y <b>falló con la pelvis</b>: sus fragmentos son piezas grandes y separadas, y se perdían 6 de 9.</li>
+          <li><b>Regla final:</b> hueso dentro del cuerpo (sin aire, con los pulmones rellenos y una apertura morfológica que borra lo delgado), sin trozos de menos de 100 vóxeles y sin piezas que nunca bajan de 6 mm bajo la piel.</li>
+        </ul>
+        <p class="nota" style="margin-top:10px">El <b>Relieve</b> (oclusión ambiental) oscurece los huecos para que la grieta se vea como una raya; en estas pruebas su efecto es modesto.</p>
+      </div>
+    </div>
+
+    <h3 style="margin:28px 0 12px;font-size:19px">Limitaciones</h3>
+    <div class="lista-limites cuatro">
+      <div class="tarjeta"><h4>Compresión de columna</h4><p>Es pérdida de altura, no una línea: el hueso osteoporótico sale poroso y las costillas tapan. Se lee en el corte sagital, que la app ya tiene.</p></div>
+      <div class="tarjeta"><h4>Extremidades</h4><p>No encontramos un conjunto abierto en 3D con fracturas de miembros: lo más cercano son radiografías.</p></div>
+      <div class="tarjeta"><h4>No es un diagnóstico</h4><p>"Conservado" mide que el filtro no borre hueso marcado, no que cada escalón sea una fractura.</p></div>
+      <div class="tarjeta"><h4>Solo en Hounsfield</h4><p>El umbral de 300 HU se validó en tomografías calibradas. En CBCT, cada equipo necesita su propia calibración.</p></div>
+    </div>
+    <p class="nota" style="margin-top:14px">Datos públicos: CQ500 (CC BY-NC-SA 4.0), PENGWIN (CC BY 4.0), RibFrac 2020 (CC BY-NC 4.0) y VerSe 2019 (CC BY-SA 4.0), con los
+      grados de fractura vertebral de Löffler et al. (2020). Créditos completos en <code>results/fracturas/CREDITOS.md</code>.</p>
   </div>
 </section>
 
