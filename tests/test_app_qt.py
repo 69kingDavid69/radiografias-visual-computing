@@ -108,3 +108,22 @@ def test_boton_de_fractura_y_relieve(ventana):
     assert ventana.btn_relieve.isChecked() and ventana.render3d.relieve
     ventana.btn_relieve.setChecked(False)
     assert not ventana.render3d.relieve
+
+
+def test_el_dialogo_de_carga_abre_archivos_de_volumen_y_carpetas(ventana, monkeypatch, tmp_path):
+    """Regresión: con un selector solo de carpetas no se podía abrir un .nii.gz."""
+    import src.app_qt as app_qt
+    abiertos = []
+    monkeypatch.setattr(ventana, "cargar_nuevo_estudio", lambda ruta: abiertos.append(ruta))
+
+    monkeypatch.setattr(ventana, "_elegir_tipo_de_estudio", lambda: "archivo")
+    monkeypatch.setattr(app_qt.QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(tmp_path / "x.nii.gz"), "")))
+    ventana._abrir_dialogo_cargar_dicom()
+
+    monkeypatch.setattr(ventana, "_elegir_tipo_de_estudio", lambda: "carpeta")
+    monkeypatch.setattr(app_qt.QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: str(tmp_path)))
+    ventana._abrir_dialogo_cargar_dicom()
+
+    monkeypatch.setattr(ventana, "_elegir_tipo_de_estudio", lambda: None)      # cancelar no abre nada
+    ventana._abrir_dialogo_cargar_dicom()
+    assert abiertos == [str(tmp_path / "x.nii.gz"), str(tmp_path)]

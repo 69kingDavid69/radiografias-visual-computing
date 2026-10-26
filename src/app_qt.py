@@ -1040,20 +1040,42 @@ class MainWindow(QMainWindow):
         self.btn_relieve.blockSignals(False)
         self.statusBar.showMessage(f"Estructura 3D: {texto}")
 
+    def _elegir_tipo_de_estudio(self):
+        """Pregunta qué se va a abrir: "archivo" (volumen NIfTI, GIPL, MHA…), "carpeta" (serie DICOM) o None."""
+        caja = QMessageBox(self)
+        caja.setWindowTitle("Cargar estudio")
+        caja.setText("¿Qué quieres abrir?")
+        caja.setInformativeText("Un archivo de volumen (.nii.gz, .gipl.gz, .mha, .nrrd) o una carpeta con una serie DICOM.")
+        archivo = caja.addButton("Archivo de volumen", QMessageBox.ButtonRole.AcceptRole)
+        carpeta = caja.addButton("Carpeta DICOM", QMessageBox.ButtonRole.AcceptRole)
+        caja.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+        caja.exec()
+        return {archivo: "archivo", carpeta: "carpeta"}.get(caja.clickedButton())
+
     def _abrir_dialogo_cargar_dicom(self):
-        """Abre un diálogo para seleccionar la carpeta del estudio DICOM completo."""
+        """Abre el selector adecuado: un archivo de volumen o la carpeta de una serie DICOM.
+
+        Con un solo selector de carpetas no se podían abrir los archivos de volumen (NIfTI,
+        GIPL…), que son la mayoría de los estudios: de ahí que se pregunte primero qué es.
+        """
         dir_inicial = self.ruta_dicom if os.path.isdir(self.ruta_dicom) else os.path.dirname(self.ruta_dicom)
         if not dir_inicial or not os.path.isdir(dir_inicial):
             dir_inicial = "data/raw" if os.path.isdir("data/raw") else os.getcwd()
 
-        carpeta = QFileDialog.getExistingDirectory(
-            self,
-            "Seleccionar Carpeta de Estudio DICOM",
-            dir_inicial,
-        )
-
-        if carpeta:
-            self.cargar_nuevo_estudio(carpeta)
+        tipo = self._elegir_tipo_de_estudio()
+        if tipo == "archivo":
+            patrones = " ".join(f"*{ext}" for ext in EXTENSIONES_VOLUMEN)
+            ruta, _ = QFileDialog.getOpenFileName(
+                self, "Seleccionar archivo de volumen", dir_inicial,
+                f"Volúmenes ({patrones});;Todos (*)")
+            if ruta.lower().endswith(".dcm"):          # un corte suelto: se carga su serie
+                ruta = str(Path(ruta).parent)
+        elif tipo == "carpeta":
+            ruta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta de la serie DICOM", dir_inicial)
+        else:
+            return
+        if ruta:
+            self.cargar_nuevo_estudio(ruta)
 
     def cargar_nuevo_estudio(self, ruta_carpeta: str):
         """Carga un estudio (carpeta DICOM o archivo de volumen) y actualiza el visor."""
